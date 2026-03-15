@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --care-gradient-auto: #16a34a;
+    --care-gradient-flagged: #eab308;
+    --care-gradient-held: #f97316;
+    --care-gradient-blocked: #dc2626;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Skip to main content link -- visible only on keyboard focus */
+  .skip-link {
+    @apply absolute -top-full left-4 z-[100] rounded-b-md bg-blue-600 px-4 py-2 text-sm font-medium text-white;
+    transition: top 0.15s ease-out;
+  }
+  .skip-link:focus {
+    @apply top-0;
+  }
+
+  /* Respect prefers-reduced-motion for all animations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Focus ring for keyboard navigation -- consistent across all interactive elements */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-blue-600;
+    outline-style: solid;
+  }
+
+  /* Monospace for hashes, IDs, and cryptographic values */
+  .font-hash {
+    @apply font-mono text-sm tracking-tight;
+  }
+}
+
+@layer components {
+  /* Verification level badges */
+  .badge-auto-approved {
+    @apply inline-flex items-center rounded-full bg-gradient-auto-light text-gradient-auto-dark px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-flagged {
+    @apply inline-flex items-center rounded-full bg-gradient-flagged-light text-gradient-flagged-dark px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-held {
+    @apply inline-flex items-center rounded-full bg-gradient-held-light text-gradient-held-dark px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-blocked {
+    @apply inline-flex items-center rounded-full bg-gradient-blocked-light text-gradient-blocked-dark px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Trust posture badges */
+  .badge-posture-pseudo {
+    @apply inline-flex items-center rounded-full bg-posture-pseudo-light text-gray-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-posture-supervised {
+    @apply inline-flex items-center rounded-full bg-posture-supervised-light text-blue-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-posture-shared {
+    @apply inline-flex items-center rounded-full bg-posture-shared-light text-purple-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-posture-continuous {
+    @apply inline-flex items-center rounded-full bg-posture-continuous-light text-cyan-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-posture-delegated {
+    @apply inline-flex items-center rounded-full bg-posture-delegated-light text-green-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Status badges */
+  .badge-active {
+    @apply inline-flex items-center rounded-full bg-green-100 text-green-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-suspended {
+    @apply inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-revoked {
+    @apply inline-flex items-center rounded-full bg-red-100 text-red-700 px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Card containers */
+  .card {
+    @apply rounded-lg border border-care-border bg-white p-6 shadow-sm;
+  }
+  .card-interactive {
+    @apply card transition-shadow hover:shadow-md cursor-pointer;
+  }
+
+  /* Stat cards (dashboard overview) */
+  .stat-card {
+    @apply card flex flex-col gap-1;
+  }
+  .stat-value {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  .stat-label {
+    @apply text-sm text-care-muted;
+  }
+
+  /* Activity feed items */
+  .feed-item {
+    @apply flex items-start gap-3 py-3 px-4 border-b border-care-border last:border-0 animate-slide-in;
+  }
+
+  /* Dimension gauge bar */
+  .gauge-bar {
+    @apply h-2 rounded-full bg-gray-200 overflow-hidden;
+  }
+  .gauge-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+}

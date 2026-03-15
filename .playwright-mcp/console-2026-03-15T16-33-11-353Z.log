@@ -1,0 +1,7 @@
+[     351ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8000/api/v1/verification/stats:0
+[     351ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8000/api/v1/held-actions:0
+[     351ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8000/api/v1/trust-chains:0
+[     351ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8000/api/v1/cost/report?days=1:0
+[     353ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[     397ms] [ERROR] WebSocket connection to 'ws://localhost:8000/ws' failed: Error during WebSocket handshake: Unexpected response code: 403 @ webpack-internal:///(app-pages-browser)/./lib/api.ts:358
+[   23047ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:8000/health:0

@@ -1,0 +1,1376 @@
+{
+  "id": "checkpoint_1773404403738",
+  "name": "pre-compact-1773404403737",
+  "created_at": "2026-03-13T12:20:03.738Z",
+  "observations": [
+    {
+      "id": "obs_1773257652138_8ud1c6jnl",
+      "timestamp": "2026-03-11T19:34:12.138Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/test_sqlite_store.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773257893373_nw31ctvvf",
+      "timestamp": "2026-03-11T19:38:13.373Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/test_sqlite_store.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773258052382_ky11brkux",
+      "timestamp": "2026-03-11T19:40:52.382Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T11:07:03.819Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773400033154_nriioj4yi",
+      "timestamp": "2026-03-13T11:07:13.154Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773400185156_jz30f1wrk",
+      "timestamp": "2026-03-13T11:09:45.156Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_enforcer.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773400264553_b0zn1hge8",
+      "timestamp": "2026-03-13T11:11:04.553Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_lifecycle.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773400407955_j7frycbgc",
+      "timestamp": "2026-03-13T11:13:27.955Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_enforcer.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773400453125_tpg5nfdp8",
+      "timestamp": "2026-03-13T11:14:13.125Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_enforcer.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T11:14:30.323Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "timestamp": "2026-03-13T11:14:38.433Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773400690651_j0d26mgof",
+      "timestamp": "2026-03-13T11:18:10.651Z",
+      "type": "connection_pattern",
+      "data": {
+        "framework": "core-sdk",
+        "active_workflows": [],
+        "critical_patterns": {
+          "hasDataFlowModels": false,
+          "hasNexusApp": false,
+          "hasKaizenAgent": false,
+          "hasCyclicWorkflow": false,
+          "hasAsyncRuntime": false
+        },
+        "recently_modified_count": 1
+      },
+      "context": {
+        "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "type": "session_start",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+      "timestamp": "2026-03-13T11:20:10.388Z",
+      "envExists": true,
+      "framework": "core-sdk",
+      "models": {},
+      "keyCount": 0,
+      "validationFailures": []
+    },
+    {
+      "id": "obs_1773400817399_6x0h8fkw6",
+      "timestamp": "2026-03-13T11:20:17.399Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T11:33:52.661Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773401649531_0zwm3xuf7",
+      "timestamp": "2026-03-13T11:34:09.531Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401684577_u5f3mxllt",
+      "timestamp": "2026-03-13T11:34:44.577Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401775524_7yf7y07y9",
+      "timestamp": "2026-03-13T11:36:15.524Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_m15_eatp_v22.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401872450_aipkm2lrd",
+      "timestamp": "2026-03-13T11:37:52.450Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401875534_l9hr8aets",
+      "timestamp": "2026-03-13T11:37:55.534Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/workspace/test_knowledge_policy.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401878785_avfonkv3r",
+      "timestamp": "2026-03-13T11:37:58.785Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401882376_sey5krp8v",
+      "timestamp": "2026-03-13T11:38:02.376Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/test_store_isolation.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401923111_zb4c7dm1a",
+      "timestamp": "2026-03-13T11:38:43.111Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401932340_xyoltnf7b",
+      "timestamp": "2026-03-13T11:38:52.340Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_delegation.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401940045_q1xefmnzf",
+      "timestamp": "2026-03-13T11:39:00.045Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401947930_m77y5e0ks",
+      "timestamp": "2026-03-13T11:39:07.930Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401953187_ratkokg8s",
+      "timestamp": "2026-03-13T11:39:13.187Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401972992_jg8txwz7l",
+      "timestamp": "2026-03-13T11:39:32.992Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773401981311_82zoeo4f4",
+      "timestamp": "2026-03-13T11:39:41.311Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402019062_9s0bfz6pj",
+      "timestamp": "2026-03-13T11:40:19.062Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402031396_wyffti8tm",
+      "timestamp": "2026-03-13T11:40:31.396Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402039549_sj86iee4f",
+      "timestamp": "2026-03-13T11:40:39.550Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402054715_ib52vmwtp",
+      "timestamp": "2026-03-13T11:40:54.715Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402069099_1bkgbmupy",
+      "timestamp": "2026-03-13T11:41:09.099Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402091925_1fsntnofz",
+      "timestamp": "2026-03-13T11:41:31.925Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402097980_s0b54c0ar",
+      "timestamp": "2026-03-13T11:41:37.980Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402108789_b1izlm19u",
+      "timestamp": "2026-03-13T11:41:48.789Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402110038_oz9xjds6y",
+      "timestamp": "2026-03-13T11:41:50.038Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_signing.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402120294_9y8ro0wbj",
+      "timestamp": "2026-03-13T11:42:00.294Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402121037_mp7yf0ve6",
+      "timestamp": "2026-03-13T11:42:01.037Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402128330_r569emvte",
+      "timestamp": "2026-03-13T11:42:08.330Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402133015_whv08nmit",
+      "timestamp": "2026-03-13T11:42:13.015Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402136660_ji9kz2bsl",
+      "timestamp": "2026-03-13T11:42:16.660Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402147044_ka1c9ulnx",
+      "timestamp": "2026-03-13T11:42:27.044Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402153028_e6qlu2aeo",
+      "timestamp": "2026-03-13T11:42:33.028Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402198968_umedpfsyt",
+      "timestamp": "2026-03-13T11:43:18.968Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/workspace/test_knowledge_policy.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402217361_u6sw8yzid",
+      "timestamp": "2026-03-13T11:43:37.361Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402230973_1urskd9x6",
+      "timestamp": "2026-03-13T11:43:50.973Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py::TestMiddlewareCacheIntegration::test_middleware_accepts_cache_parameter"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402250286_m3bw1ss9o",
+      "timestamp": "2026-03-13T11:44:10.286Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py::TestMiddlewareCacheIntegration::test_middleware_accepts_cache_parameter"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402258146_etwny65tk",
+      "timestamp": "2026-03-13T11:44:18.146Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402270445_b9gkdk7w9",
+      "timestamp": "2026-03-13T11:44:30.445Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402280167_s6r3ug68d",
+      "timestamp": "2026-03-13T11:44:40.167Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402287707_fed7tgozw",
+      "timestamp": "2026-03-13T11:44:47.707Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402290390_tfdin7t8l",
+      "timestamp": "2026-03-13T11:44:50.390Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402302480_g3pedbp05",
+      "timestamp": "2026-03-13T11:45:02.480Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402310047_4wyz34qbm",
+      "timestamp": "2026-03-13T11:45:10.047Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_middleware_cache.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402319304_vdpqo1hso",
+      "timestamp": "2026-03-13T11:45:19.304Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_m15_eatp_v22.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402328767_ncnj6yrlz",
+      "timestamp": "2026-03-13T11:45:28.767Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402348194_9xs0ou0kb",
+      "timestamp": "2026-03-13T11:45:48.194Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_reasoning.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402357255_9f4e6fiab",
+      "timestamp": "2026-03-13T11:45:57.255Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/constraint/test_envelope.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402370611_d4rmuedh1",
+      "timestamp": "2026-03-13T11:46:10.611Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/test_store_isolation.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402429103_87cv465ct",
+      "timestamp": "2026-03-13T11:47:09.103Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402446149_ypuzscdj3",
+      "timestamp": "2026-03-13T11:47:26.149Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402462958_r5nx9ovkt",
+      "timestamp": "2026-03-13T11:47:42.958Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402467661_ka7vwqj10",
+      "timestamp": "2026-03-13T11:47:47.661Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402477381_8v7t6e1ca",
+      "timestamp": "2026-03-13T11:47:57.381Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_integrity.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402483079_fcvmk5juk",
+      "timestamp": "2026-03-13T11:48:03.079Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/trust/test_m15_eatp_v22.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402487557_v121fapts",
+      "timestamp": "2026-03-13T11:48:07.557Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402492798_tel8u7a06",
+      "timestamp": "2026-03-13T11:48:12.798Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402508077_pgrge8yvp",
+      "timestamp": "2026-03-13T11:48:28.077Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402540308_egf3ztm3z",
+      "timestamp": "2026-03-13T11:49:00.308Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402546021_brviszfb9",
+      "timestamp": "2026-03-13T11:49:06.021Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T11:50:41.401Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773402687530_a1g80w4pp",
+      "timestamp": "2026-03-13T11:51:27.530Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402723461_7v3lrcakh",
+      "timestamp": "2026-03-13T11:52:03.461Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/api/test_dashboard_endpoints.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402815491_6v8evgazd",
+      "timestamp": "2026-03-13T11:53:35.491Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/api/test_dashboard_endpoints.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402825426_g1q92j9x9",
+      "timestamp": "2026-03-13T11:53:45.426Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/api/test_endpoints.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402831501_a9oncxbam",
+      "timestamp": "2026-03-13T11:53:51.501Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402843025_6u3s2br8g",
+      "timestamp": "2026-03-13T11:54:03.025Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402848252_dkhetf68q",
+      "timestamp": "2026-03-13T11:54:08.252Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402900404_mbfoo6i1v",
+      "timestamp": "2026-03-13T11:55:00.404Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402960942_04krjm5c0",
+      "timestamp": "2026-03-13T11:56:00.942Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773402982010_jrdvbtrz7",
+      "timestamp": "2026-03-13T11:56:22.010Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403234095_w48kjkygf",
+      "timestamp": "2026-03-13T12:00:34.095Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403250848_fwy3wcym8",
+      "timestamp": "2026-03-13T12:00:50.848Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403261643_aw8z2pnfe",
+      "timestamp": "2026-03-13T12:01:01.643Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "python",
+        "test_path": null
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403266454_j8g69mcvb",
+      "timestamp": "2026-03-13T12:01:06.454Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/integration/platform/test_constitutive_properties.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403299100_3xpjx3xxk",
+      "timestamp": "2026-03-13T12:01:39.100Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/unit/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403324541_gpyzlq8xg",
+      "timestamp": "2026-03-13T12:02:04.541Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/integration/platform/test_constrained_organization.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403356558_yhkdgr1xy",
+      "timestamp": "2026-03-13T12:02:36.558Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/integration/platform/test_constrained_organization.py"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T12:02:44.977Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773403369794_vv0ckyc1f",
+      "timestamp": "2026-03-13T12:02:49.794Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403393053_ezbgm36jq",
+      "timestamp": "2026-03-13T12:03:13.053Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/integration/platform/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773403420181_q8vrcp09r",
+      "timestamp": "2026-03-13T12:03:40.181Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T12:04:10.067Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773404124215_6qgbfdvf2",
+      "timestamp": "2026-03-13T12:15:24.215Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "id": "obs_1773404148831_63ims1gbu",
+      "timestamp": "2026-03-13T12:15:48.831Z",
+      "type": "test_pattern",
+      "data": {
+        "test_tier": "pytest",
+        "test_path": "tests/"
+      },
+      "context": {
+        "session_id": "unknown",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    },
+    {
+      "timestamp": "2026-03-13T12:16:21.814Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "timestamp": "2026-03-13T12:17:52.595Z",
+      "type": "stop",
+      "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+      "reason": "signal",
+      "success": true
+    },
+    {
+      "id": "obs_1773404403736_z9ay785v0",
+      "timestamp": "2026-03-13T12:20:03.736Z",
+      "type": "connection_pattern",
+      "data": {
+        "framework": "core-sdk",
+        "active_workflows": [],
+        "critical_patterns": {
+          "hasDataFlowModels": false,
+          "hasNexusApp": false,
+          "hasKaizenAgent": false,
+          "hasCyclicWorkflow": false,
+          "hasAsyncRuntime": false
+        },
+        "recently_modified_count": 0
+      },
+      "context": {
+        "session_id": "3d582b71-3f06-4351-b93a-a2acecb48639",
+        "cwd": "/Users/esperie/repos/terrene/care/workspaces/care-platform/todos",
+        "framework": "unknown"
+      }
+    }
+  ],
+  "instincts": {},
+  "identity": {
+    "system": "kailash-coc-claude-py",
+    "version": "2.0.0",
+    "created_at": "2026-03-11T16:09:56.044Z",
+    "learning_enabled": true,
+    "per_project": true,
+    "focus_areas": [
+      "workflow-patterns",
+      "error-fixes",
+      "dataflow-patterns",
+      "testing-patterns",
+      "framework-selection"
+    ]
+  },
+  "stats": {
+    "observation_count": 126,
+    "instinct_categories": 0
+  }
+}

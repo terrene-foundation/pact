@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "care-platform"
+version = "0.1.0"
+description = "CARE Platform — Governed operational model for running organizations with AI agents under EATP trust governance"
+authors = [
+    {name = "Terrene Foundation", email = "info@terrene.foundation"}
+]
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    # Kailash SDK (includes: fastapi, uvicorn, pydantic, sqlalchemy, pandas, numpy, requests, pyyaml)
+    "kailash>=0.12.5",
+    "kailash-nexus>=1.4.2",
+    "kailash-dataflow>=0.12.4",
+    "kailash-kaizen>=1.2.5",
+    # EATP SDK (trust protocol implementation)
+    "eatp>=0.1.0",
+    # Trust Plane (EATP reference implementation)
+    "trust-plane>=0.2.0",
+    # CLI Framework
+    "click>=8.0",
+    "rich>=13.0.0",
+    # Database migrations
+    "alembic>=1.12.0",
+    # Cryptography (for EATP trust chains)
+    "cryptography>=41.0.0",
+    # JCS canonical JSON serialization (RFC 8785)
+    "jcs>=0.2.1",
+    # Rate limiting
+    "slowapi>=0.1.9",
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "structlog>=23.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing (pytest>=7.2.0 removes vulnerable py dependency)
+    "pytest>=7.2.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    # Linting & Formatting
+    "black>=23.0",
+    "isort>=5.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+    # Security & Pre-commit
+    "detect-secrets>=1.5.0",
+    "pre-commit>=4.2.0",
+]
+
+[project.scripts]
+care-platform = "care_platform.cli:main"
+
+[project.urls]
+"Homepage" = "https://github.com/terrene-foundation/care"
+"Bug Tracker" = "https://github.com/terrene-foundation/care/issues"
+"Documentation" = "https://terrene.dev/care"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*", ".*", "__pycache__*", "workspaces*", "docs*", "scripts*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true

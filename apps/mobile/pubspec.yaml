@@ -1,0 +1,21 @@
+# Copyright 2026 Terrene Foundation
+# Licensed under the Apache License, Version 2.0
+#
+# CARE Platform Mobile — Future work
+# This is a placeholder scaffold for the Flutter mobile/desktop app.
+
+name: care_platform_mobile
+description: CARE Platform mobile dashboard (future)
+version: 0.1.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

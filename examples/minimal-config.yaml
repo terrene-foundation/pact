@@ -1,0 +1,12 @@
+# Copyright 2026 Terrene Foundation
+# Licensed under the Apache License, Version 2.0
+#
+# Minimal valid CARE Platform configuration.
+# This is the smallest config that passes schema validation.
+# Use this as a starting point for new organizations.
+
+name: "My Organization"
+
+genesis:
+  authority: "my-org.example"
+  authority_name: "My Organization"

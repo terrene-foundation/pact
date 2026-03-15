@@ -1,0 +1,10 @@
+[     824ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/verification/stats:0
+[     825ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/trust-chains:0
+[     825ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/cost/report?days=1:0
+[     825ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/held-actions:0
+[     876ms] [ERROR] WebSocket connection to 'ws://localhost:8100/ws' failed: Error during WebSocket handshake: Unexpected response code: 403 @ webpack-internal:///(app-pages-browser)/./lib/api.ts:358
+[   21506ms] [WARNING] WebSocket connection to 'ws://localhost:8100/ws?token=care-dev-token-change-in-production' failed: WebSocket is closed before the connection is established. @ webpack-internal:///(app-pages-browser)/./lib/api.ts:327
+[   21506ms] [WARNING] WebSocket connection to 'ws://localhost:8100/ws?token=care-dev-token-change-in-production' failed: WebSocket is closed before the connection is established. @ webpack-internal:///(app-pages-browser)/./lib/api.ts:327
+[   56796ms] [WARNING] WebSocket connection to 'ws://localhost:8100/ws?token=care-dev-token-change-in-production' failed: WebSocket is closed before the connection is established. @ webpack-internal:///(app-pages-browser)/./lib/api.ts:327
+[   76167ms] [WARNING] WebSocket connection to 'ws://localhost:8100/ws?token=care-dev-token-change-in-production' failed: WebSocket is closed before the connection is established. @ webpack-internal:///(app-pages-browser)/./lib/api.ts:327
+[   92604ms] [WARNING] WebSocket connection to 'ws://localhost:8100/ws?token=care-dev-token-change-in-production' failed: WebSocket is closed before the connection is established. @ webpack-internal:///(app-pages-browser)/./lib/api.ts:327

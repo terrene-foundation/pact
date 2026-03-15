@@ -1,0 +1,72 @@
+# ── Version control ──────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Secrets and environment ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# ── Python artifacts ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.installed.cfg
+MANIFEST
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+tests/
+conftest.py
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# ── Documentation and examples ───────────────────────────────────────────────
+docs/
+examples/
+*.md
+!pyproject.toml
+
+# ── Frontend (built separately in web service) ───────────────────────────────
+apps/
+node_modules/
+
+# ── IDE and OS ───────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ── CI and tooling ───────────────────────────────────────────────────────────
+.github/
+.pre-commit-config.yaml
+.claude/
+scripts/
+
+# ── Workspaces (runtime data, not app code) ───────────────────────────────────
+workspaces/
+
+# ── Docker files themselves (no recursion needed) ────────────────────────────
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+apps/web/Dockerfile

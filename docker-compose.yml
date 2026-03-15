@@ -1,0 +1,107 @@
+# Copyright 2026 Terrene Foundation
+# Licensed under the Apache License, Version 2.0
+#
+# CARE Platform — Docker Compose service definitions
+#
+# Quick start:
+#   cp .env.example .env        # configure environment
+#   docker compose up           # start all services
+#   docker compose up -d        # start in background
+#   docker compose down         # stop all services
+#   docker compose down -v      # stop and remove volumes (destroys DB data)
+#
+# Services:
+#   db   — PostgreSQL 16 database with persistent volume
+#   api  — CARE Platform FastAPI server (port 8000)
+#   web  — Next.js frontend (port 3000)
+
+services:
+  # ── Database ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: care_platform
+      POSTGRES_USER: care
+      # RT11-H1 / RT13: POSTGRES_PASSWORD must be set in .env — no default.
+      # Copy .env.example to .env and set a strong password before running.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env before running docker compose}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Expose to host for local tooling (psql, migrations, etc.)
+      # Remove in production if direct DB access is not required
+      - "5432:5432"
+    networks:
+      - care_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U care -d care_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── API server ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point at the db container
+      DATABASE_URL: postgresql://care:${POSTGRES_PASSWORD}@db:5432/care_platform
+      # Allow CORS from the web container and local development
+      CARE_CORS_ORIGINS: "http://localhost:3000,http://web:3000"
+      # Bind to all interfaces inside the container
+      CARE_API_HOST: "0.0.0.0"
+      CARE_API_PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - care_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Point the frontend at the api container (server-side fetching)
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      # Internal API URL for server-side rendering (container-to-container)
+      API_URL: "http://api:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - care_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────
+networks:
+  care_net:
+    driver: bridge

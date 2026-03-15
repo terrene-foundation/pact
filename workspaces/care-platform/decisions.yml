@@ -1,0 +1,309 @@
+# CARE Platform — Consolidated Decision Log
+# Phases 1-2 (M1-M20, 150 tasks, 10 red team rounds)
+# Created: 2026-03-13
+
+decisions:
+  # --- Architecture & Positioning ---
+
+  - decision: "CARE Platform is governed orchestration, not a generic agent orchestrator"
+    rationale: "The landscape is crowded with generic orchestrators (LangChain, CrewAI, AutoGen). CARE's differentiation is EATP trust governance — no competitor has cryptographic trust chains, constraint envelopes, or verification gradient. Competing on orchestration features loses; competing on governance wins."
+    alternatives_rejected: "Generic agent orchestrator competing on features; thin wrapper around existing orchestrator"
+    date: 2026-03-11
+    initiative: care-platform-phase1
+    confidence: high
+    source: analysis/02-synthesis
+
+  - decision: "Workspace-as-knowledge-base architecture — each Foundation workspace is an agent team's institutional memory"
+    rationale: "Maps cleanly to Foundation operational structure. Each workspace owns its domain knowledge, constraint envelopes, and agent definitions. Aligns with CO methodology's workspace structure."
+    alternatives_rejected: "Single monolithic agent pool; database-centric agent management"
+    date: 2026-03-11
+    initiative: care-platform-phase1
+    confidence: high
+    source: analysis/02-synthesis
+
+  - decision: "DM (Digital Marketing) team as first operational vertical"
+    rationale: "Has clear deliverables (content creation, distribution), well-defined constraint boundaries (budget, channels, approval flows), and immediate Foundation value. Validates the full CARE stack end-to-end."
+    alternatives_rejected: "Platform Development team first (recursive); Governance team first (too abstract)"
+    date: 2026-03-11
+    initiative: care-platform-phase1
+    confidence: high
+    source: analysis/02-synthesis
+
+  - decision: "Disambiguate 'CARE specification' (CC BY 4.0) vs 'CARE Platform' (Apache 2.0)"
+    rationale: "Spec defines what; platform implements how. Conflating them creates licensing confusion and limits third-party implementations."
+    alternatives_rejected: "Single 'CARE' term for both; rename platform to avoid CARE branding"
+    date: 2026-03-11
+    initiative: care-platform-phase1
+    confidence: high
+    source: analysis/02-synthesis
+
+  # --- Licensing & Governance ---
+
+  - decision: "Apache 2.0 license with Terrene Foundation copyright"
+    rationale: "RT-01 found LICENSE attributed copyright to a commercial entity with additional restrictions. Fixed to standard Apache 2.0 with Foundation copyright. Foundation owns all IP irrevocably."
+    alternatives_rejected: "BSL 1.1 (source-available); AGPL (copyleft too restrictive for adopters)"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt4/RT-01
+
+  # --- Trust Enforcement ---
+
+  - decision: "Monotonic tightening enforced in delegation flow, not just defined"
+    rationale: "RT-02 found is_tighter_than() existed but was never called. Central CARE invariant — delegations can only reduce authority — was unenforced. Wired into DelegationManager.create_delegation()."
+    alternatives_rejected: "Advisory-only tightening with logging; defer to ShadowEnforcer"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt4/RT-02
+
+  - decision: "NEVER_DELEGATED_ACTIONS enforced in middleware before gradient classification"
+    rationale: "RT-03 found actions permanently reserved for humans (modify_constraints, financial_decisions) could be AUTO_APPROVED. Now forced to HELD regardless of gradient rules."
+    alternatives_rejected: "Enforce only at API boundary; add to gradient rules instead of middleware"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt4/RT-03
+
+  - decision: "Ed25519 for approver authentication and audit signing"
+    rationale: "Cryptographic proof that approval decisions come from authorized humans. Ed25519 chosen for compact signatures (64 bytes), fast verification, and no configuration complexity (no curve/hash selection)."
+    alternatives_rejected: "RSA (larger keys/sigs); ECDSA P-256 (configuration complexity); HMAC-only (no non-repudiation)"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: milestone-12
+
+  - decision: "Fail-closed on all error paths — exceptions result in BLOCKED/FAILED, never silent continuation"
+    rationale: "Trust governance must never silently succeed. Every ambiguous state resolves to the most restrictive outcome. Confirmed across 10 red team rounds."
+    alternatives_rejected: "Fail-open with logging; configurable fail mode"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt4-rt10
+
+  # --- Immutability ---
+
+  - decision: "All constraint config models frozen (Pydantic ConfigDict(frozen=True))"
+    rationale: "RT5-04 CRITICAL: Execution-plane code must not mutate Trust Plane state. All six constraint config classes + ConstraintEnvelopeConfig are immutable after construction. New instances via model_copy(update={...})."
+    alternatives_rejected: "Deep copy on access; read-only properties; runtime assertion checks"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt5/RT5-04
+
+  - decision: "RT10-DP1: ConstraintEnvelope (runtime object) frozen"
+    rationale: "Prevents post-creation constraint widening. Code that needs to update an envelope must create a new instance. Uses object.__setattr__ in model_post_init for initialization of computed defaults."
+    alternatives_rejected: "Mutable with validation hooks; copy-on-read pattern"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/DP1
+
+  # --- Persistence ---
+
+  - decision: "RT10-DP2: Cumulative spend persisted via TrustStore with well-known key"
+    rationale: "RT9-09 identified spend resets on restart. Uses existing TrustStore.store_delegation/get_delegation with key '__cumulative_spend__'. Persist-on-every-update for correctness. Simpler than extending TrustStore protocol."
+    alternatives_rejected: "Batch persist at intervals (window of data loss); extend TrustStore protocol with spend-specific methods; separate database table"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/DP2
+
+  - decision: "TrustStore protocol pattern — abstract interface with MemoryStore and FilesystemStore implementations"
+    rationale: "Decouples trust persistence from storage backend. MemoryStore for testing, FilesystemStore/SQLiteStore for production. Protocol-based (structural typing) for extensibility."
+    alternatives_rejected: "Direct SQLite coupling; ORM-based persistence; file-per-record pattern"
+    date: 2026-03-12
+    initiative: care-platform-phase1
+    confidence: high
+    source: milestone-12
+
+  # --- Caching & Performance ---
+
+  - decision: "RT10-DP3: Verification cache key includes envelope content hash"
+    rationale: "Previous key (agent_id, action) was stale when envelope changed. New key (agent_id, action, envelope.content_hash()) makes stale entries automatically unreachable. No TTL-based window of vulnerability."
+    alternatives_rejected: "TTL-based cache invalidation; version counter in key; cache.clear() on envelope change"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/DP3
+
+  # --- Delegation & Revocation ---
+
+  - decision: "RT10-DP4: DelegationManager auto-syncs with RevocationManager"
+    rationale: "Delegation and revocation were separate subsystems with no automatic coordination. Now DelegationManager accepts optional RevocationManager and calls register_delegation() after each successful delegation. Backward compatible via optional parameter."
+    alternatives_rejected: "Event bus notification; manual registration required; DI framework"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/DP4
+
+  - decision: "Surgical revocation reparents children to grandparent"
+    rationale: "RT9-07 found surgical_revoke() orphaned children in the delegation tree. Now reparents to grandparent, preserving the chain for non-revoked delegates."
+    alternatives_rejected: "Cascade revoke all children; leave children as roots; fail if children exist"
+    date: 2026-03-13
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt9/RT9-07
+
+  # --- Thread Safety ---
+
+  - decision: "threading.Lock on all 11 shared mutable components"
+    rationale: "Systematic sweep across RT7-RT9 added locks to every shared mutable component: ExecutionRuntime, RevocationManager, ApproverRegistry, AuditChain, AuthenticatedApprovalQueue, BridgeManager, AgentRegistry, ApprovalQueue, CredentialManager, MessageChannel, MessageRouter."
+    alternatives_rejected: "asyncio-only (doesn't protect against thread pool executors); per-field locks (too granular); lock-free data structures (too complex)"
+    date: 2026-03-13
+    initiative: care-platform-phase1
+    confidence: high
+    source: rt7-rt9
+
+  # --- Cryptographic Integrity ---
+
+  - decision: "HMAC timing-safe comparison for API token auth"
+    rationale: "RT10-R2-1 found token comparison using != (timing attack vector). Replaced with hmac.compare_digest()."
+    alternatives_rejected: "Hash-then-compare (unnecessary complexity); constant-time string compare library"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/R2-1
+
+  - decision: "JCS canonical serialization for SD-JWT integrity hashes"
+    rationale: "RT10-R2-2 found json.dumps() output varies by implementation. JCS (RFC 8785) provides deterministic JSON serialization for hash stability."
+    alternatives_rejected: "Sorted json.dumps (doesn't handle all edge cases); custom serializer; CBOR"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/R2-2
+
+  - decision: "Genesis records protected against silent overwrite"
+    rationale: "RT10-R2-6 found genesis records could be silently overwritten. Added existence check before creation — genesis is immutable once established."
+    alternatives_rejected: "Last-write-wins; versioned genesis (contradicts 'genesis' semantics)"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/R2-6
+
+  # --- API & Frontend ---
+
+  - decision: "React/Next.js for web dashboard, Flutter for mobile"
+    rationale: "React for rich interactive dashboard (trust chain visualization, real-time approval queue). Flutter for mobile agent monitoring. Both have strong ecosystems."
+    alternatives_rejected: "Vue.js; server-rendered HTML; single Flutter app for both"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: phase2-decision-3
+
+  - decision: "Bearer token auth with CARE_API_TOKEN env var for API"
+    rationale: "RT10-C2 found no API authentication. Bearer token is simple and sufficient for Phase 2. Phase 3 will add OAuth2/OIDC."
+    alternatives_rejected: "OAuth2 immediately (too complex for Phase 2); API key in header; mutual TLS"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/C2
+
+  # --- Constraint Resolution ---
+
+  - decision: "Empty constraint intersection raises error (fail-closed)"
+    rationale: "RT10-R2-5 found that when both parent and child have non-empty constraint lists but their intersection is empty, the result was treated as 'unrestricted'. Now raises ConstraintResolutionError."
+    alternatives_rejected: "Return empty set (silent failure); return parent constraints; log warning and continue"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/R2-5
+
+  # --- Bounded Resources ---
+
+  - decision: "Bounded queues and deques for all in-memory collections"
+    rationale: "RT10-R2-4/R2-10 found unbounded growth in approval queue resolved history and event queues. deque(maxlen=10000) for resolved history, asyncio.Queue(maxsize=1000) for events, max 50 WebSocket subscribers."
+    alternatives_rejected: "Periodic cleanup task; no limit with monitoring; LRU cache"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/R2-4,R2-10
+
+  # --- Specifications Impact ---
+
+  - decision: "Phase 2 implementation changes do not require spec updates"
+    rationale: "Frozen envelopes, spend persistence, cache alignment, and delegation-revocation sync are implementation patterns (platform layer). The CARE/EATP/CO/COC specifications define what, not how. The specs already support these patterns without modification."
+    alternatives_rejected: "Update EATP spec with implementation recommendations"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: user-question
+
+  # --- Phase 2 Deferred to Phase 3 ---
+
+  - decision: "Defer rate limiting, physical store isolation, HSM key management, WebSocket auth to Phase 3"
+    rationale: "Rate limiting is a deployment concern (nginx/API gateway). Physical store isolation requires separate databases. HSM requires hardware. WebSocket auth needed before sensitive event data. All are production-hardening, not governance logic."
+    alternatives_rejected: "Implement all in Phase 2 (scope creep)"
+    date: 2026-03-13
+    initiative: care-platform-phase2
+    confidence: high
+    source: rt10/accepted-findings
+
+  # --- Milestone 8-10: EATP SDK Integration + Governance Hardening ---
+
+  - decision: "Consume EATP decorators, don't rebuild them"
+    rationale: "EATP SDK already has @verified, @audited, @shadow. CARE adds governance context on top."
+    alternatives_rejected: ["Build decorators from scratch", "Copy EATP source into CARE"]
+    date: 2026-03-15
+    initiative: care-platform-m8
+    confidence: high
+
+  - decision: "Call ops.verify() directly instead of wrapping EATP decorator instances"
+    rationale: "EATP decorators take fixed agent_id at decoration time. CARE needs dynamic agent_id from function args."
+    alternatives_rejected: ["Create new EATP decorator per call"]
+    date: 2026-03-15
+    initiative: care-platform-m8
+    confidence: high
+
+  - decision: "flag_threshold=2 for StrictEnforcer in CareEnforcementPipeline"
+    rationale: "Clean mapping: 0=AUTO_APPROVED, 1=FLAGGED, 2=HELD, valid=False=BLOCKED"
+    alternatives_rejected: ["flag_threshold=1 with violation encoding"]
+    date: 2026-03-15
+    initiative: care-platform-m8
+    confidence: high
+
+  - decision: "ProximityScanner errors are advisory — never block classification"
+    rationale: "Base classification from gradient rules/envelope is the safety floor"
+    alternatives_rejected: ["Fail-closed on scanner error"]
+    date: 2026-03-15
+    initiative: care-platform-m8
+    confidence: high
+
+  - decision: "return None in except blocks is manual review, not lint-enforced"
+    rationale: "Too many false positives in query/utility functions"
+    alternatives_rejected: ["Enforce as violation"]
+    date: 2026-03-15
+    initiative: care-platform-m10
+    confidence: high
+
+  # --- Milestone 11: Full-Featured Dashboard ---
+
+  - decision: "Demo seed uses random.seed(42) for deterministic data"
+    rationale: "Reproducible demos, same data every run"
+    alternatives_rejected: ["Random data", "Hardcoded data"]
+    date: 2026-03-15
+    initiative: care-platform-m11
+    confidence: high
+
+  - decision: "Auth validates against /health endpoint, no separate login API"
+    rationale: "Backend already has bearer token auth. Health check is simplest validation."
+    alternatives_rejected: ["Dedicated login endpoint", "OAuth2 flow"]
+    date: 2026-03-16
+    initiative: care-platform-m11
+    confidence: high
+
+  - decision: "Notifications derived client-side from WebSocket events"
+    rationale: "Events carry the right data. Client-side derivation avoids backend coupling."
+    alternatives_rejected: ["Backend notification service", "Polling"]
+    date: 2026-03-16
+    initiative: care-platform-m11
+    confidence: high
+
+  # --- Product Architecture ---
+
+  - decision: "Praxis is a separate repo from CARE"
+    rationale: "Different users (collaboration vs governance), different scale, different problem"
+    alternatives_rejected: ["Praxis as CARE module", "Single monorepo"]
+    date: 2026-03-15
+    initiative: product-architecture
+    confidence: high

@@ -1,0 +1,311 @@
+# Copyright 2026 Terrene Foundation
+# Licensed under the Apache License, Version 2.0
+#
+# Full CARE Platform configuration — Terrene Foundation
+# This demonstrates the Foundation as the first deployer of its own platform.
+#
+# All agents, constraint envelopes, and workspace mappings are derived from
+# the EATP trust model analysis: 03-eatp-trust-model-dm-team.md
+
+name: "Terrene Foundation"
+version: "1.0"
+
+genesis:
+  authority: "terrene.foundation"
+  authority_name: "Terrene Foundation"
+  policy_reference: "docs/06-operations/constitution/terrene-foundation-constitution.md"
+
+default_posture: supervised
+
+# --- Constraint Envelopes ---
+# Each envelope defines the five CARE constraint dimensions for an agent.
+# See EATP trust model analysis for the rationale behind each constraint.
+
+constraint_envelopes:
+  # DM Team Lead — coordinates team, reviews drafts, maintains calendar
+  - id: dm-team-lead-envelope
+    description: "DM Team Lead — coordinates team, reviews drafts, maintains calendar"
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - coordinate_team
+        - review_drafts
+        - maintain_calendar
+        - generate_reports
+      blocked_actions:
+        - publish_external
+        - modify_brand_guidelines
+        - engage_legal_content
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "09:00"
+      active_hours_end: "18:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "workspaces/media/"
+        - "docs/02-standards/"
+      write_paths:
+        - "workspaces/media/drafts/"
+        - "workspaces/media/calendar/"
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_documents
+        - board_minutes
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+  # Content Creator — drafts posts, formats content. Cannot publish.
+  - id: dm-content-creator-envelope
+    description: "Content Creator — drafts posts, formats content. Cannot publish."
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - draft_linkedin_post
+        - draft_blog_content
+        - format_content
+      blocked_actions:
+        - publish_external
+        - schedule_post
+        - send_email
+        - modify_published_content
+      max_actions_per_day: 20
+    temporal:
+      active_hours_start: "09:00"
+      active_hours_end: "18:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "docs/02-standards/"
+        - "workspaces/media/brand-assets/"
+      write_paths:
+        - "workspaces/media/drafts/"
+      blocked_data_types:
+        - pii
+        - partnership_strategy
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+  # Analytics Agent — collects metrics, generates reports. Read-only.
+  - id: dm-analytics-envelope
+    description: "Analytics Agent — collects metrics, generates reports. Read-only."
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - collect_metrics
+        - generate_report
+        - trend_analysis
+      blocked_actions:
+        - modify_content
+        - access_pii
+    temporal:
+      active_hours_start: "22:00"
+      active_hours_end: "06:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "workspaces/media/analytics/"
+      write_paths:
+        - "workspaces/media/reports/"
+      blocked_data_types:
+        - pii
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+  # Scheduling Agent — schedules to approved platforms within approved hours.
+  # Cannot change strategy or create new channels.
+  - id: dm-scheduling-envelope
+    description: "Scheduling Agent — schedules to approved platforms within approved hours"
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - schedule_post
+        - check_calendar
+        - reschedule_post
+      blocked_actions:
+        - publish_external
+        - create_channel
+        - modify_strategy
+        - send_email
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "09:00"
+      active_hours_end: "18:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "workspaces/media/calendar/"
+        - "workspaces/media/drafts/"
+      write_paths:
+        - "workspaces/media/calendar/"
+      blocked_data_types:
+        - pii
+        - financial_records
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+  # Podcast Clip Extractor — processes published audio, cannot publish externally.
+  - id: dm-podcast-extractor-envelope
+    description: "Podcast Clip Extractor — processes published audio, extracts clips"
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - extract_clip
+        - transcribe_segment
+        - format_clip_metadata
+      blocked_actions:
+        - publish_external
+        - modify_source_audio
+        - send_email
+      max_actions_per_day: 30
+    temporal:
+      active_hours_start: "09:00"
+      active_hours_end: "18:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "workspaces/media/podcasts/"
+        - "workspaces/media/brand-assets/"
+      write_paths:
+        - "workspaces/media/clips/"
+      blocked_data_types:
+        - pii
+        - financial_records
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+  # Outreach Agent — drafts outreach emails, cannot send without human approval.
+  - id: dm-outreach-envelope
+    description: "Outreach Agent — drafts outreach emails, cannot send without approval"
+    financial:
+      max_spend_usd: 0.0
+    operational:
+      allowed_actions:
+        - draft_outreach_email
+        - research_contact
+        - prepare_outreach_brief
+      blocked_actions:
+        - send_email
+        - publish_external
+        - create_channel
+      max_actions_per_day: 15
+    temporal:
+      active_hours_start: "09:00"
+      active_hours_end: "18:00"
+      timezone: "Asia/Singapore"
+    data_access:
+      read_paths:
+        - "docs/02-standards/"
+        - "workspaces/media/outreach/"
+      write_paths:
+        - "workspaces/media/outreach/drafts/"
+      blocked_data_types:
+        - pii
+        - financial_records
+        - board_minutes
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+# --- Agent Definitions ---
+# Each agent references a constraint envelope that governs its behavior.
+# All agents start at the SUPERVISED trust posture.
+
+agents:
+  - id: dm-team-lead
+    name: "DM Team Lead"
+    role: "Coordinates the Digital Marketing team, reviews drafts, maintains editorial calendar"
+    constraint_envelope: dm-team-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - coordinate_team
+      - review_content
+      - editorial_calendar
+
+  - id: dm-content-creator
+    name: "Content Creator"
+    role: "Drafts LinkedIn posts and blog content from published Foundation materials"
+    constraint_envelope: dm-content-creator-envelope
+    initial_posture: supervised
+    capabilities:
+      - draft_posts
+      - format_content
+
+  - id: dm-analytics
+    name: "Analytics Agent"
+    role: "Collects platform engagement metrics and generates weekly reports"
+    constraint_envelope: dm-analytics-envelope
+    initial_posture: supervised
+    capabilities:
+      - collect_metrics
+      - generate_reports
+      - trend_analysis
+
+  - id: dm-scheduling
+    name: "Scheduling Agent"
+    role: "Schedules approved content to approved platforms within approved hours"
+    constraint_envelope: dm-scheduling-envelope
+    initial_posture: supervised
+    capabilities:
+      - schedule_posts
+      - manage_calendar
+
+  - id: dm-podcast-extractor
+    name: "Podcast Clip Extractor"
+    role: "Processes published podcast audio and extracts shareable clips"
+    constraint_envelope: dm-podcast-extractor-envelope
+    initial_posture: supervised
+    capabilities:
+      - extract_clips
+      - transcribe_segments
+
+  - id: dm-outreach
+    name: "Outreach Agent"
+    role: "Drafts outreach emails for review; cannot send without human approval"
+    constraint_envelope: dm-outreach-envelope
+    initial_posture: supervised
+    capabilities:
+      - draft_outreach
+      - research_contacts
+
+# --- Workspaces ---
+
+workspaces:
+  - id: media
+    path: "workspaces/media/"
+    description: "Digital Marketing team knowledge base"
+    knowledge_base_paths:
+      - "briefs/"
+      - "01-analysis/"
+      - "brand-assets/"
+      - "calendar/"
+      - "podcasts/"
+      - "outreach/"
+      - "clips/"
+
+# --- Teams ---
+
+teams:
+  - id: dm-team
+    name: "Digital Marketing"
+    workspace: media
+    team_lead: dm-team-lead
+    agents:
+      - dm-team-lead
+      - dm-content-creator
+      - dm-analytics
+      - dm-scheduling
+      - dm-podcast-extractor
+      - dm-outreach
+    default_llm_backend: anthropic
