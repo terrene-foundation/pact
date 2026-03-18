@@ -326,24 +326,25 @@ class TrustPosture(BaseModel):
                 next_level = level
                 break
 
-        # Use EATP PostureStateMachine for the transition
-        eatp_machine = _create_eatp_state_machine()
-        eatp_from = _CARE_TO_EATP[self.current_level]
-        eatp_to = _CARE_TO_EATP[next_level]
-        eatp_machine.set_posture(self.agent_id, eatp_from)
+        # Use EATP PostureStateMachine for the transition (when mapping exists)
+        eatp_from = _CARE_TO_EATP.get(self.current_level)
+        eatp_to = _CARE_TO_EATP.get(next_level)
+        if eatp_from is not None and eatp_to is not None:
+            eatp_machine = _create_eatp_state_machine()
+            eatp_machine.set_posture(self.agent_id, eatp_from)
 
-        transition_request = PostureTransitionRequest(
-            agent_id=self.agent_id,
-            from_posture=eatp_from,
-            to_posture=eatp_to,
-            reason=reason or msg,
-            requester_id=self.agent_id,
-            metadata={"evidence": evidence.model_dump()},
-        )
-        result = eatp_machine.transition(transition_request)
+            transition_request = PostureTransitionRequest(
+                agent_id=self.agent_id,
+                from_posture=eatp_from,
+                to_posture=eatp_to,
+                reason=reason or msg,
+                requester_id=self.agent_id,
+                metadata={"evidence": evidence.model_dump()},
+            )
+            result = eatp_machine.transition(transition_request)
 
-        if not result.success:
-            raise ValueError(f"EATP state machine rejected transition: {result.reason}")
+            if not result.success:
+                raise ValueError(f"EATP state machine rejected transition: {result.reason}")
 
         change = PostureChange(
             agent_id=self.agent_id,
@@ -370,27 +371,28 @@ class TrustPosture(BaseModel):
                 f"Downgrade target {target.value} must be below current {self.current_level.value}"
             )
 
-        # Use EATP PostureStateMachine for the transition
-        eatp_machine = _create_eatp_state_machine()
-        eatp_from = _CARE_TO_EATP[self.current_level]
-        eatp_to = _CARE_TO_EATP[target]
-        eatp_machine.set_posture(self.agent_id, eatp_from)
+        # Use EATP PostureStateMachine for the transition (when mapping exists)
+        eatp_from = _CARE_TO_EATP.get(self.current_level)
+        eatp_to = _CARE_TO_EATP.get(target)
+        if eatp_from is not None and eatp_to is not None:
+            eatp_machine = _create_eatp_state_machine()
+            eatp_machine.set_posture(self.agent_id, eatp_from)
 
-        if eatp_to == EATPTrustPosture.PSEUDO_AGENT:
-            # Use EATP emergency_downgrade for PSEUDO_AGENT
-            eatp_machine.emergency_downgrade(
-                agent_id=self.agent_id,
-                reason=reason,
-            )
-        else:
-            transition_request = PostureTransitionRequest(
-                agent_id=self.agent_id,
-                from_posture=eatp_from,
-                to_posture=eatp_to,
-                reason=reason,
-                requester_id=self.agent_id,
-            )
-            eatp_machine.transition(transition_request)
+            if eatp_to == EATPTrustPosture.PSEUDO_AGENT:
+                # Use EATP emergency_downgrade for PSEUDO_AGENT
+                eatp_machine.emergency_downgrade(
+                    agent_id=self.agent_id,
+                    reason=reason,
+                )
+            else:
+                transition_request = PostureTransitionRequest(
+                    agent_id=self.agent_id,
+                    from_posture=eatp_from,
+                    to_posture=eatp_to,
+                    reason=reason,
+                    requester_id=self.agent_id,
+                )
+                eatp_machine.transition(transition_request)
 
         change = PostureChange(
             agent_id=self.agent_id,

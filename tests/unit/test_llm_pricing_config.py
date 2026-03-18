@@ -12,6 +12,11 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
+import pytest
+
+# Skip entire module if anthropic SDK is not installed (not in CI deps)
+pytest.importorskip("anthropic", reason="anthropic SDK not installed")
+
 
 class TestOpenAIPricingConfig:
     """L10: OpenAI backend pricing is configurable via env var."""

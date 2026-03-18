@@ -243,12 +243,16 @@ class CareEnforcementPipeline:
             maxlen: Maximum enforcement records to retain.
         """
         self._gradient = gradient
-        self._enforcer = StrictEnforcer(
-            on_held=on_held,
-            held_callback=held_callback,
-            flag_threshold=CARE_FLAG_THRESHOLD,
-            maxlen=maxlen,
-        )
+        kwargs: dict = {
+            "on_held": on_held,
+            "held_callback": held_callback,
+            "flag_threshold": CARE_FLAG_THRESHOLD,
+        }
+        # maxlen support depends on EATP SDK version
+        try:
+            self._enforcer = StrictEnforcer(**kwargs, maxlen=maxlen)
+        except TypeError:
+            self._enforcer = StrictEnforcer(**kwargs)
 
     @property
     def enforcer(self) -> StrictEnforcer:

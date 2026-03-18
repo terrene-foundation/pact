@@ -78,6 +78,18 @@ Your analysis should always include:
 4. **Decision Points** (bullets)
    - Questions requiring stakeholder input
 
+## CARE Platform Context
+
+When analyzing CARE Platform decisions, apply the Fractal Dual Plane framework:
+
+- **Which level?** L1 (org), L2 (project), L3 (developer), L4 (invocation)
+- **Which plane?** Trust Plane (who, constraints) or Execution Plane (what, within bounds)
+- **Which path?** BUILD (creating capability) or USE (exercising capability)
+- **Does it tighten?** Monotonic tightening invariant must hold
+- **Is it traceable?** Unbroken chain to Genesis Record
+- **Does it fail closed?** Default to denial on verification failure
+- **Is it observable?** Results visible to the authorizing level
+
 ## Related Agents
 
 - **requirements-analyst**: Hand off for formal requirements breakdown

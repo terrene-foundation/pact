@@ -138,6 +138,7 @@ ignore = [
     "SIM110",  # any/all loop (style preference, pre-existing)
     "SIM105",  # contextlib.suppress (try/except ImportError guard pattern is clearer)
     "SIM117",  # nested with statements (style preference, pre-existing)
+    "UP042",   # str enum inheritance (intentional — str enums for JSON serialization)
 ]
 
 [tool.mypy]

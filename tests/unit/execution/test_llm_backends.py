@@ -15,6 +15,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Skip entire module if anthropic SDK is not installed (not in CI deps)
+pytest.importorskip("anthropic", reason="anthropic SDK not installed")
+
 from care_platform.build.config.env import EnvConfig
 from care_platform.use.execution.llm_backend import (
     BackendRouter,

@@ -85,6 +85,17 @@ These projects compete for developer mindshare:
 4. **Reference competitive landscape** when discussing positioning
 5. **Be practical about community building** — developers need docs, examples, and a responsive maintainer
 
+## CARE Platform as Reference Implementation
+
+CARE Platform (Apache 2.0) is the Foundation's reference implementation of the CARE specification. It demonstrates:
+
+- Fractal Dual Plane at L1 (Organization): TRUST / BUILD / USE structure
+- Full EATP trust chain with constraint envelopes and verification gradient
+- Organization Builder with auto-generation from templates
+- 11-team Foundation org as the dog-food validation
+
+The platform is NOT a generic agent orchestrator. It is governed orchestration — an opinionated framework for running organizations with AI agents under EATP trust governance.
+
 ## Related Experts
 
 - **eatp-expert** — For EATP technical details
