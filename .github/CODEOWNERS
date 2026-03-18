@@ -1,0 +1,27 @@
+# CARE Platform — Code Owners
+# These owners are automatically requested for review on PRs.
+
+# Default owner for everything
+* @esperie
+
+# Backend (Python)
+/src/care_platform/ @esperie
+/tests/ @esperie
+
+# Web frontend
+/apps/web/ @esperie
+
+# Flutter mobile
+/apps/mobile/ @esperie
+
+# CI/CD and infrastructure
+/.github/ @esperie
+/Dockerfile @esperie
+/docker-compose.yml @esperie
+/deploy/ @esperie
+
+# COC setup (agents, rules, skills)
+/.claude/ @esperie
+
+# Documentation
+/docs/ @esperie

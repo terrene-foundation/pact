@@ -1,0 +1,140 @@
+# Copyright 2026 Terrene Foundation
+# Licensed under the Apache License, Version 2.0
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_api:
+        description: "Deploy API"
+        type: boolean
+        default: true
+      deploy_web:
+        description: "Deploy Web Dashboard"
+        type: boolean
+        default: true
+
+# Only allow one deploy at a time
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # Required for Workload Identity Federation
+
+env:
+  PROJECT_ID: terrene-care
+  REGION: asia-southeast1
+  REGISTRY: asia-southeast1-docker.pkg.dev/terrene-care/care-platform
+  WIF_PROVIDER: projects/129371016531/locations/global/workloadIdentityPools/github-actions/providers/github-oidc
+  SA_EMAIL: github-actions-deploy@terrene-care.iam.gserviceaccount.com
+
+jobs:
+  # Run tests before deploying
+  test:
+    name: Pre-deploy Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src/care_platform/ tests/
+
+      - name: Unit tests
+        run: pytest tests/unit/ --cov=src/care_platform --cov-fail-under=80 -q
+
+  # Deploy API to Cloud Run
+  deploy-api:
+    name: Deploy API
+    needs: [test]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_api == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Keyless auth via Workload Identity Federation
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push API image
+        run: |
+          IMAGE=${{ env.REGISTRY }}/api:${{ github.sha }}
+          docker build -t $IMAGE -t ${{ env.REGISTRY }}/api:latest .
+          docker push $IMAGE
+          docker push ${{ env.REGISTRY }}/api:latest
+
+      - name: Deploy API to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: care-platform-api
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/api:${{ github.sha }}
+
+      - name: Verify API health
+        run: |
+          URL=$(gcloud run services describe care-platform-api --region=${{ env.REGION }} --format='value(status.url)')
+          curl -sf "$URL/health" | python -m json.tool
+
+  # Deploy Web Dashboard to Cloud Run
+  deploy-web:
+    name: Deploy Web Dashboard
+    needs: [test]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_web == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Web image
+        working-directory: apps/web
+        run: |
+          IMAGE=${{ env.REGISTRY }}/web:${{ github.sha }}
+          docker build -t $IMAGE -t ${{ env.REGISTRY }}/web:latest .
+          docker push $IMAGE
+          docker push ${{ env.REGISTRY }}/web:latest
+
+      - name: Deploy Web to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: care-platform-web
+          region: ${{ env.REGION }}
+          image: ${{ env.REGISTRY }}/web:${{ github.sha }}
+
+      - name: Verify Web health
+        run: |
+          URL=$(gcloud run services describe care-platform-web --region=${{ env.REGION }} --format='value(status.url)')
+          curl -sf "$URL" -o /dev/null -w "Web dashboard: HTTP %{http_code}\n"

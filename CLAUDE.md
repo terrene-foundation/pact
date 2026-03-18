@@ -114,7 +114,8 @@ Every implementation decision must align with the CARE, EATP, and CO specificati
 | 3-tier testing strategy           | `rules/testing.md`           | `tests/**`, `**/*test*`, `**/*spec*`, `conftest.py` |
 | Terrene naming & terminology      | `rules/terrene-naming.md`    | Global                                              |
 | Documentation & version accuracy  | `rules/documentation.md`     | `README.md`, `docs/**`, `CHANGELOG.md`              |
-| Constitution consistency          | `rules/constitution.md`      | Scoped                                              |
+| EATP implementation rules         | `rules/eatp.md`              | `**/*.py`, EATP integration code                    |
+| Trust Plane security patterns     | `rules/trust-plane-security.md` | Global — trust/security code                     |
 | Auto-generated workflow instincts | `rules/learned-instincts.md` | Global                                              |
 
 ## Agents
@@ -139,7 +140,6 @@ Every implementation decision must align with the CARE, EATP, and CO specificati
 - **eatp-expert** — EATP trust protocol (trust lineage, verification gradient)
 - **co-expert** — CO methodology (7 principles, 5 layers)
 - **coc-expert** — COC: CO applied to Codegen (5-layer architecture, anti-amnesia)
-- **constitution-expert** — Terrene Foundation constitution (77 clauses, 11 EPs, phased governance)
 
 ### Strategy
 
@@ -188,7 +188,6 @@ For Kailash SDK implementation patterns, see `.claude/skills/` — organized by 
 - **27-care-reference** — CARE framework reference (Dual Plane, Mirror Thesis, governance)
 - **28-coc-reference** — COC framework reference (5-layer architecture, anti-amnesia)
 - **co-reference** — CO methodology reference (7 principles, 5 layers, domain applications)
-- **29-constitution-reference** — Constitution reference (77 clauses, 11 EPs, phased governance)
 
 ### Project Skills
 
