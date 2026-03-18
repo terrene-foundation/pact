@@ -37,6 +37,12 @@ RUN chown -R care:care /app
 
 USER care
 
+# Port strategy:
+#   EXPOSE 8080 = Cloud Run convention. Cloud Run injects PORT=8080 at runtime.
+#   docker-compose.yml sets CARE_API_PORT=8000 for local development.
+#   The API server (scripts/run_seeded_server.py) reads PORT first (for Cloud Run),
+#   then falls back to CARE_API_PORT, then defaults to 8080.
+#   Do NOT change this to 8000 — Cloud Run expects 8080.
 EXPOSE 8080
 
 ENV CARE_API_HOST=0.0.0.0 \
