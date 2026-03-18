@@ -58,7 +58,8 @@ def _ensure_initialized() -> bool:
 
     try:
         import firebase_admin  # noqa: F811
-        from firebase_admin import auth as fb_auth, credentials
+        from firebase_admin import auth as fb_auth
+        from firebase_admin import credentials
 
         # Check if already initialized (e.g., by another module)
         try:
@@ -92,7 +93,10 @@ def _ensure_initialized() -> bool:
 
         _firebase_app = firebase_admin.initialize_app(cred, init_options)
         _firebase_auth = fb_auth
-        logger.info("Firebase Admin SDK initialized successfully (project: %s)", gcp_project or "auto-detect")
+        logger.info(
+            "Firebase Admin SDK initialized successfully (project: %s)",
+            gcp_project or "auto-detect",
+        )
         return True
 
     except ImportError:

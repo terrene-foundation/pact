@@ -285,6 +285,7 @@ def create_app(
         if _firebase_verify is None:
             try:
                 from care_platform.auth.firebase_admin import verify_firebase_id_token
+
                 _firebase_verify = verify_firebase_id_token
             except ImportError:
                 _firebase_verify = lambda _token: None  # noqa: E731

@@ -3,7 +3,11 @@
 """Tests for ProximityScanner integration into GradientEngine."""
 
 import pytest
-from eatp.enforce.proximity import ProximityConfig, ProximityScanner
+
+try:
+    from eatp.enforce.proximity import ProximityConfig, ProximityScanner
+except ImportError:
+    pytest.skip("eatp.enforce.proximity not available", allow_module_level=True)
 
 from care_platform.config.schema import (
     GradientRuleConfig,
