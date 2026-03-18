@@ -1,0 +1,158 @@
+name: website
+description: "Website team — terrene.dev and terrene.foundation sites"
+department: Operations
+
+agents:
+  - id: website-team-lead
+    name: Website Team Lead
+    role: "Web presence coordination, content and development oversight"
+    constraint_envelope: website-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - web_content_management
+      - site_maintenance
+      - analytics_review
+      - content_creation
+      - content_editing
+      - content_scheduling
+      - code_development
+      - code_review
+      - testing
+      - debugging
+      - documentation
+  - id: website-manager
+    name: Website Manager
+    role: "Manages web presence and digital content"
+    constraint_envelope: website-manager-envelope
+    initial_posture: supervised
+    capabilities:
+      - web_content_management
+      - site_maintenance
+      - analytics_review
+  - id: website-content-creator
+    name: Content Creator
+    role: "Creates and manages content across channels"
+    constraint_envelope: website-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - content_creation
+      - content_editing
+      - content_scheduling
+  - id: website-developer
+    name: Developer
+    role: "Develops software and technical systems"
+    constraint_envelope: website-developer-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_development
+      - code_review
+      - testing
+      - debugging
+      - documentation
+
+envelopes:
+  - id: website-lead-envelope
+    description: "Website Team Lead: broadest authority within website"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - analytics_review
+        - code_development
+        - code_review
+        - content_creation
+        - content_editing
+        - content_scheduling
+        - debugging
+        - documentation
+        - site_maintenance
+        - testing
+        - web_content_management
+      max_actions_per_day: 200
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/website/*"
+      write_paths:
+        - "workspaces/website/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: website-manager-envelope
+    description: "Website Manager: web content management"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - web_content_management
+        - site_maintenance
+        - analytics_review
+      max_actions_per_day: 45
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/website/*"
+      write_paths:
+        - "workspaces/website/content/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: website-content-envelope
+    description: "Content Creator: website content"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - content_creation
+        - content_editing
+        - content_scheduling
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/website/content/*"
+      write_paths:
+        - "workspaces/website/content/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: website-developer-envelope
+    description: "Developer: website development"
+    financial:
+      max_spend_usd: 20.0
+    operational:
+      allowed_actions:
+        - code_development
+        - code_review
+        - testing
+        - debugging
+        - documentation
+      max_actions_per_day: 60
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/website/*"
+      write_paths:
+        - "workspaces/website/src/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: website-team
+  name: Website
+  workspace: ws-website
+  team_lead: website-team-lead
+  agents:
+    - website-team-lead
+    - website-manager
+    - website-content-creator
+    - website-developer

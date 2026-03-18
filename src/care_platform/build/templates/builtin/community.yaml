@@ -1,0 +1,113 @@
+name: community
+description: "Community team — open-source community, GitHub, forums"
+department: Operations
+
+agents:
+  - id: community-team-lead
+    name: Community Team Lead
+    role: "Community coordination and engagement oversight"
+    constraint_envelope: community-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - community_engagement
+      - content_moderation
+      - event_coordination
+      - content_creation
+      - content_editing
+      - content_scheduling
+  - id: community-manager
+    name: Community Manager
+    role: "Manages community engagement and communications"
+    constraint_envelope: community-manager-envelope
+    initial_posture: supervised
+    capabilities:
+      - community_engagement
+      - content_moderation
+      - event_coordination
+  - id: community-content-creator
+    name: Content Creator
+    role: "Creates and manages content across channels"
+    constraint_envelope: community-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - content_creation
+      - content_editing
+      - content_scheduling
+
+envelopes:
+  - id: community-lead-envelope
+    description: "Community Team Lead: broadest authority within community"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - community_engagement
+        - content_creation
+        - content_editing
+        - content_moderation
+        - content_scheduling
+        - event_coordination
+      max_actions_per_day: 150
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/community/*"
+      write_paths:
+        - "workspaces/community/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: community-manager-envelope
+    description: "Community Manager: engagement and moderation"
+    financial:
+      max_spend_usd: 8.0
+    operational:
+      allowed_actions:
+        - community_engagement
+        - content_moderation
+        - event_coordination
+      max_actions_per_day: 70
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/community/*"
+      write_paths:
+        - "workspaces/community/engagement/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: community-content-envelope
+    description: "Content Creator: community content"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - content_creation
+        - content_editing
+        - content_scheduling
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/community/content/*"
+      write_paths:
+        - "workspaces/community/content/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: community-team
+  name: Community
+  workspace: ws-community
+  team_lead: community-team-lead
+  agents:
+    - community-team-lead
+    - community-manager
+    - community-content-creator

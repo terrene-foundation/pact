@@ -1,0 +1,113 @@
+name: certification
+description: "Certification team — agent certification program"
+department: Standards & Governance
+
+agents:
+  - id: certification-team-lead
+    name: Certification Team Lead
+    role: "Certification coordination and program oversight"
+    constraint_envelope: certification-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_review
+      - content_review
+      - compliance_check
+      - standards_drafting
+      - specification_review
+      - documentation
+  - id: certification-reviewer
+    name: Reviewer
+    role: "Reviews work products for quality and compliance"
+    constraint_envelope: certification-reviewer-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_review
+      - content_review
+      - compliance_check
+  - id: certification-standards-author
+    name: Standards Author
+    role: "Authors and maintains certification standards"
+    constraint_envelope: certification-author-envelope
+    initial_posture: supervised
+    capabilities:
+      - standards_drafting
+      - specification_review
+      - documentation
+
+envelopes:
+  - id: certification-lead-envelope
+    description: "Certification Team Lead: broadest authority within certification"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - code_review
+        - compliance_check
+        - content_review
+        - documentation
+        - specification_review
+        - standards_drafting
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/certification/*"
+      write_paths:
+        - "workspaces/certification/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: certification-reviewer-envelope
+    description: "Reviewer: certification review and compliance"
+    financial:
+      max_spend_usd: 8.0
+    operational:
+      allowed_actions:
+        - code_review
+        - content_review
+        - compliance_check
+      max_actions_per_day: 30
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/certification/*"
+      write_paths:
+        - "workspaces/certification/reviews/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: certification-author-envelope
+    description: "Standards Author: certification standards"
+    financial:
+      max_spend_usd: 15.0
+    operational:
+      allowed_actions:
+        - standards_drafting
+        - specification_review
+        - documentation
+      max_actions_per_day: 25
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/certification/*"
+      write_paths:
+        - "workspaces/certification/standards/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: certification-team
+  name: Certification
+  workspace: ws-certification
+  team_lead: certification-team-lead
+  agents:
+    - certification-team-lead
+    - certification-reviewer
+    - certification-standards-author

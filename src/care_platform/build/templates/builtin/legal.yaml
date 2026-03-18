@@ -1,0 +1,113 @@
+name: legal
+description: "Legal team — legal affairs, IP protection"
+department: Standards & Governance
+
+agents:
+  - id: legal-team-lead
+    name: Legal Team Lead
+    role: "Legal affairs coordination and oversight"
+    constraint_envelope: legal-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - legal_review
+      - compliance_assessment
+      - contract_analysis
+      - code_review
+      - content_review
+      - compliance_check
+  - id: legal-advisor
+    name: Legal Advisor
+    role: "Provides legal guidance and compliance review"
+    constraint_envelope: legal-advisor-envelope
+    initial_posture: pseudo_agent
+    capabilities:
+      - legal_review
+      - compliance_assessment
+      - contract_analysis
+  - id: legal-reviewer
+    name: Reviewer
+    role: "Reviews work products for quality and compliance"
+    constraint_envelope: legal-reviewer-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_review
+      - content_review
+      - compliance_check
+
+envelopes:
+  - id: legal-lead-envelope
+    description: "Legal Team Lead: broadest authority within legal"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - code_review
+        - compliance_assessment
+        - compliance_check
+        - content_review
+        - contract_analysis
+        - legal_review
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/legal/*"
+      write_paths:
+        - "workspaces/legal/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: legal-advisor-envelope
+    description: "Legal Advisor: legal guidance and compliance"
+    financial:
+      max_spend_usd: 50.0
+    operational:
+      allowed_actions:
+        - legal_review
+        - compliance_assessment
+        - contract_analysis
+      max_actions_per_day: 15
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/legal/*"
+      write_paths:
+        - "workspaces/legal/opinions/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: legal-reviewer-envelope
+    description: "Reviewer: legal review and compliance"
+    financial:
+      max_spend_usd: 8.0
+    operational:
+      allowed_actions:
+        - code_review
+        - content_review
+        - compliance_check
+      max_actions_per_day: 30
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/legal/*"
+      write_paths:
+        - "workspaces/legal/reviews/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: legal-team
+  name: Legal
+  workspace: ws-legal
+  team_lead: legal-team-lead
+  agents:
+    - legal-team-lead
+    - legal-advisor
+    - legal-reviewer

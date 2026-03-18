@@ -1,0 +1,114 @@
+name: governance
+description: "Governance team — constitutional governance, compliance"
+department: Standards & Governance
+
+agents:
+  - id: governance-team-lead
+    name: Governance Team Lead
+    role: "Governance coordination and policy oversight"
+    constraint_envelope: governance-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - governance_enforcement
+      - policy_review
+      - audit_coordination
+      - legal_review
+      - compliance_assessment
+      - contract_analysis
+  - id: governance-officer
+    name: Governance Officer
+    role: "Enforces governance policies and compliance"
+    constraint_envelope: governance-officer-envelope
+    initial_posture: pseudo_agent
+    capabilities:
+      - governance_enforcement
+      - policy_review
+      - audit_coordination
+  - id: governance-legal-advisor
+    name: Legal Advisor
+    role: "Provides legal guidance and compliance review"
+    constraint_envelope: governance-legal-envelope
+    initial_posture: pseudo_agent
+    capabilities:
+      - legal_review
+      - compliance_assessment
+      - contract_analysis
+
+envelopes:
+  - id: governance-lead-envelope
+    description: "Governance Team Lead: broadest authority within governance"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - audit_coordination
+        - compliance_assessment
+        - contract_analysis
+        - governance_enforcement
+        - legal_review
+        - policy_review
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/governance/*"
+        - "workspaces/*/public/*"
+      write_paths:
+        - "workspaces/governance/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: governance-officer-envelope
+    description: "Governance Officer: governance enforcement and policy review"
+    financial:
+      max_spend_usd: 25.0
+    operational:
+      allowed_actions:
+        - governance_enforcement
+        - policy_review
+        - audit_coordination
+      max_actions_per_day: 20
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/governance/*"
+      write_paths:
+        - "workspaces/governance/policies/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: governance-legal-envelope
+    description: "Legal Advisor: legal guidance and compliance review"
+    financial:
+      max_spend_usd: 50.0
+    operational:
+      allowed_actions:
+        - legal_review
+        - compliance_assessment
+        - contract_analysis
+      max_actions_per_day: 15
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/governance/*"
+      write_paths:
+        - "workspaces/governance/legal/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: governance-team
+  name: Governance
+  workspace: ws-governance
+  team_lead: governance-team-lead
+  agents:
+    - governance-team-lead
+    - governance-officer
+    - governance-legal-advisor

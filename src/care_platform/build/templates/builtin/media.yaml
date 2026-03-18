@@ -1,0 +1,127 @@
+name: media
+description: "Media/DM team — digital marketing, content creation, analytics"
+department: Operations
+
+agents:
+  - id: media-team-lead
+    name: Media Team Lead
+    role: "Team coordination, content review, approval routing"
+    constraint_envelope: media-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - review_content
+      - approve_publication
+      - coordinate_team
+      - schedule_content
+      - analyze_metrics
+      - draft_strategy
+      - content_creation
+      - content_editing
+      - content_scheduling
+      - data_analysis
+      - report_generation
+      - data_visualization
+  - id: media-content-creator
+    name: Content Creator
+    role: "Creates and manages content across channels"
+    constraint_envelope: media-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - content_creation
+      - content_editing
+      - content_scheduling
+  - id: media-analyst
+    name: Analyst
+    role: "Analyzes data and produces reports"
+    constraint_envelope: media-analyst-envelope
+    initial_posture: supervised
+    capabilities:
+      - data_analysis
+      - report_generation
+      - data_visualization
+
+envelopes:
+  - id: media-lead-envelope
+    description: "Media Team Lead: broadest authority within media"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - analyze_metrics
+        - approve_publication
+        - content_creation
+        - content_editing
+        - content_scheduling
+        - coordinate_team
+        - data_analysis
+        - data_visualization
+        - draft_strategy
+        - report_generation
+        - review_content
+        - schedule_content
+      max_actions_per_day: 200
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/media/*"
+        - "analytics/*"
+      write_paths:
+        - "workspaces/media/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: media-content-envelope
+    description: "Content Creator: draft-only, no publishing"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - content_creation
+        - content_editing
+        - content_scheduling
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/media/content/*"
+      write_paths:
+        - "workspaces/media/content/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: media-analyst-envelope
+    description: "Analyst: data analysis and reporting"
+    financial:
+      max_spend_usd: 15.0
+    operational:
+      allowed_actions:
+        - data_analysis
+        - report_generation
+        - data_visualization
+      max_actions_per_day: 40
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/media/*"
+        - "analytics/*"
+      write_paths:
+        - "workspaces/media/reports/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: media-team
+  name: Media/DM
+  workspace: ws-media
+  team_lead: media-team-lead
+  agents:
+    - media-team-lead
+    - media-content-creator
+    - media-analyst

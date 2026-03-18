@@ -1,0 +1,115 @@
+name: standards
+description: "Standards team — maintains CARE, EATP, CO specifications"
+department: Standards & Governance
+
+agents:
+  - id: standards-team-lead
+    name: Standards Team Lead
+    role: "Spec review, coordination, standards drafting oversight"
+    constraint_envelope: standards-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - standards_drafting
+      - specification_review
+      - documentation
+      - code_review
+      - content_review
+      - compliance_check
+  - id: standards-author
+    name: Standards Author
+    role: "Authors and maintains organizational standards"
+    constraint_envelope: standards-author-envelope
+    initial_posture: supervised
+    capabilities:
+      - standards_drafting
+      - specification_review
+      - documentation
+  - id: standards-reviewer
+    name: Reviewer
+    role: "Reviews work products for quality and compliance"
+    constraint_envelope: standards-reviewer-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_review
+      - content_review
+      - compliance_check
+
+envelopes:
+  - id: standards-lead-envelope
+    description: "Standards Team Lead: broadest authority within standards"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - code_review
+        - compliance_check
+        - content_review
+        - documentation
+        - specification_review
+        - standards_drafting
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/standards/*"
+        - "workspaces/*/public/*"
+      write_paths:
+        - "workspaces/standards/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: standards-author-envelope
+    description: "Standards Author: draft and edit specifications"
+    financial:
+      max_spend_usd: 15.0
+    operational:
+      allowed_actions:
+        - standards_drafting
+        - specification_review
+        - documentation
+      max_actions_per_day: 25
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/standards/*"
+      write_paths:
+        - "workspaces/standards/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: standards-reviewer-envelope
+    description: "Reviewer: review work products for quality"
+    financial:
+      max_spend_usd: 8.0
+    operational:
+      allowed_actions:
+        - code_review
+        - content_review
+        - compliance_check
+      max_actions_per_day: 30
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/standards/*"
+        - "workspaces/*/public/*"
+      write_paths:
+        - "workspaces/standards/reviews/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: standards-team
+  name: Standards
+  workspace: ws-standards
+  team_lead: standards-team-lead
+  agents:
+    - standards-team-lead
+    - standards-author
+    - standards-reviewer

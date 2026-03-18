@@ -1,0 +1,113 @@
+name: training
+description: "Training team — educational content, workshops"
+department: Growth
+
+agents:
+  - id: training-team-lead
+    name: Training Team Lead
+    role: "Training coordination and educational program oversight"
+    constraint_envelope: training-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - training_development
+      - knowledge_transfer
+      - assessment_creation
+      - content_creation
+      - content_editing
+      - content_scheduling
+  - id: training-trainer
+    name: Trainer
+    role: "Develops and delivers training programs"
+    constraint_envelope: training-trainer-envelope
+    initial_posture: supervised
+    capabilities:
+      - training_development
+      - knowledge_transfer
+      - assessment_creation
+  - id: training-content-creator
+    name: Content Creator
+    role: "Creates and manages content across channels"
+    constraint_envelope: training-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - content_creation
+      - content_editing
+      - content_scheduling
+
+envelopes:
+  - id: training-lead-envelope
+    description: "Training Team Lead: broadest authority within training"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - assessment_creation
+        - content_creation
+        - content_editing
+        - content_scheduling
+        - knowledge_transfer
+        - training_development
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/training/*"
+      write_paths:
+        - "workspaces/training/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: training-trainer-envelope
+    description: "Trainer: training development and delivery"
+    financial:
+      max_spend_usd: 12.0
+    operational:
+      allowed_actions:
+        - training_development
+        - knowledge_transfer
+        - assessment_creation
+      max_actions_per_day: 35
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/training/*"
+      write_paths:
+        - "workspaces/training/programs/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: training-content-envelope
+    description: "Content Creator: training content"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - content_creation
+        - content_editing
+        - content_scheduling
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/training/content/*"
+      write_paths:
+        - "workspaces/training/content/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: training-team
+  name: Training
+  workspace: ws-training
+  team_lead: training-team-lead
+  agents:
+    - training-team-lead
+    - training-trainer
+    - training-content-creator

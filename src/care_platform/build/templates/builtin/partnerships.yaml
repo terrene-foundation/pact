@@ -1,0 +1,113 @@
+name: partnerships
+description: "Partnerships team — external relationships, contributor framework"
+department: Growth
+
+agents:
+  - id: partnerships-team-lead
+    name: Partnerships Team Lead
+    role: "Partnership coordination and relationship oversight"
+    constraint_envelope: partnerships-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - partnership_development
+      - relationship_management
+      - proposal_review
+      - data_analysis
+      - report_generation
+      - data_visualization
+  - id: partnerships-manager
+    name: Partnership Manager
+    role: "Manages external partnerships and relationships"
+    constraint_envelope: partnerships-manager-envelope
+    initial_posture: supervised
+    capabilities:
+      - partnership_development
+      - relationship_management
+      - proposal_review
+  - id: partnerships-analyst
+    name: Analyst
+    role: "Analyzes data and produces reports"
+    constraint_envelope: partnerships-analyst-envelope
+    initial_posture: supervised
+    capabilities:
+      - data_analysis
+      - report_generation
+      - data_visualization
+
+envelopes:
+  - id: partnerships-lead-envelope
+    description: "Partnerships Team Lead: broadest authority within partnerships"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - data_analysis
+        - data_visualization
+        - partnership_development
+        - proposal_review
+        - relationship_management
+        - report_generation
+      max_actions_per_day: 100
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/partnerships/*"
+      write_paths:
+        - "workspaces/partnerships/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: partnerships-manager-envelope
+    description: "Partnership Manager: manage partnerships and relationships"
+    financial:
+      max_spend_usd: 20.0
+    operational:
+      allowed_actions:
+        - partnership_development
+        - relationship_management
+        - proposal_review
+      max_actions_per_day: 30
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/partnerships/*"
+      write_paths:
+        - "workspaces/partnerships/proposals/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: partnerships-analyst-envelope
+    description: "Analyst: data analysis and reporting"
+    financial:
+      max_spend_usd: 15.0
+    operational:
+      allowed_actions:
+        - data_analysis
+        - report_generation
+        - data_visualization
+      max_actions_per_day: 40
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/partnerships/*"
+      write_paths:
+        - "workspaces/partnerships/reports/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: partnerships-team
+  name: Partnerships
+  workspace: ws-partnerships
+  team_lead: partnerships-team-lead
+  agents:
+    - partnerships-team-lead
+    - partnerships-manager
+    - partnerships-analyst

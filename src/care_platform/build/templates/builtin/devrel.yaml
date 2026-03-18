@@ -1,0 +1,123 @@
+name: devrel
+description: "Developer Relations team — SDK documentation, tutorials, developer support"
+department: Growth
+
+agents:
+  - id: devrel-team-lead
+    name: DevRel Team Lead
+    role: "Developer relations coordination and documentation oversight"
+    constraint_envelope: devrel-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_development
+      - code_review
+      - testing
+      - debugging
+      - documentation
+      - content_creation
+      - content_editing
+      - content_scheduling
+  - id: devrel-developer
+    name: Developer
+    role: "Develops software and technical systems"
+    constraint_envelope: devrel-developer-envelope
+    initial_posture: supervised
+    capabilities:
+      - code_development
+      - code_review
+      - testing
+      - debugging
+      - documentation
+  - id: devrel-content-creator
+    name: Content Creator
+    role: "Creates and manages content across channels"
+    constraint_envelope: devrel-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - content_creation
+      - content_editing
+      - content_scheduling
+
+envelopes:
+  - id: devrel-lead-envelope
+    description: "DevRel Team Lead: broadest authority within developer relations"
+    financial:
+      max_spend_usd: 100.0
+    operational:
+      allowed_actions:
+        - code_development
+        - code_review
+        - content_creation
+        - content_editing
+        - content_scheduling
+        - debugging
+        - documentation
+        - testing
+      max_actions_per_day: 150
+    temporal:
+      active_hours_start: "06:00"
+      active_hours_end: "22:00"
+    data_access:
+      read_paths:
+        - "workspaces/devrel/*"
+        - "workspaces/standards/public/*"
+      write_paths:
+        - "workspaces/devrel/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: devrel-developer-envelope
+    description: "Developer: SDK development and documentation"
+    financial:
+      max_spend_usd: 20.0
+    operational:
+      allowed_actions:
+        - code_development
+        - code_review
+        - testing
+        - debugging
+        - documentation
+      max_actions_per_day: 60
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/devrel/*"
+        - "workspaces/standards/public/*"
+      write_paths:
+        - "workspaces/devrel/src/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+  - id: devrel-content-envelope
+    description: "Content Creator: developer tutorials and documentation"
+    financial:
+      max_spend_usd: 10.0
+    operational:
+      allowed_actions:
+        - content_creation
+        - content_editing
+        - content_scheduling
+      max_actions_per_day: 50
+    temporal:
+      active_hours_start: "08:00"
+      active_hours_end: "20:00"
+    data_access:
+      read_paths:
+        - "workspaces/devrel/content/*"
+      write_paths:
+        - "workspaces/devrel/content/drafts/*"
+    communication:
+      internal_only: true
+      external_requires_approval: true
+
+team:
+  id: devrel-team
+  name: Developer Relations
+  workspace: ws-devrel
+  team_lead: devrel-team-lead
+  agents:
+    - devrel-team-lead
+    - devrel-developer
+    - devrel-content-creator
