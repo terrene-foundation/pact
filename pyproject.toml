@@ -13,7 +13,7 @@ readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.11"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -70,7 +70,7 @@ postgres = [
 ]
 # All optional dependencies
 all = [
-    "care-platform[kailash,eatp,firebase,postgres]",
+    "care-platform[kailash,firebase,postgres]",
 ]
 dev = [
     # Testing (pytest>=7.2.0 removes vulnerable py dependency)
