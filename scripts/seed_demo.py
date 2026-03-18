@@ -38,6 +38,7 @@ from care_platform.build.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
+from care_platform.trust.audit.anchor import AuditAnchor, AuditChain
 from care_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
 from care_platform.use.execution.registry import AgentRegistry
 from care_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
@@ -1635,6 +1636,123 @@ def seed_verification_stats(audit_records: list[dict]) -> dict[str, int]:
     return stats
 
 
+def convert_verification_stats_to_enum_keys(
+    string_stats: dict[str, int],
+) -> dict[VerificationLevel, int]:
+    """Convert string-keyed verification stats to VerificationLevel enum keys.
+
+    The seed_verification_stats function returns string keys for simplicity
+    during aggregation. This function converts those to VerificationLevel
+    enum keys for type-safe consumption by PlatformAPI.
+
+    Args:
+        string_stats: Dict mapping verification level strings to counts.
+
+    Returns:
+        Dict mapping VerificationLevel enum values to counts.
+
+    Raises:
+        KeyError: If a required verification level key is missing from the input.
+    """
+    level_map = {
+        "AUTO_APPROVED": VerificationLevel.AUTO_APPROVED,
+        "FLAGGED": VerificationLevel.FLAGGED,
+        "HELD": VerificationLevel.HELD,
+        "BLOCKED": VerificationLevel.BLOCKED,
+    }
+    result: dict[VerificationLevel, int] = {}
+    for string_key, enum_key in level_map.items():
+        if string_key not in string_stats:
+            raise KeyError(
+                f"Missing required verification level key '{string_key}' in stats dict. "
+                f"Available keys: {sorted(string_stats.keys())}"
+            )
+        result[enum_key] = string_stats[string_key]
+    return result
+
+
+# ---------------------------------------------------------------------------
+# AuditChain construction from seed records
+# ---------------------------------------------------------------------------
+
+
+def build_audit_chain(audit_records: list[dict]) -> AuditChain:
+    """Construct an AuditChain from the seed audit records.
+
+    Creates a proper AuditChain with sealed anchors for each audit record,
+    preserving timestamps and verification levels. This chain can be passed
+    to PlatformAPI for dashboard_trends() to produce non-zero trend data.
+
+    Args:
+        audit_records: List of audit record dicts from seed_audit_anchors().
+
+    Returns:
+        An AuditChain populated with sealed anchors from the records.
+
+    Raises:
+        ValueError: If audit_records is empty.
+    """
+    if not audit_records:
+        raise ValueError(
+            "Cannot build AuditChain from empty audit_records list. "
+            "Run seed_audit_anchors() first to generate records."
+        )
+
+    chain = AuditChain(chain_id="care-platform-main")
+
+    # Sort records by timestamp to ensure chronological ordering
+    sorted_records = sorted(
+        audit_records,
+        key=lambda r: r.get("timestamp", ""),
+    )
+
+    for record in sorted_records:
+        # Parse the ISO timestamp string back to datetime
+        timestamp_str = record.get("timestamp", "")
+        try:
+            timestamp = datetime.fromisoformat(timestamp_str)
+        except (ValueError, TypeError):
+            logger.warning(
+                "build_audit_chain: skipping record with invalid timestamp: %r",
+                timestamp_str,
+            )
+            continue
+
+        # Map string verification level to enum
+        level_str = record.get("verification_level", "AUTO_APPROVED")
+        try:
+            level = VerificationLevel(level_str)
+        except ValueError:
+            logger.warning(
+                "build_audit_chain: skipping record with invalid verification_level: %r",
+                level_str,
+            )
+            continue
+
+        # Build the anchor with proper chaining
+        sequence = len(chain.anchors)
+        previous_hash = chain.anchors[-1].content_hash if chain.anchors else None
+
+        anchor = AuditAnchor(
+            anchor_id=record.get("anchor_id", f"aa-{sequence}"),
+            sequence=sequence,
+            previous_hash=previous_hash,
+            agent_id=record.get("agent_id", "unknown"),
+            action=record.get("action", "unknown"),
+            verification_level=level,
+            result=record.get("result", ""),
+            timestamp=timestamp,
+            metadata={
+                "team_id": record.get("team_id", ""),
+                "resource": record.get("resource", ""),
+            },
+        )
+        anchor.seal()
+        chain.anchors.append(anchor)
+
+    return chain
+
+
 # ---------------------------------------------------------------------------
 # Shadow enforcer seed data
 # ---------------------------------------------------------------------------
@@ -2040,12 +2158,15 @@ def main() -> None:
     envelope_registry = seed_envelopes()
     print(f"  {len(envelope_registry)} constraint envelopes configured")
 
-    # Seed audit anchors and verification stats
-    print("\n[4/10] Seeding audit anchors...")
+    # Seed audit anchors, verification stats, and AuditChain
+    print("\n[4/10] Seeding audit anchors and building AuditChain...")
     verification_stats_raw, audit_records = seed_audit_anchors()
-    verification_stats = seed_verification_stats(audit_records)
+    verification_stats_str = seed_verification_stats(audit_records)
+    verification_stats = convert_verification_stats_to_enum_keys(verification_stats_str)
+    audit_chain = build_audit_chain(audit_records)
     print(f"  {len(audit_records)} audit anchors generated (last 30 days)")
-    for level, count in verification_stats.items():
+    print(f"  AuditChain built with {audit_chain.length} sealed anchors")
+    for level, count in verification_stats_str.items():
         print(f"    {level}: {count}")
 
     # Seed held actions
@@ -2139,6 +2260,7 @@ def main() -> None:
         "envelope_registry": envelope_registry,
         "verification_stats": verification_stats,
         "audit_records": audit_records,
+        "audit_chain": audit_chain,
         "shadow_enforcer": shadow_enforcer,
         "dm_runner": dm_runner,
     }

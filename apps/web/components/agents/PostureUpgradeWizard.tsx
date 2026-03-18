@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import PostureBadge from "./PostureBadge";
+import { useApi } from "../../lib/use-api";
 import type { TrustPosture, AgentDetail } from "../../types/care-platform";
 
 // ---------------------------------------------------------------------------
@@ -476,12 +477,17 @@ export default function PostureUpgradeWizard({
     [targetPosture],
   );
 
-  /**
-   * Placeholder evidence -- in production this would come from an API call:
-   *   GET /api/v1/agents/{id}/upgrade-evidence
-   *
-   * TODO: Replace with real API call once the backend endpoint exists.
-   */
+  // Fetch upgrade evidence from the backend API
+  const {
+    data: evidenceData,
+    loading: evidenceLoading,
+    error: evidenceError,
+  } = useApi(
+    (client) => client.upgradeEvidence(agent.agent_id),
+    [agent.agent_id, open],
+  );
+
+  // Build evidence from API response, with fallback to locally derived data
   const evidence: UpgradeEvidence = useMemo(() => {
     // Derive days from posture_since (using last history entry or created_at)
     const lastChange =
@@ -495,16 +501,31 @@ export default function PostureUpgradeWizard({
       (Date.now() - sinceDate.getTime()) / (1000 * 60 * 60 * 24),
     );
 
-    // Placeholder values -- clearly marked for replacement with real API data
+    // Use real API data when available
+    if (evidenceData?.data) {
+      const apiData = evidenceData.data;
+      const totalOps = apiData.total_operations ?? 0;
+      const successOps = apiData.successful_operations ?? 0;
+      return {
+        days_at_current_posture: daysSince,
+        total_operations: totalOps,
+        successful_operations: successOps,
+        success_rate: totalOps > 0 ? successOps / totalOps : 0,
+        shadow_enforcer_pass_rate: apiData.shadow_enforcer_pass_rate ?? null,
+        incidents: apiData.incidents ?? 0,
+      };
+    }
+
+    // Fallback: return zero-valued evidence while loading or on error
     return {
       days_at_current_posture: daysSince,
-      total_operations: 47, // placeholder
-      successful_operations: 44, // placeholder
-      success_rate: 44 / 47, // placeholder
-      shadow_enforcer_pass_rate: 0.92, // placeholder
-      incidents: 0, // placeholder
+      total_operations: 0,
+      successful_operations: 0,
+      success_rate: 0,
+      shadow_enforcer_pass_rate: null,
+      incidents: 0,
     };
-  }, [agent]);
+  }, [agent, evidenceData]);
 
   // Evaluate blockers
   const blockers = useMemo(() => {
@@ -785,13 +806,22 @@ export default function PostureUpgradeWizard({
                 </p>
               </div>
 
-              {/* Placeholder data notice */}
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                <p className="text-xs text-yellow-700">
-                  Note: Some metrics below use placeholder data. Connect to the
-                  upgrade-evidence API endpoint for production values.
-                </p>
-              </div>
+              {/* Evidence data status */}
+              {evidenceLoading && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-xs text-blue-700">
+                    Loading upgrade evidence from ShadowEnforcer metrics...
+                  </p>
+                </div>
+              )}
+              {evidenceError && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                  <p className="text-xs text-yellow-700">
+                    Could not load upgrade evidence from the API. Showing
+                    locally derived data only.
+                  </p>
+                </div>
+              )}
 
               {/* Days at current posture */}
               <MetricProgressBar

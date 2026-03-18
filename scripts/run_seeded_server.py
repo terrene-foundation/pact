@@ -45,6 +45,7 @@ def main() -> None:
         verification_stats=components["verification_stats"],
         posture_store=components.get("posture_store"),
         shadow_enforcer=components.get("shadow_enforcer"),
+        audit_chain=components.get("audit_chain"),
     )
 
     # Create the app with the seeded PlatformAPI

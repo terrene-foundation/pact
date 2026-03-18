@@ -139,9 +139,18 @@ def _build_platform_api() -> PlatformAPI:
     and persistence layers. For development, empty/default instances are
     created.
 
+    Logs a warning that the API is running without seed data, since
+    dashboard endpoints (verification_stats, dashboard_trends, etc.)
+    will return empty results.
+
     Returns:
         A fully wired PlatformAPI instance.
     """
+    logger.warning(
+        "Building PlatformAPI without seed data — dashboard endpoints will "
+        "return empty results. Run 'python scripts/run_seeded_server.py' for "
+        "a fully populated demo experience."
+    )
     registry = AgentRegistry()
     approval_queue = ApprovalQueue()
     cost_tracker = CostTracker()
@@ -531,6 +540,18 @@ def create_app(
     ) -> ApiResponse:
         """Get posture change history for an agent. Requires authentication."""
         return api.posture_history(agent_id)
+
+    # ------------------------------------------------------------------
+    # M42 Upgrade Evidence endpoint
+    # ------------------------------------------------------------------
+
+    @app.get("/api/v1/agents/{agent_id}/upgrade-evidence")
+    @limiter.limit(_rate_get)
+    async def upgrade_evidence(
+        request: Request, agent_id: str, _token: str = Depends(verify_token)
+    ) -> ApiResponse:
+        """Get upgrade evidence for posture upgrade evaluation. Requires authentication."""
+        return api.upgrade_evidence(agent_id)
 
     # ------------------------------------------------------------------
     # M36 Bridge management endpoints

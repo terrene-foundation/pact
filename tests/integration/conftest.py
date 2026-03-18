@@ -31,6 +31,8 @@ from care_platform.trust.store.posture_history import PostureHistoryStore
 from care_platform.build.workspace.bridge import BridgeManager
 from care_platform.build.workspace.models import WorkspaceRegistry
 from scripts.seed_demo import (
+    build_audit_chain,
+    convert_verification_stats_to_enum_keys,
     seed_agents,
     seed_audit_anchors,
     seed_bridges,
@@ -38,6 +40,7 @@ from scripts.seed_demo import (
     seed_envelopes,
     seed_held_actions,
     seed_posture_history,
+    seed_shadow_evaluations,
     seed_verification_stats,
     seed_workspaces,
 )
@@ -71,11 +74,14 @@ def _build_seeded_components() -> dict:
     seed_workspaces(workspace_registry)
     envelope_registry = seed_envelopes()
     verification_stats_raw, audit_records = seed_audit_anchors()
-    verification_stats = seed_verification_stats(audit_records)
+    verification_stats_str = seed_verification_stats(audit_records)
+    verification_stats = convert_verification_stats_to_enum_keys(verification_stats_str)
+    audit_chain = build_audit_chain(audit_records)
     seed_held_actions(approval_queue)
     seed_bridges(bridge_manager)
     seed_posture_history(posture_store)
     seed_cost_tracking(cost_tracker)
+    shadow_enforcer = seed_shadow_evaluations()
 
     _seeded_components_cache = {
         "registry": registry,
@@ -87,6 +93,8 @@ def _build_seeded_components() -> dict:
         "envelope_registry": envelope_registry,
         "verification_stats": verification_stats,
         "audit_records": audit_records,
+        "audit_chain": audit_chain,
+        "shadow_enforcer": shadow_enforcer,
     }
     return _seeded_components_cache
 
@@ -109,6 +117,8 @@ def platform_api(seeded_components: dict) -> PlatformAPI:
         envelope_registry=seeded_components["envelope_registry"],
         verification_stats=seeded_components["verification_stats"],
         posture_store=seeded_components["posture_store"],
+        audit_chain=seeded_components.get("audit_chain"),
+        shadow_enforcer=seeded_components.get("shadow_enforcer"),
     )
 
 

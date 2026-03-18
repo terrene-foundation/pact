@@ -35,6 +35,9 @@ M36 Bridge management endpoints:
 M13 ShadowEnforcer endpoints:
     GET  /api/v1/shadow/{agent_id}/metrics          - Shadow enforcement metrics
     GET  /api/v1/shadow/{agent_id}/report           - Shadow posture upgrade report
+
+M42 Upgrade Evidence endpoints:
+    GET  /api/v1/agents/{agent_id}/upgrade-evidence  - Upgrade evidence for posture upgrade
 """
 
 from __future__ import annotations
@@ -197,6 +200,12 @@ _ENDPOINT_DEFINITIONS: list[EndpointDefinition] = [
         method="GET",
         path="/api/v1/shadow/{agent_id}/report",
         description="Get shadow enforcement posture upgrade report for an agent",
+    ),
+    # M42 Upgrade Evidence endpoint
+    EndpointDefinition(
+        method="GET",
+        path="/api/v1/agents/{agent_id}/upgrade-evidence",
+        description="Get upgrade evidence for posture upgrade evaluation",
     ),
 ]
 
@@ -1413,3 +1422,201 @@ class PlatformAPI:
                 "recommendation": report.recommendation,
             },
         )
+
+    # ------------------------------------------------------------------
+    # M42 Upgrade Evidence Handler
+    # ------------------------------------------------------------------
+
+    def upgrade_evidence(self, agent_id: str) -> ApiResponse:
+        """Get upgrade evidence for an agent's posture upgrade evaluation.
+
+        Combines agent registry data with ShadowEnforcer metrics to provide
+        the evidence needed for the PostureUpgradeWizard frontend component.
+
+        The response includes total operations, success rate, ShadowEnforcer
+        pass rate, incident count, and an upgrade recommendation based on
+        the UPGRADE_REQUIREMENTS from care_platform.trust.posture.
+
+        Args:
+            agent_id: The agent to get upgrade evidence for.
+
+        Returns:
+            ApiResponse with upgrade evidence data, or error if the agent
+            is not found or the shadow_enforcer is not configured.
+        """
+        # Validate the agent exists in the registry
+        record = self._registry.get(agent_id)
+        if record is None:
+            logger.warning(
+                "upgrade_evidence: agent '%s' not found in registry",
+                agent_id,
+            )
+            return ApiResponse(
+                status="error",
+                error=f"Agent '{agent_id}' not found in registry",
+            )
+
+        # Require shadow_enforcer for metrics
+        if self._shadow_enforcer is None:
+            logger.warning("upgrade_evidence: shadow_enforcer not configured on PlatformAPI")
+            return ApiResponse(
+                status="error",
+                error=(
+                    "Upgrade evidence unavailable: shadow_enforcer not provided "
+                    "to PlatformAPI. Pass shadow_enforcer to enable this endpoint."
+                ),
+            )
+
+        # Get shadow metrics for the agent
+        try:
+            metrics = self._shadow_enforcer.get_metrics(agent_id)
+        except KeyError:
+            logger.warning(
+                "upgrade_evidence: no shadow evaluations for agent '%s'",
+                agent_id,
+            )
+            return ApiResponse(
+                status="error",
+                error=(
+                    f"No shadow evaluation data available for agent '{agent_id}'. "
+                    f"The agent must have shadow evaluations to generate upgrade evidence."
+                ),
+            )
+
+        # Compute total operations and successful operations from shadow metrics
+        total_operations = metrics.total_evaluations
+        # Successful = auto_approved + flagged (actions that would have passed)
+        successful_operations = metrics.auto_approved_count + metrics.flagged_count
+        shadow_pass_rate = metrics.pass_rate
+
+        # Incidents = blocked count (actions that would have been denied)
+        incidents = metrics.blocked_count
+
+        # Determine the current posture and target posture
+        current_posture = record.current_posture
+
+        # Compute target posture (next in the autonomy ladder)
+        from care_platform.build.config.schema import TrustPostureLevel
+
+        posture_ladder = [
+            TrustPostureLevel.PSEUDO_AGENT,
+            TrustPostureLevel.SUPERVISED,
+            TrustPostureLevel.SHARED_PLANNING,
+            TrustPostureLevel.CONTINUOUS_INSIGHT,
+            TrustPostureLevel.DELEGATED,
+        ]
+        # Find current posture level in the ladder
+        current_level = None
+        for level in posture_ladder:
+            if level.value == current_posture:
+                current_level = level
+                break
+
+        if current_level is None:
+            # Unknown posture level
+            target_posture = None
+        else:
+            idx = posture_ladder.index(current_level)
+            if idx < len(posture_ladder) - 1:
+                target_posture = posture_ladder[idx + 1].value
+            else:
+                target_posture = None  # Already at highest posture
+
+        # Determine recommendation based on UPGRADE_REQUIREMENTS
+        recommendation = self._compute_upgrade_recommendation(
+            current_level=current_level,
+            total_operations=total_operations,
+            successful_operations=successful_operations,
+            shadow_pass_rate=shadow_pass_rate,
+            incidents=incidents,
+        )
+
+        return ApiResponse(
+            status="ok",
+            data={
+                "agent_id": agent_id,
+                "total_operations": total_operations,
+                "successful_operations": successful_operations,
+                "shadow_enforcer_pass_rate": shadow_pass_rate,
+                "incidents": incidents,
+                "recommendation": recommendation,
+                "current_posture": current_posture,
+                "target_posture": target_posture,
+            },
+        )
+
+    def _compute_upgrade_recommendation(
+        self,
+        *,
+        current_level: Any,
+        total_operations: int,
+        successful_operations: int,
+        shadow_pass_rate: float,
+        incidents: int,
+    ) -> str:
+        """Compute upgrade recommendation based on UPGRADE_REQUIREMENTS.
+
+        Returns one of: "eligible", "not_eligible", "needs_review".
+
+        Args:
+            current_level: The TrustPostureLevel of the agent.
+            total_operations: Total operations from shadow evaluations.
+            successful_operations: Successfully completed operations.
+            shadow_pass_rate: ShadowEnforcer pass rate (0.0 to 1.0).
+            incidents: Number of blocked/denied operations.
+
+        Returns:
+            A recommendation string.
+        """
+        from care_platform.build.config.schema import TrustPostureLevel
+        from care_platform.trust.posture import UPGRADE_REQUIREMENTS
+
+        if current_level is None:
+            return "not_eligible"
+
+        # Determine the target posture for upgrade requirements
+        posture_ladder = [
+            TrustPostureLevel.PSEUDO_AGENT,
+            TrustPostureLevel.SUPERVISED,
+            TrustPostureLevel.SHARED_PLANNING,
+            TrustPostureLevel.CONTINUOUS_INSIGHT,
+            TrustPostureLevel.DELEGATED,
+        ]
+
+        idx = posture_ladder.index(current_level)
+        if idx >= len(posture_ladder) - 1:
+            return "not_eligible"  # Already at highest posture
+
+        target_level = posture_ladder[idx + 1]
+        requirements = UPGRADE_REQUIREMENTS.get(target_level)
+        if requirements is None:
+            return "needs_review"
+
+        # Check each requirement
+        success_rate = successful_operations / total_operations if total_operations > 0 else 0.0
+
+        blockers = []
+
+        min_ops = requirements.get("min_operations", 0)
+        if total_operations < min_ops:
+            blockers.append(f"operations ({total_operations} < {min_ops})")
+
+        min_rate = requirements.get("min_success_rate", 0.0)
+        if success_rate < min_rate:
+            blockers.append(f"success_rate ({success_rate:.2f} < {min_rate:.2f})")
+
+        if requirements.get("shadow_enforcer_required"):
+            min_shadow = requirements.get("shadow_pass_rate", 0.0)
+            if shadow_pass_rate < min_shadow:
+                blockers.append(f"shadow_pass_rate ({shadow_pass_rate:.2f} < {min_shadow:.2f})")
+
+        max_incidents = requirements.get("max_incidents")
+        if max_incidents is not None and incidents > max_incidents:
+            blockers.append(f"incidents ({incidents} > {max_incidents})")
+
+        if not blockers:
+            return "eligible"
+        elif len(blockers) <= 1:
+            return "needs_review"
+        else:
+            return "not_eligible"
