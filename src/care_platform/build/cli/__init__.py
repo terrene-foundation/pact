@@ -701,5 +701,126 @@ def org_status() -> None:
     console.print(table)
 
 
+# ---------------------------------------------------------------------------
+# Task 6034: org generate — auto-generate an organization from a config
+# ---------------------------------------------------------------------------
+
+
+@org.command("generate")
+@click.option(
+    "--input",
+    "input_file",
+    required=True,
+    type=click.Path(exists=False),
+    help="Path to YAML OrgGeneratorConfig file",
+)
+@click.option(
+    "--output",
+    "output_file",
+    required=False,
+    type=click.Path(),
+    default=None,
+    help="Output file path for the generated OrgDefinition (YAML format)",
+)
+@click.option(
+    "--validate-only",
+    is_flag=True,
+    default=False,
+    help="Generate and validate, but do not produce output",
+)
+def org_generate(input_file: str, output_file: str | None, validate_only: bool) -> None:
+    """Auto-generate a CARE-governed organization from a high-level config.
+
+    Reads an OrgGeneratorConfig from a YAML file, runs the auto-generation
+    engine, and outputs the resulting OrgDefinition as YAML.
+
+    The generated organization is guaranteed to pass validate_org_detailed()
+    with zero ERRORs.
+    """
+    from care_platform.build.org.generator import OrgGenerator, OrgGeneratorConfig
+
+    # Load the input file
+    input_path = Path(input_file)
+    if not input_path.exists():
+        error_console.print(f"[bold red]File not found:[/bold red] {input_file}")
+        sys.exit(1)
+
+    try:
+        raw_text = input_path.read_text()
+        data = yaml.safe_load(raw_text)
+    except yaml.YAMLError as e:
+        error_console.print(f"[bold red]YAML parse error:[/bold red] {e}")
+        sys.exit(1)
+    except OSError as e:
+        error_console.print(f"[bold red]File read error:[/bold red] {e}")
+        sys.exit(1)
+
+    if not isinstance(data, dict):
+        error_console.print(
+            f"[bold red]Invalid format:[/bold red] Expected a YAML mapping, "
+            f"got {type(data).__name__}"
+        )
+        sys.exit(1)
+
+    # Parse into OrgGeneratorConfig
+    try:
+        config = OrgGeneratorConfig.model_validate(data)
+    except Exception as e:
+        error_console.print(f"[bold red]Config validation error:[/bold red] {e}")
+        sys.exit(1)
+
+    # Generate the organization
+    try:
+        generator = OrgGenerator()
+        org_def = generator.generate(config)
+    except ValueError as e:
+        error_console.print(f"[bold red]Generation failed:[/bold red] {e}")
+        sys.exit(1)
+
+    if validate_only:
+        console.print()
+        console.print(
+            Panel(
+                f"[bold green]Valid[/bold green] organization generated from {input_file}\n\n"
+                f"  Organization ID: {org_def.org_id}\n"
+                f"  Name: {org_def.name}\n"
+                f"  Departments: {len(org_def.departments)}\n"
+                f"  Teams: {len(org_def.teams)}\n"
+                f"  Agents: {len(org_def.agents)}\n"
+                f"  Envelopes: {len(org_def.envelopes)}",
+                title="CARE Platform - Org Generate (Validate Only)",
+                border_style="green",
+            )
+        )
+        return
+
+    # Output the generated OrgDefinition
+    org_data = org_def.model_dump(mode="json")
+
+    if output_file:
+        output_path = Path(output_file)
+        with output_path.open("w") as f:
+            yaml.dump(org_data, f, default_flow_style=False, sort_keys=False)
+
+        console.print()
+        console.print(
+            Panel(
+                f"[bold green]Generated[/bold green] organization '{org_def.name}' "
+                f"to {output_file}\n\n"
+                f"  Organization ID: {org_def.org_id}\n"
+                f"  Departments: {len(org_def.departments)}\n"
+                f"  Teams: {len(org_def.teams)}\n"
+                f"  Agents: {len(org_def.agents)}\n"
+                f"  Envelopes: {len(org_def.envelopes)}\n"
+                f"  Workspaces: {len(org_def.workspaces)}",
+                title="CARE Platform - Org Generated",
+                border_style="green",
+            )
+        )
+    else:
+        # Print to stdout
+        yaml.dump(org_data, sys.stdout, default_flow_style=False, sort_keys=False)
+
+
 if __name__ == "__main__":
     main()
