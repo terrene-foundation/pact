@@ -16,8 +16,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures

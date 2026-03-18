@@ -12,7 +12,7 @@ Tests that:
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,

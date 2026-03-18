@@ -15,13 +15,13 @@ Covers:
 
 import pytest
 
-from care_platform.audit.bridge_audit import (
+from care_platform.trust.audit.bridge_audit import (
     BridgeAuditAnchor,
     _compute_anchor_hash,
     _compute_counterpart_hash,
     create_bridge_audit_pair,
 )
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -40,7 +40,7 @@ from care_platform.trust.bridge_trust import (
     BridgeTrustRecord,
 )
 from care_platform.trust.eatp_bridge import EATPBridge
-from care_platform.workspace.bridge import BridgeType
+from care_platform.build.workspace.bridge import BridgeType
 
 # ---------------------------------------------------------------------------
 # Fixtures

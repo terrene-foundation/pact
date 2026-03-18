@@ -2,15 +2,15 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for COC hook enforcer (Task 404)."""
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.execution.hook_enforcer import HookEnforcer, HookResult, HookVerdict
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.use.execution.hook_enforcer import HookEnforcer, HookResult, HookVerdict
 
 
 def _make_gradient_engine(

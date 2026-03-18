@@ -97,7 +97,7 @@ class CapabilityAttestation(BaseModel):
         # Check envelope authorization
         evaluation = envelope.evaluate_action(action=action, agent_id=self.agent_id)
         # DENIED means the envelope blocks the action
-        from care_platform.constraint.envelope import EvaluationResult
+        from care_platform.trust.constraint.envelope import EvaluationResult
 
         return evaluation.overall_result != EvaluationResult.DENIED
 

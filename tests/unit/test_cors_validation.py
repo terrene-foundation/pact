@@ -13,9 +13,9 @@ import logging
 
 import pytest
 
-import care_platform.api.server as server_module
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
+import care_platform.use.api.server as server_module
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
 
 
 @pytest.fixture(autouse=True)
@@ -110,7 +110,7 @@ class TestCorsValidationProduction:
             care_api_token="test-token-12345",
             care_cors_origins=["http://insecure.com", "*"],
         )
-        with caplog.at_level(logging.WARNING, logger="care_platform.api.server"):
+        with caplog.at_level(logging.WARNING, logger="care_platform.use.api.server"):
             create_app(env_config=cfg)
         assert any("CORS" in r.message for r in caplog.records)
 

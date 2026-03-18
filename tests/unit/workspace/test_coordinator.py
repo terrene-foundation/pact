@@ -9,12 +9,12 @@ and listing active bridges.
 
 import pytest
 
-from care_platform.workspace.bridge import (
+from care_platform.build.workspace.bridge import (
     BridgeManager,
     BridgePermission,
     BridgeStatus,
 )
-from care_platform.workspace.coordinator import (
+from care_platform.build.workspace.coordinator import (
     CoordinatorAgent,
     CoordinatorEnvelope,
     RoutingResult,

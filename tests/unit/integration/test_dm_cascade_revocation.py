@@ -18,9 +18,9 @@ DM team hierarchy:
       -> dm-seo-specialist
 """
 
-from care_platform.audit.pipeline import AuditPipeline
-from care_platform.config.schema import VerificationLevel
-from care_platform.execution.approval import ApprovalQueue, UrgencyLevel
+from care_platform.trust.audit.pipeline import AuditPipeline
+from care_platform.build.config.schema import VerificationLevel
+from care_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
 from care_platform.trust.credentials import CredentialManager
 from care_platform.trust.revocation import RevocationManager, RevocationRecord
 

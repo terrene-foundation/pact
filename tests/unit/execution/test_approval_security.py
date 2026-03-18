@@ -11,7 +11,7 @@ Tests that:
 
 import pytest
 
-from care_platform.execution.approval import ApprovalQueue
+from care_platform.use.execution.approval import ApprovalQueue
 
 
 class TestApproverAuthorization:

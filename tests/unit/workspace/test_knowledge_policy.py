@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.workspace.knowledge_policy import (
+from care_platform.build.workspace.knowledge_policy import (
     KnowledgePolicy,
     KnowledgePolicyEnforcer,
     PolicyDecision,

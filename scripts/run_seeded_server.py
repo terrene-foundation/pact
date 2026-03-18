@@ -33,7 +33,7 @@ def main() -> None:
         sys.exit(1)
 
     # Build PlatformAPI from seeded components
-    from care_platform.api.endpoints import PlatformAPI
+    from care_platform.use.api.endpoints import PlatformAPI
 
     platform_api = PlatformAPI(
         registry=components["registry"],
@@ -48,7 +48,7 @@ def main() -> None:
     )
 
     # Create the app with the seeded PlatformAPI
-    from care_platform.api.server import create_app
+    from care_platform.use.api.server import create_app
 
     os.environ.setdefault("CARE_DEV_MODE", "true")
     os.environ.setdefault("CARE_API_HOST", "0.0.0.0")

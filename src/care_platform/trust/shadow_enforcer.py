@@ -18,9 +18,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import TrustPostureLevel, VerificationLevel
-from care_platform.constraint.envelope import ConstraintEnvelope, EvaluationResult
-from care_platform.constraint.gradient import GradientEngine
+from care_platform.build.config.schema import TrustPostureLevel, VerificationLevel
+from care_platform.trust.constraint.envelope import ConstraintEnvelope, EvaluationResult
+from care_platform.trust.constraint.gradient import GradientEngine
 from care_platform.trust.posture import UPGRADE_REQUIREMENTS, PostureEvidence, TrustPosture
 
 logger = logging.getLogger(__name__)

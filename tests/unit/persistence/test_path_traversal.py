@@ -11,7 +11,7 @@ Tests that:
 
 import pytest
 
-from care_platform.persistence.store import FilesystemStore
+from care_platform.trust.store.store import FilesystemStore
 
 
 class TestPathTraversalProtection:

@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.api.endpoints import PlatformAPI
-from care_platform.api.events import EventBus
-from care_platform.api.shutdown import ShutdownManager
-from care_platform.config.schema import TrustPostureLevel, VerificationLevel
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.cost_tracking import CostTracker
+from care_platform.use.api.endpoints import PlatformAPI
+from care_platform.use.api.events import EventBus
+from care_platform.use.api.shutdown import ShutdownManager
+from care_platform.build.config.schema import TrustPostureLevel, VerificationLevel
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.cost_tracking import CostTracker
 from care_platform.trust.revocation import RevocationManager
 from care_platform.trust.shadow_enforcer_live import ShadowEnforcerLive
-from care_platform.workspace.bridge import BridgeManager
+from care_platform.build.workspace.bridge import BridgeManager
 
 # ---------------------------------------------------------------------------
 # Fixtures

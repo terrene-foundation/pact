@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from care_platform.constraint.circuit_breaker import (
+from care_platform.trust.constraint.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerOpen,
     CircuitState,

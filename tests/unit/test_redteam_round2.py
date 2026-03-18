@@ -14,9 +14,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.audit.anchor import AuditAnchor, AuditChain, _redact_metadata
-from care_platform.audit.pipeline import AuditPipeline
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditAnchor, AuditChain, _redact_metadata
+from care_platform.trust.audit.pipeline import AuditPipeline
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -30,22 +30,22 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.cache import CachedVerification, VerificationCache
-from care_platform.constraint.circuit_breaker import CircuitBreaker
-from care_platform.constraint.envelope import ConstraintEnvelope, EvaluationResult
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.constraint.middleware import (
+from care_platform.trust.constraint.cache import CachedVerification, VerificationCache
+from care_platform.trust.constraint.circuit_breaker import CircuitBreaker
+from care_platform.trust.constraint.envelope import ConstraintEnvelope, EvaluationResult
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )
-from care_platform.execution.approval import ApprovalQueue, PendingAction
-from care_platform.execution.hook_enforcer import HookEnforcer, HookVerdict
+from care_platform.use.execution.approval import ApprovalQueue, PendingAction
+from care_platform.use.execution.hook_enforcer import HookEnforcer, HookVerdict
 from care_platform.trust.attestation import CapabilityAttestation
 from care_platform.trust.eatp_bridge import EATPBridge
 from care_platform.trust.messaging import AgentMessage, MessageChannel, MessageType
 from care_platform.trust.revocation import RevocationManager
 from care_platform.trust.shadow_enforcer import ShadowEnforcer
-from care_platform.workspace.bridge import (
+from care_platform.build.workspace.bridge import (
     Bridge,
     BridgeManager,
     BridgePermission,
@@ -1138,7 +1138,7 @@ class TestRT2_33_MiddlewareRejectsInvalidSignedEnvelope:
         priv_key = Ed25519PrivateKey.generate()
         pub_key_bytes = priv_key.public_key().public_bytes_raw()
 
-        from care_platform.constraint.signing import SignedEnvelope
+        from care_platform.trust.constraint.signing import SignedEnvelope
 
         signed = SignedEnvelope.sign_envelope(
             envelope=envelope,
@@ -1636,7 +1636,7 @@ class TestRT10_DP2_SpendPersistence:
 
     def test_spend_persisted_to_store(self):
         """Spend data is written to the store after an action with spend."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         envelope = _make_envelope(
@@ -1659,7 +1659,7 @@ class TestRT10_DP2_SpendPersistence:
 
     def test_spend_hydrated_on_startup(self):
         """New middleware instance loads persisted spend from store."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         # Pre-populate store with spend data
@@ -1684,7 +1684,7 @@ class TestRT10_DP2_SpendPersistence:
 
     def test_spend_accumulates_across_simulated_restarts(self):
         """Spend accumulates correctly across middleware instances (simulated restart)."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         envelope = _make_envelope(

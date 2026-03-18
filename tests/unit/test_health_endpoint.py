@@ -12,8 +12,8 @@ import httpx
 import pytest
 
 import care_platform
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
 
 
 @pytest.fixture()
@@ -25,7 +25,7 @@ def dev_config() -> EnvConfig:
 @pytest.fixture()
 def app(dev_config: EnvConfig):
     """Create a FastAPI app with dev config for health check testing."""
-    import care_platform.api.server as server_module
+    import care_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None

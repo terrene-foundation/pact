@@ -11,7 +11,7 @@ Validates that:
 
 import threading
 
-from care_platform.persistence.sqlite_store import SQLiteTrustStore
+from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # WAL Mode Verification

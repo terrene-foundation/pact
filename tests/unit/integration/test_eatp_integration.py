@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -27,8 +27,8 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
 from care_platform.trust.credentials import CredentialManager, VerificationToken
 from care_platform.trust.delegation import ChainStatus, DelegationManager
 from care_platform.trust.eatp_bridge import EATPBridge

@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.resilience.failure_modes import (
+from care_platform.trust.resilience.failure_modes import (
     FailureDetector,
     FailureMode,
     FailureSeverity,

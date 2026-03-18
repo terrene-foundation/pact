@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.config.schema import TrustPostureLevel
+from care_platform.build.config.schema import TrustPostureLevel
 from care_platform.trust.posture import (
     NEVER_DELEGATED_ACTIONS,
     PostureEvidence,

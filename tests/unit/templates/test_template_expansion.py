@@ -14,13 +14,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     TeamConfig,
 )
-from care_platform.org.builder import OrgBuilder, OrgDefinition
-from care_platform.templates.registry import (
+from care_platform.build.org.builder import OrgBuilder, OrgDefinition
+from care_platform.build.templates.registry import (
     TeamTemplate,
     TemplateRegistry,
 )

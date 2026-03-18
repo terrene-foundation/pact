@@ -15,7 +15,7 @@ import logging
 from eatp import generate_keypair
 from eatp.chain import GenesisRecord
 
-from care_platform.config.schema import GenesisConfig
+from care_platform.build.config.schema import GenesisConfig
 from care_platform.trust.eatp_bridge import EATPBridge
 from care_platform.trust.lifecycle import TrustChainState, TrustChainStateMachine
 

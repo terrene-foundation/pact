@@ -20,7 +20,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import VerificationLevel
+from care_platform.build.config.schema import VerificationLevel
 
 logger = logging.getLogger(__name__)
 

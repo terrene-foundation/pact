@@ -16,14 +16,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from care_platform.persistence.backup import (
+from care_platform.trust.store.backup import (
     BackupError,
     RestoreError,
     backup_store,
     restore_store,
 )
-from care_platform.persistence.sqlite_store import SQLiteTrustStore
-from care_platform.persistence.store import MemoryStore
+from care_platform.trust.store.sqlite_store import SQLiteTrustStore
+from care_platform.trust.store.store import MemoryStore
 
 # ---------------------------------------------------------------------------
 # Helpers

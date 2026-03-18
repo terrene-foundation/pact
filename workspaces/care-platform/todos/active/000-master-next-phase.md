@@ -1,255 +1,177 @@
-# CARE Platform — Next Phase Master Roadmap
+# CARE Platform — Phase 5 Master Roadmap
 
-**Created**: 2026-03-16
-**Status**: APPROVED (2026-03-16)
-**Scope**: 64 tasks across 15 milestones in 3 phases (+ 1 prerequisite)
+**Updated**: 2026-03-18
+**Status**: APPROVED
+**Scope**: 32 tasks across 7 milestones
+**Supersedes**: Phase A (Polish & Deploy), Phase B (Org Builder), Phase C (DM Vertical)
 **Continues from**: 241 completed tasks across Phases 1-4
-**Red Team**: 17 gaps found, 3 critical addressed as prerequisite tasks
 
 ---
 
 ## Overview
 
-Transition the CARE Platform from local prototype to deployable, credible, and operational platform. Three phases: polish and deploy (fix known issues + production readiness), complete the Organization Builder capstone, then launch the DM team as the first live governed agent team.
+Restructure the codebase to reflect the Fractal Dual Plane architecture, add the Department layer, build the auto-generation engine, dog-food with the full Foundation org (11 teams), wire known data issues, and reach production green-light. Phase C (DM Vertical, M23-M25) is deferred — not in scope for this phase.
 
 ---
 
-## M0 — Prerequisites (1 task, BLOCKER)
+## M0b — Quick Wins (4 tasks, 2 hours)
 
-Must be resolved before any Phase A PR can merge.
+Prerequisite fixes before M38 restructure begins. No dependencies.
 
 | #    | Task                                                            | Priority | Effort |
 | ---- | --------------------------------------------------------------- | -------- | ------ |
-| 5000 | CI path fix + dependency cleanup + psycopg2 + .secrets.baseline | BLOCKER  | Small  |
-
-**Key decision**: Kailash SDK packages (kailash, kailash-nexus, kailash-dataflow, kailash-kaizen) are declared as hard deps but none are imported in source code. Move to optional extras so `pip install care-platform` works without them.
-
----
-
-## Phase A: Polish & Deploy (30 tasks)
-
-Fix data inconsistencies, wire real backend endpoints, fix CI, Docker, PyPI, docs.
-
-### M12 — API Data Wiring Fixes (4 tasks)
-
-Wire the data that seed_demo.py produces but run_seeded_server.py currently discards.
-
-| #    | Task                                | Priority | Effort |
-| ---- | ----------------------------------- | -------- | ------ |
-| 5001 | Wire verification_stats into API    | Critical | Small  |
-| 5002 | Wire envelope_registry into API     | Critical | Small  |
-| 5003 | Wire posture_store into API         | High     | Small  |
-| 5004 | Align seed data with DM team config | Medium   | Medium |
-
-### M13 — ShadowEnforcer Backend (4 tasks)
-
-Add real API endpoints for the ShadowEnforcer — replace the mock data story.
-
-| #    | Task                                 | Priority | Effort |
-| ---- | ------------------------------------ | -------- | ------ |
-| 5005 | Shadow metrics API endpoint          | High     | Medium |
-| 5006 | Shadow report API endpoint           | High     | Medium |
-| 5007 | Wire ShadowEnforcer into PlatformAPI | High     | Medium |
-| 5008 | Add ShadowEnforcer seed data         | Medium   | Medium |
-
-### M14 — Frontend Fixes (3 tasks)
-
-Remove all mock data and synthetic values from the frontend.
-
-| #    | Task                                   | Priority | Effort |
-| ---- | -------------------------------------- | -------- | ------ |
-| 5009 | Replace shadow mock data with API      | High     | Medium |
-| 5010 | Fix WebSocket auth warnings            | Medium   | Small  |
-| 5011 | Replace Math.random() dashboard trends | Medium   | Medium |
-
-### M15 — CI/CD Pipeline (5 tasks)
-
-Fix broken CI paths and add missing pipeline stages.
-
-| #     | Task                          | Priority | Effort |
-| ----- | ----------------------------- | -------- | ------ |
-| 5012  | Fix CI lint/type check paths  | Critical | Small  |
-| 5013  | Add integration test job      | High     | Medium |
-| 5013b | Create integration test suite | High     | Medium |
-| 5014  | Add Docker build test         | Medium   | Small  |
-| 5015  | Add security scanning         | Medium   | Small  |
-| 5016  | Add pre-commit configuration  | Medium   | Small  |
-
-### M16 — Package Publishing (2 tasks)
-
-Make the platform installable via pip.
-
-| #    | Task                         | Priority | Effort |
-| ---- | ---------------------------- | -------- | ------ |
-| 5017 | MANIFEST.in + validate build | High     | Small  |
-| 5018 | PyPI publishing workflow     | High     | Medium |
-
-### M17 — Documentation Site (4 tasks)
-
-Give the platform a public documentation presence.
-
-| #    | Task                             | Priority | Effort |
-| ---- | -------------------------------- | -------- | ------ |
-| 5019 | Set up docs site (MkDocs/Sphinx) | High     | Medium |
-| 5020 | Auto-generate API reference docs | Medium   | Medium |
-| 5021 | Deploy docs to GitHub Pages      | Medium   | Small  |
-| 5022 | Write quickstart tutorial        | High     | Medium |
-
-### M18 — Production Hardening (6 tasks)
-
-Production infrastructure: migrations, logging, metrics, health checks.
-
-| #    | Task                           | Priority | Effort |
-| ---- | ------------------------------ | -------- | ------ |
-| 5023 | Alembic database migrations    | High     | Medium |
-| 5024 | Structured logging (structlog) | Medium   | Small  |
-| 5025 | Prometheus metrics endpoint    | Medium   | Medium |
-| 5026 | Container registry publishing  | Medium   | Small  |
-| 5027 | Expand health check endpoint   | Medium   | Small  |
-| 5028 | Complete .env.example          | Medium   | Small  |
+| 6001 | Remove CARE_DEV_MODE=true from root Dockerfile                  | Critical | Tiny   |
+| 6002 | Fix pyproject.toml: remove broken eatp extra, update classifier | High     | Tiny   |
+| 6003 | Create py.typed marker at src/care_platform/py.typed            | Medium   | Tiny   |
+| 6004 | Create CHANGELOG.md for 0.1.0 release                           | Medium   | Small  |
 
 ---
 
-## Phase B: Organization Builder Capstone (20 tasks)
+## M38 — TRUST/BUILD/USE Codebase Restructure (6 tasks, 2-3 days)
 
-Complete the org builder as the strategic differentiator.
+Restructure `src/care_platform/` into three top-level packages reflecting the Fractal Dual Plane architecture.
 
-### M19 — Org Validation Hardening (7 tasks)
+- **trust/** — governance primitives (Trust Plane)
+- **build/** — define organizations (Build Plane)
+- **use/** — run and observe (Use Plane)
 
-Deep semantic validation beyond structural consistency checks.
-
-| #    | Task                            | Priority | Effort |
-| ---- | ------------------------------- | -------- | ------ |
-| 5029 | Capability-envelope alignment   | High     | Medium |
-| 5030 | Monotonic tightening validation | High     | Medium |
-| 5031 | Team lead capability superset   | Medium   | Small  |
-| 5032 | Gradient coverage validation    | Medium   | Small  |
-| 5033 | Temporal/data path consistency  | Medium   | Small  |
-| 5034 | Multi-team validation           | High     | Medium |
-| 5035 | Validation severity levels      | Medium   | Small  |
-
-### M20 — Template Library Expansion (5 tasks)
-
-Expand from 4 templates to a composable library.
-
-| #    | Task                                | Priority | Effort |
-| ---- | ----------------------------------- | -------- | ------ |
-| 5036 | Engineering team template           | Medium   | Medium |
-| 5037 | Executive team template             | Medium   | Medium |
-| 5038 | Custom template from YAML           | High     | Medium |
-| 5039 | Multi-team composition              | High     | Large  |
-| 5040 | Template validation on registration | Medium   | Small  |
-
-### M21 — Import/Export and CLI (5 tasks)
-
-Complete CLI tooling for org lifecycle management.
-
-| #    | Task                     | Priority | Effort |
-| ---- | ------------------------ | -------- | ------ |
-| 5041 | YAML export command      | High     | Medium |
-| 5042 | YAML/JSON import command | High     | Medium |
-| 5043 | Org diff command         | Medium   | Medium |
-| 5044 | Org deploy command       | High     | Large  |
-| 5045 | Org status command       | Medium   | Small  |
-
-### M22 — Integration and Dog-fooding (3 tasks)
-
-Prove it works end-to-end by running the Foundation through it.
-
-| #    | Task                            | Priority | Effort |
-| ---- | ------------------------------- | -------- | ------ |
-| 5046 | Foundation org round-trip test  | High     | Medium |
-| 5047 | Org builder dashboard page      | Medium   | Large  |
-| 5048 | Phase A + B red team validation | High     | Medium |
+| #    | Task                                                              | Priority | Effort |
+| ---- | ----------------------------------------------------------------- | -------- | ------ |
+| 6010 | Create trust/build/use directory structure with **init**.py files | Critical | Small  |
+| 6011 | Move trust-plane modules into trust/                              | Critical | Large  |
+| 6012 | Move build-plane modules into build/                              | Critical | Large  |
+| 6013 | Move use-plane modules into use/                                  | Critical | Large  |
+| 6014 | Update all source imports across the entire codebase              | Critical | Large  |
+| 6015 | Update all test imports and verify all tests pass                 | Critical | Large  |
+| 6016 | Update CLAUDE.md, documentation, and any path references          | High     | Medium |
 
 ---
 
-## Phase C: DM Team Vertical (13 tasks)
+## M39 — Department Layer (5 tasks, 2-3 days)
 
-Launch real governed agents doing real work.
+Add `DepartmentConfig` between organization and team levels. Enables 3-level monotonic tightening: department → team → agent.
 
-### M23 — DM Team Execution Wiring (4 tasks)
+**Depends on**: M38
 
-Connect governance layer to actual agent execution.
+| #    | Task                                                                 | Priority | Effort |
+| ---- | -------------------------------------------------------------------- | -------- | ------ |
+| 6020 | Create DepartmentConfig model (id, name, teams, head, envelope)      | Critical | Medium |
+| 6021 | Add departments field to OrgDefinition, update OrgBuilder            | Critical | Medium |
+| 6022 | Extend validate_org_detailed() for 3-level monotonic tightening      | Critical | Large  |
+| 6023 | Update templates to include department grouping                      | High     | Medium |
+| 6024 | Tests for department validation, tightening, and builder integration | High     | Medium |
 
-| #    | Task                            | Priority | Effort |
-| ---- | ------------------------------- | -------- | ------ |
-| 5049 | DMTeamRunner orchestrator       | Critical | Large  |
-| 5050 | Agent-specific system prompts   | High     | Medium |
-| 5051 | Capability-based task routing   | High     | Medium |
-| 5052 | DM task submission + status API | High     | Medium |
+---
 
-### M24 — ShadowEnforcer Calibration (3 tasks)
+## M40 — Auto-Generation Engine (6 tasks, 3-5 days)
 
-Calibrate trust monitoring before live execution.
+Create `OrgGenerator` that produces valid organizations from high-level definitions.
 
-| #    | Task                               | Priority | Effort |
-| ---- | ---------------------------------- | -------- | ------ |
-| 5053 | Shadow simulation runner           | High     | Medium |
-| 5054 | Shadow live mode integration       | Medium   | Small  |
-| 5055 | Posture upgrade recommendation API | Medium   | Small  |
+**Depends on**: M39
 
-### M25 — DM Dashboard and E2E (6 tasks)
+| #    | Task                                                                             | Priority | Effort |
+| ---- | -------------------------------------------------------------------------------- | -------- | ------ |
+| 6030 | Create RoleCatalog with standard role definitions                                | High     | Medium |
+| 6031 | Create EnvelopeDeriver — generate valid child envelopes via monotonic tightening | Critical | Medium |
+| 6032 | Create OrgGenerator class — YAML input → OrgDefinition output                    | Critical | Large  |
+| 6033 | Universal agent injection — auto-inject CoordinatorAgent into every team         | High     | Medium |
+| 6034 | Add `org generate` CLI command                                                   | High     | Medium |
+| 6035 | Comprehensive tests for auto-generation                                          | High     | Large  |
 
-Frontend, seed data, end-to-end testing, and first real LLM connection.
+---
 
-| #    | Task                               | Priority | Effort |
-| ---- | ---------------------------------- | -------- | ------ |
-| 5056 | DM team dashboard page             | Medium   | Medium |
-| 5057 | DM task submission UI              | Medium   | Medium |
-| 5058 | DM-specific seed data              | Medium   | Small  |
-| 5059 | End-to-end DM execution test       | High     | Medium |
-| 5060 | Connect real LLM backend (1 agent) | Medium   | Medium |
-| 5061 | Phase C red team validation        | High     | Medium |
+## M41 — Foundation Full Org — 11 Teams (7 tasks, 3-5 days)
+
+Define the complete Terrene Foundation as an organization. Dog-food test.
+
+**Depends on**: M40
+
+| #    | Task                                                                        | Priority | Effort |
+| ---- | --------------------------------------------------------------------------- | -------- | ------ |
+| 6040 | Define Tier 1 teams: Media/DM, Standards, Governance, Partnerships, Website | Critical | Large  |
+| 6041 | Define Tier 2 teams: Community, Developer Relations, Finance                | High     | Medium |
+| 6042 | Define Tier 3 teams: Certification, Training, Legal                         | High     | Medium |
+| 6043 | Create department groupings for all 11 teams                                | High     | Medium |
+| 6044 | Define cross-team bridges between all teams                                 | High     | Medium |
+| 6045 | Foundation org full validation test suite — round-trip                      | Critical | Large  |
+| 6046 | Migrate existing Python templates to YAML in build/templates/builtin/       | Medium   | Medium |
+
+---
+
+## M42 — Known Issues / Data Wiring (4 tasks, 1-2 days)
+
+Fix the 3 known data-wiring issues plus discovered sub-issues.
+
+**Depends on**: M38 (parallel with M39-M41)
+
+| #    | Task                                                                 | Priority | Effort |
+| ---- | -------------------------------------------------------------------- | -------- | ------ |
+| 6050 | Wire verification_stats + fix \_build_platform_api() fallback        | High     | Small  |
+| 6051 | Wire AuditChain from seed data into PlatformAPI for dashboard trends | High     | Medium |
+| 6052 | Create upgrade-evidence API endpoint for PostureUpgradeWizard        | High     | Medium |
+| 6053 | Wire PostureUpgradeWizard to real upgrade-evidence API               | High     | Small  |
+
+---
+
+## M43 — Production Green-Light (5 tasks, 2-3 days)
+
+Final polish for production deployment readiness.
+
+**Depends on**: M42
+
+| #    | Task                                                                                           | Priority | Effort |
+| ---- | ---------------------------------------------------------------------------------------------- | -------- | ------ |
+| 6060 | Create 3 missing docs pages: trust-model.md, constraint-envelopes.md, verification-gradient.md | High     | Medium |
+| 6061 | Add frontend CI job (npm ci, lint, build, test) to GitHub Actions                              | High     | Medium |
+| 6062 | Add Docker Compose smoke test to CI                                                            | Medium   | Medium |
+| 6063 | Align Dockerfile port strategy (document 8080 Cloud Run vs 8000 compose)                       | Medium   | Small  |
+| 6064 | Document PyPI trusted publisher setup steps                                                    | Medium   | Small  |
 
 ---
 
 ## Dependency Graph
 
 ```
-Phase A (M12-M18)
-  M12 (Data Wiring) ──┐
-  M13 (Shadow Backend)─┤
-  M14 (Frontend Fixes)─┤── All parallel after M12
-  M15 (CI/CD) ─────────┤
-  M16 (Publishing) ────┤── Needs M15
-  M17 (Docs) ──────────┤── Independent
-  M18 (Hardening) ─────┘── Independent
-
-Phase B (M19-M22) — after Phase A
-  M19 (Validation) ────┐
-  M20 (Templates) ─────┤── Needs M19
-  M21 (CLI) ───────────┤── Independent of M20
-  M22 (Dog-fooding) ───┘── Needs M19-M21
-
-Phase C (M23-M25) — after Phase B
-  M23 (Execution) ─────┐
-  M24 (Calibration) ───┤── Needs M23
-  M25 (Dashboard+E2E) ─┘── Needs M23-M24
+M0b (Quick Wins)
+  │
+M38 (TRUST/BUILD/USE Restructure)
+  │
+  ├── M39 (Department Layer)
+  │     │
+  │     └── M40 (Auto-Generation Engine)
+  │           │
+  │           └── M41 (Foundation 11 Teams)
+  │
+  └── M42 (Known Issues) ← parallel with M39-M41
+        │
+        └── M43 (Production Green-Light)
 ```
 
 ---
 
 ## Effort Summary
 
-| Phase     | Tasks  | Small  | Medium | Large | Estimated      |
-| --------- | ------ | ------ | ------ | ----- | -------------- |
-| M0        | 1      | 1      | 0      | 0     | 1 day          |
-| A         | 30     | 13     | 16     | 0     | 2-3 weeks      |
-| B         | 21     | 6      | 11     | 3     | 3-4 weeks      |
-| C         | 13     | 3      | 8      | 1     | 4-6 weeks      |
-| **Total** | **65** | **23** | **35** | **4** | **9-13 weeks** |
+| Milestone | Tasks  | Tiny  | Small | Medium | Large  | Estimated     |
+| --------- | ------ | ----- | ----- | ------ | ------ | ------------- |
+| M0b       | 4      | 3     | 1     | 0      | 0      | 2 hours       |
+| M38       | 7      | 0     | 1     | 1      | 5      | 2-3 days      |
+| M39       | 5      | 0     | 0     | 4      | 1      | 2-3 days      |
+| M40       | 6      | 0     | 0     | 4      | 2      | 3-5 days      |
+| M41       | 7      | 0     | 0     | 4      | 2      | 3-5 days      |
+| M42       | 4      | 0     | 2     | 2      | 0      | 1-2 days      |
+| M43       | 5      | 0     | 2     | 2      | 0      | 2-3 days      |
+| **Total** | **38** | **3** | **6** | **17** | **10** | **2-3 weeks** |
 
 ---
 
-## Red Team Findings Addressed
+## Deferred
 
-17 gaps found, key ones resolved:
+- **Phase C (DM Vertical)** — M23-M25 (tasks 5049-5061) — deferred, not in scope for Phase 5.
 
-1. **CI broken** (Critical) → Extracted as M0 prerequisite
-2. **Kailash SDK deps unused** (Critical) → Move to optional extras in M0
-3. **psycopg2 missing** (Critical) → Added to M0
-4. **No integration tests exist** (Major) → Added 5013b
-5. **posture_store no API parameter** (Critical) → Scoped in 5003
-6. **No example YAML configs** (Moderate) → Added 5040b
-7. **.secrets.baseline missing** (Major) → Added to M0
+---
+
+## Superseded
+
+The previous Phase A (Polish & Deploy, M12-M18), Phase B (Org Builder, M19-M22), and Phase C (DM Vertical, M23-M25) task files have been archived to `todos/completed/` with note "Superseded by Phase 5 restructure (2026-03-18)".
+
+Prerequisite M0 task 5000 (CI path fix) was completed before this restructure.

@@ -15,8 +15,8 @@ import hmac as hmac_mod
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from care_platform.audit.anchor import AuditAnchor, AuditChain
-from care_platform.config.schema import VerificationLevel
+from care_platform.trust.audit.anchor import AuditAnchor, AuditChain
+from care_platform.build.config.schema import VerificationLevel
 
 # ---------------------------------------------------------------------------
 # Helpers

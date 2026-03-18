@@ -12,9 +12,9 @@ from __future__ import annotations
 import httpx
 import pytest
 
-import care_platform.api.server as server_module
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
+import care_platform.use.api.server as server_module
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
 
 
 @pytest.fixture(autouse=True)

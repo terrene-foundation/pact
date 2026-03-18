@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.config.env import EnvConfig, EnvConfigError, load_env_config
+from care_platform.build.config.env import EnvConfig, EnvConfigError, load_env_config
 
 
 class TestEnvConfig:

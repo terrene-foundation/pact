@@ -4,8 +4,8 @@
 
 import pytest
 
-from care_platform.workspace.bridge import BridgeStatus
-from care_platform.workspace.bridge_lifecycle import (
+from care_platform.build.workspace.bridge import BridgeStatus
+from care_platform.build.workspace.bridge_lifecycle import (
     BridgeStateMachine,
     InvalidBridgeTransitionError,
 )

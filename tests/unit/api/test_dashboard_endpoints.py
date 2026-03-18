@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.api.endpoints import (
+from care_platform.use.api.endpoints import (
     PlatformAPI,
 )
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -27,15 +27,15 @@ from care_platform.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.execution.approval import ApprovalQueue, UrgencyLevel
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.cost_tracking import CostTracker
-from care_platform.workspace.bridge import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.cost_tracking import CostTracker
+from care_platform.build.workspace.bridge import (
     BridgeManager,
     BridgePermission,
 )
-from care_platform.workspace.models import (
+from care_platform.build.workspace.models import (
     Workspace,
     WorkspacePhase,
     WorkspaceRegistry,

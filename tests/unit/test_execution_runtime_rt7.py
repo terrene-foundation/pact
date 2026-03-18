@@ -17,25 +17,25 @@ import threading
 import time
 from typing import Any
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     OperationalConstraintConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.registry import AgentRegistry
-from care_platform.execution.runtime import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.use.execution.runtime import (
     ExecutionRuntime,
     TaskExecutor,
     TaskResult,
     TaskStatus,
 )
-from care_platform.persistence.store import MemoryStore
+from care_platform.trust.store.store import MemoryStore
 from care_platform.trust.posture import TrustPosture
 from care_platform.trust.revocation import RevocationManager
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from care_platform.trust.shadow_enforcer_live import ShadowEnforcerLive
-from care_platform.verticals.dm_runner import DMTeamRunner
+from care_platform.build.verticals.dm_runner import DMTeamRunner
 
 # ---------------------------------------------------------------------------
 # Task 5053: Shadow simulation runner

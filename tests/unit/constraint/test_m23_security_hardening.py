@@ -18,19 +18,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     OperationalConstraintConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import (
+from care_platform.trust.constraint.envelope import (
     ConstraintEnvelope,
     EvaluationResult,
 )
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.constraint.middleware import (
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )
@@ -401,9 +401,9 @@ class TestInflightRevocationCheck:
 
     def test_runtime_checks_revocation_at_execution_time(self):
         """ExecutionRuntime should re-check revocation before executing a task."""
-        from care_platform.audit.anchor import AuditChain
-        from care_platform.execution.registry import AgentRegistry
-        from care_platform.execution.runtime import ExecutionRuntime, TaskStatus
+        from care_platform.trust.audit.anchor import AuditChain
+        from care_platform.use.execution.registry import AgentRegistry
+        from care_platform.use.execution.runtime import ExecutionRuntime, TaskStatus
         from care_platform.trust.revocation import RevocationManager
 
         registry = AgentRegistry()

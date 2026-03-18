@@ -39,7 +39,7 @@ from eatp.exceptions import TrustChainNotFoundError
 from eatp.operations import CapabilityRequest
 from eatp.store import TrustStore
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     GenesisConfig,

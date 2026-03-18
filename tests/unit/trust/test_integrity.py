@@ -264,7 +264,7 @@ class TestSQLiteStoreHashChain:
     """SQLiteTrustStore can store and verify delegation record hashes."""
 
     def test_store_delegation_with_hash(self):
-        from care_platform.persistence.sqlite_store import SQLiteTrustStore
+        from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
         store = SQLiteTrustStore(":memory:")
         data = {
@@ -281,7 +281,7 @@ class TestSQLiteStoreHashChain:
         assert result["previous_record_hash"] is None
 
     def test_store_delegation_chain_with_hashes(self):
-        from care_platform.persistence.sqlite_store import SQLiteTrustStore
+        from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
         store = SQLiteTrustStore(":memory:")
 
@@ -311,7 +311,7 @@ class TestSQLiteStoreHashChain:
 
     def test_verify_delegation_chain_integrity(self):
         """Build a real chain with computed hashes and verify through the store."""
-        from care_platform.persistence.sqlite_store import SQLiteTrustStore
+        from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
         store = SQLiteTrustStore(":memory:")
         integrity = TrustChainIntegrity()

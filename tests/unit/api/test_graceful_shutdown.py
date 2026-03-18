@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.api.server import create_app
-from care_platform.api.shutdown import ShutdownManager
-from care_platform.config.env import EnvConfig
+from care_platform.use.api.server import create_app
+from care_platform.use.api.shutdown import ShutdownManager
+from care_platform.build.config.env import EnvConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures

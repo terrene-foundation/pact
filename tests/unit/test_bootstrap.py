@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from care_platform.bootstrap import BootstrapResult, PlatformBootstrap
-from care_platform.config.schema import (
+from care_platform.build.bootstrap import BootstrapResult, PlatformBootstrap
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -29,7 +29,7 @@ from care_platform.config.schema import (
     TrustPostureLevel,
     WorkspaceConfig,
 )
-from care_platform.persistence.sqlite_store import SQLiteTrustStore
+from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # Fixtures

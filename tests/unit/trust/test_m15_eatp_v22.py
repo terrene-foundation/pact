@@ -17,13 +17,13 @@ import json
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
     FinancialConstraintConfig,
     OperationalConstraintConfig,
 )
-from care_platform.constraint.envelope import (
+from care_platform.trust.constraint.envelope import (
     ConstraintEnvelope,
     EvaluationResult,
 )
@@ -523,7 +523,7 @@ class TestJCSCanonical:
 
     def test_signed_envelope_uses_canonical_version(self):
         """SignedEnvelope should include canonical_version field."""
-        from care_platform.constraint.signing import SignedEnvelope
+        from care_platform.trust.constraint.signing import SignedEnvelope
 
         config = ConstraintEnvelopeConfig(
             id="test-env",
@@ -540,7 +540,7 @@ class TestJCSCanonical:
 
     def test_existing_signature_verification_still_works(self):
         """Existing signature tests should still pass after JCS migration."""
-        from care_platform.constraint.signing import SignedEnvelope
+        from care_platform.trust.constraint.signing import SignedEnvelope
 
         config = ConstraintEnvelopeConfig(
             id="test-env",

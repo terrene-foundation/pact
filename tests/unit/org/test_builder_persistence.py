@@ -13,15 +13,15 @@ Validates that:
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     TeamConfig,
     WorkspaceConfig,
 )
-from care_platform.org.builder import OrgBuilder, OrgDefinition
-from care_platform.persistence.sqlite_store import SQLiteTrustStore
-from care_platform.persistence.store import FilesystemStore, MemoryStore
+from care_platform.build.org.builder import OrgBuilder, OrgDefinition
+from care_platform.trust.store.sqlite_store import SQLiteTrustStore
+from care_platform.trust.store.store import FilesystemStore, MemoryStore
 
 
 def _make_org() -> OrgDefinition:

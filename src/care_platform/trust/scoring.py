@@ -17,7 +17,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import TrustPostureLevel
+from care_platform.build.config.schema import TrustPostureLevel
 
 
 class TrustGrade(str, Enum):

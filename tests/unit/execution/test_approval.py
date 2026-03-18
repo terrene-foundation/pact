@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.execution.approval import ApprovalQueue, PendingAction, UrgencyLevel
+from care_platform.use.execution.approval import ApprovalQueue, PendingAction, UrgencyLevel
 
 
 class TestPendingAction:

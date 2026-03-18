@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.config.loader import ConfigError, load_config, load_config_from_dict
+from care_platform.build.config.loader import ConfigError, load_config, load_config_from_dict
 
 
 class TestLoadConfigFromDict:
@@ -121,7 +121,7 @@ agents:
 
 class TestLoadConfigDefaults:
     def test_default_envelope(self):
-        from care_platform.config.defaults import default_constraint_envelope
+        from care_platform.build.config.defaults import default_constraint_envelope
 
         env = default_constraint_envelope("test-agent")
         assert env.id == "test-agent-envelope"
@@ -131,9 +131,9 @@ class TestLoadConfigDefaults:
         assert "pii" in env.data_access.blocked_data_types
 
     def test_default_gradient(self):
-        from care_platform.config.defaults import default_verification_gradient
+        from care_platform.build.config.defaults import default_verification_gradient
 
         grad = default_verification_gradient()
-        from care_platform.config.schema import VerificationLevel
+        from care_platform.build.config.schema import VerificationLevel
 
         assert grad.default_level == VerificationLevel.HELD

@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.config.schema import GenesisConfig
+from care_platform.build.config.schema import GenesisConfig
 from care_platform.trust.eatp_bridge import EATPBridge
 from care_platform.trust.genesis import GenesisManager
 

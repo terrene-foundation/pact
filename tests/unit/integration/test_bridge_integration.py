@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.workspace.bridge import (
+from care_platform.build.workspace.bridge import (
     Bridge,
     BridgeManager,
     BridgePermission,

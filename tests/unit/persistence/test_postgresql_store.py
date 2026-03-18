@@ -42,8 +42,8 @@ if _DATABASE_URL and _DATABASE_URL.startswith("postgres"):
 
 pytestmark = pytest.mark.skipif(not _pg_available, reason=_skip_reason)
 
-from care_platform.persistence.postgresql_store import PostgreSQLTrustStore
-from care_platform.persistence.store import TrustStore
+from care_platform.trust.store.postgresql_store import PostgreSQLTrustStore
+from care_platform.trust.store.store import TrustStore
 
 # ---------------------------------------------------------------------------
 # Helpers

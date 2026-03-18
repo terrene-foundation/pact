@@ -4,7 +4,7 @@
 and bridge tightening validation (M32 — Constraint Intersection).
 """
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -12,14 +12,14 @@ from care_platform.config.schema import (
     OperationalConstraintConfig,
     TemporalConstraintConfig,
 )
-from care_platform.constraint.bridge_envelope import (
+from care_platform.trust.constraint.bridge_envelope import (
     BridgeSharingPolicy,
     FieldSharingRule,
     SharingMode,
     compute_bridge_envelope,
     validate_bridge_tightening,
 )
-from care_platform.workspace.bridge import BridgePermission
+from care_platform.build.workspace.bridge import BridgePermission
 
 
 def _make_envelope(id: str = "test", **kwargs) -> ConstraintEnvelopeConfig:

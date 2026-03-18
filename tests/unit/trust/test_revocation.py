@@ -346,7 +346,7 @@ class TestRevocationPersistence:
 
     def test_surgical_revoke_persists_to_store(self):
         """surgical_revoke() writes to TrustStore when trust_store is set."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         rev_mgr = RevocationManager(trust_store=store)
@@ -361,7 +361,7 @@ class TestRevocationPersistence:
 
     def test_cascade_revoke_persists_to_store(self):
         """cascade_revoke() writes to TrustStore when trust_store is set."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         rev_mgr = RevocationManager(trust_store=store)
@@ -384,7 +384,7 @@ class TestRevocationPersistence:
 
     def test_is_revoked_checks_store_when_not_in_memory(self):
         """is_revoked() falls back to TrustStore if not found in memory."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         # Pre-populate the store with a revocation record (simulating restart)
@@ -409,7 +409,7 @@ class TestRevocationPersistence:
 
     def test_is_revoked_checks_store_affected_agents(self):
         """is_revoked() checks affected_agents in store records too."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_revocation(
@@ -436,7 +436,7 @@ class TestRevocationHydration:
 
     def test_hydrate_loads_existing_revocations(self):
         """On init, RevocationManager loads existing records from the store."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_revocation(
@@ -462,7 +462,7 @@ class TestRevocationHydration:
 
     def test_hydrate_multiple_records(self):
         """Hydration loads all revocation records from the store."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         for i in range(3):
@@ -487,7 +487,7 @@ class TestRevocationHydration:
 
     def test_hydrate_then_new_revocation_appends(self):
         """New revocations after hydration append to the log (no duplicates)."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_revocation(

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import yaml
 
-from care_platform.org.builder import OrgBuilder, OrgDefinition, OrgTemplate
+from care_platform.build.org.builder import OrgBuilder, OrgDefinition, OrgTemplate
 
 
 class TestFoundationOrgRoundTrip:
@@ -106,7 +106,7 @@ class TestFoundationOrgRoundTrip:
 
     def test_builder_save_and_load(self):
         """OrgBuilder.save() and OrgBuilder.load() must round-trip."""
-        from care_platform.persistence.store import MemoryStore
+        from care_platform.trust.store.store import MemoryStore
 
         org = OrgTemplate.minimal_template("Save Load Test")
         store = MemoryStore()
@@ -121,7 +121,7 @@ class TestFoundationOrgRoundTrip:
 
     def test_from_config_round_trip(self):
         """OrgBuilder.from_config() must produce equivalent org from PlatformConfig."""
-        from care_platform.config.loader import load_config
+        from care_platform.build.config.loader import load_config
 
         # Load the default config
         try:

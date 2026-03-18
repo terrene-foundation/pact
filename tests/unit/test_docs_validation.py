@@ -9,7 +9,7 @@ This ensures documentation stays accurate as the code evolves.
 
 from datetime import UTC, datetime
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintDimension,
@@ -260,7 +260,7 @@ class TestGradientEngineInstantiation:
 
     def test_classify_returns_verification_result(self):
         from care_platform import GradientEngine
-        from care_platform.constraint.gradient import VerificationResult
+        from care_platform.trust.constraint.gradient import VerificationResult
 
         engine = GradientEngine(
             config=VerificationGradientConfig(

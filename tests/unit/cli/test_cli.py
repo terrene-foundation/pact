@@ -44,14 +44,14 @@ version: "1.0"
 
 class TestCLIVersion:
     def test_version_flag(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
         assert "0.1.0" in result.output
 
     def test_version_shows_care_platform(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["--version"])
         assert "care-platform" in result.output.lower() or "0.1.0" in result.output
@@ -59,7 +59,7 @@ class TestCLIVersion:
 
 class TestCLIHelp:
     def test_help_flag(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
@@ -67,7 +67,7 @@ class TestCLIHelp:
         assert "status" in result.output
 
     def test_validate_help(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["validate", "--help"])
         assert result.exit_code == 0
@@ -75,26 +75,26 @@ class TestCLIHelp:
 
 class TestCLIValidate:
     def test_validate_valid_config(self, runner, valid_config_file):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["validate", str(valid_config_file)])
         assert result.exit_code == 0
         assert "valid" in result.output.lower() or "ok" in result.output.lower()
 
     def test_validate_invalid_config(self, runner, invalid_config_file):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["validate", str(invalid_config_file)])
         assert result.exit_code != 0
 
     def test_validate_nonexistent_file(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["validate", "/nonexistent/path/config.yaml"])
         assert result.exit_code != 0
 
     def test_validate_example_config(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         example_path = Path(__file__).parents[3] / "examples" / "care-config.yaml"
         if example_path.exists():
@@ -102,7 +102,7 @@ class TestCLIValidate:
             assert result.exit_code == 0
 
     def test_validate_minimal_config(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         example_path = Path(__file__).parents[3] / "examples" / "minimal-config.yaml"
         if example_path.exists():
@@ -110,7 +110,7 @@ class TestCLIValidate:
             assert result.exit_code == 0
 
     def test_validate_shows_details_on_success(self, runner, valid_config_file):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["validate", str(valid_config_file)])
         assert result.exit_code == 0
@@ -120,13 +120,13 @@ class TestCLIValidate:
 
 class TestCLIStatus:
     def test_status_command_exists(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["status"])
         assert result.exit_code == 0
 
     def test_status_shows_no_active_workspaces(self, runner):
-        from care_platform.cli import main
+        from care_platform.build.cli import main
 
         result = runner.invoke(main, ["status"])
         assert "no active workspaces" in result.output.lower()
@@ -134,7 +134,7 @@ class TestCLIStatus:
 
 class TestCLIModuleExecutable:
     def test_cli_module_importable(self):
-        """Verify care_platform.cli is importable and has main."""
-        from care_platform.cli import main
+        """Verify care_platform.build.cli is importable and has main."""
+        from care_platform.build.cli import main
 
         assert callable(main)

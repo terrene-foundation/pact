@@ -24,14 +24,14 @@ class TestConfigureLoggingFormat:
 
     def test_default_format_is_console(self):
         """Without CARE_LOG_FORMAT set, output should be human-readable (console)."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         logger = configure_logging()
         assert logger is not None
 
     def test_json_format_produces_valid_json(self):
         """CARE_LOG_FORMAT=json should produce parseable JSON lines."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         logger = configure_logging(log_format="json")
         assert logger is not None
@@ -55,14 +55,14 @@ class TestConfigureLoggingFormat:
 
     def test_console_format_is_not_json(self):
         """CARE_LOG_FORMAT=console should produce human-readable output, not JSON."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         logger = configure_logging(log_format="console")
         assert logger is not None
 
     def test_configure_logging_returns_bound_logger(self):
         """configure_logging() should return a structlog BoundLogger."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         logger = configure_logging()
         # structlog bound loggers have bind/unbind methods
@@ -73,21 +73,21 @@ class TestConfigureLoggingFormat:
 
     def test_configure_logging_invalid_format_raises(self):
         """An unrecognized log format should raise a ValueError, not silently default."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         with pytest.raises(ValueError, match="log_format"):
             configure_logging(log_format="xml")
 
     def test_configure_logging_accepts_level(self):
         """configure_logging() should accept and apply a log level."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         logger = configure_logging(level="DEBUG")
         assert logger is not None
 
     def test_structlog_is_configured_globally(self):
         """After configure_logging(), structlog.get_logger() should work."""
-        from care_platform.observability.logging import configure_logging
+        from care_platform.use.observability.logging import configure_logging
 
         configure_logging(log_format="console")
         sl = structlog.get_logger("care_platform.test")
@@ -99,14 +99,14 @@ class TestEnvConfigLogFormat:
 
     def test_log_format_default_is_console(self):
         """log_format should default to 'console' when CARE_LOG_FORMAT is not set."""
-        from care_platform.config.env import EnvConfig
+        from care_platform.build.config.env import EnvConfig
 
         config = EnvConfig()
         assert config.log_format == "console"
 
     def test_log_format_from_env(self):
         """log_format should read CARE_LOG_FORMAT from environment."""
-        from care_platform.config.env import load_env_config
+        from care_platform.build.config.env import load_env_config
 
         with patch.dict(
             os.environ,
@@ -121,7 +121,7 @@ class TestEnvConfigLogFormat:
 
     def test_log_format_preserves_value(self):
         """EnvConfig should store the exact value of CARE_LOG_FORMAT."""
-        from care_platform.config.env import EnvConfig
+        from care_platform.build.config.env import EnvConfig
 
         config = EnvConfig(log_format="json")
         assert config.log_format == "json"
@@ -132,7 +132,7 @@ class TestCareLogProcessorWithStructlog:
 
     def test_processor_enriches_with_correlation_id(self):
         """CareLogProcessor should still add correlation_id from context."""
-        from care_platform.observability.logging import (
+        from care_platform.use.observability.logging import (
             CareLogProcessor,
             correlation_context,
         )
@@ -147,7 +147,7 @@ class TestCareLogProcessorWithStructlog:
 
     def test_processor_enriches_with_agent_id(self):
         """CareLogProcessor should still add agent_id from context."""
-        from care_platform.observability.logging import (
+        from care_platform.use.observability.logging import (
             CareLogProcessor,
             agent_context,
         )

@@ -35,7 +35,7 @@ from eatp.postures import (
 )
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import TrustPostureLevel
+from care_platform.build.config.schema import TrustPostureLevel
 
 logger = logging.getLogger(__name__)
 

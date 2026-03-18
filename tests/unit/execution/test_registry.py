@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.execution.registry import AgentRecord, AgentRegistry, AgentStatus
+from care_platform.use.execution.registry import AgentRecord, AgentRegistry, AgentStatus
 
 
 class TestAgentStatus:

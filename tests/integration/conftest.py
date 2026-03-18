@@ -21,15 +21,15 @@ import pytest_asyncio
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from care_platform.api.endpoints import PlatformAPI
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.cost_tracking import CostTracker
-from care_platform.persistence.posture_history import PostureHistoryStore
-from care_platform.workspace.bridge import BridgeManager
-from care_platform.workspace.models import WorkspaceRegistry
+from care_platform.use.api.endpoints import PlatformAPI
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.cost_tracking import CostTracker
+from care_platform.trust.store.posture_history import PostureHistoryStore
+from care_platform.build.workspace.bridge import BridgeManager
+from care_platform.build.workspace.models import WorkspaceRegistry
 from scripts.seed_demo import (
     seed_agents,
     seed_audit_anchors,
@@ -131,7 +131,7 @@ async def client(platform_api: PlatformAPI, dev_env_config: EnvConfig) -> AsyncG
     Uses httpx.AsyncClient with ASGITransport to test FastAPI endpoints
     without running a real server.
     """
-    import care_platform.api.server as server_module
+    import care_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None
@@ -151,7 +151,7 @@ async def auth_client(platform_api: PlatformAPI, auth_env_config: EnvConfig) -> 
     Uses httpx.AsyncClient with ASGITransport. Requests must include
     a valid Bearer token to access protected endpoints.
     """
-    import care_platform.api.server as server_module
+    import care_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None

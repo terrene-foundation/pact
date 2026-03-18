@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -23,9 +23,9 @@ from care_platform.config.schema import (
     OperationalConstraintConfig,
     TemporalConstraintConfig,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.approver_auth import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.approver_auth import (
     ApproverRegistry,
     AuthenticatedApprovalQueue,
     SignedDecision,

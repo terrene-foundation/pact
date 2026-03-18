@@ -5,19 +5,19 @@
 import pytest
 from eatp.enforce.strict import EATPBlockedError, EATPHeldError, HeldBehavior, Verdict
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.enforcement import (
+from care_platform.trust.constraint.enforcement import (
     CareEnforcementPipeline,
     EnforcementResult,
     care_result_to_eatp_result,
     verdict_to_care_level,
 )
-from care_platform.constraint.gradient import GradientEngine, VerificationResult
-from care_platform.constraint.verification_level import VerificationThoroughness
+from care_platform.trust.constraint.gradient import GradientEngine, VerificationResult
+from care_platform.trust.constraint.verification_level import VerificationThoroughness
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -295,7 +295,7 @@ class TestApprovalHeldCallback:
 
         from eatp.chain import VerificationResult as EATPResult
 
-        from care_platform.constraint.enforcement import create_approval_held_callback
+        from care_platform.trust.constraint.enforcement import create_approval_held_callback
 
         mock_queue = MagicMock()
         callback = create_approval_held_callback(mock_queue)
@@ -316,7 +316,7 @@ class TestApprovalHeldCallback:
 
         from eatp.chain import VerificationResult as EATPResult
 
-        from care_platform.constraint.enforcement import create_approval_held_callback
+        from care_platform.trust.constraint.enforcement import create_approval_held_callback
 
         mock_queue = MagicMock()
         mock_queue.submit.side_effect = RuntimeError("Queue full")

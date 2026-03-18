@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from care_platform.workspace.bridge import BridgeType
+from care_platform.build.workspace.bridge import BridgeType
 
 logger = logging.getLogger(__name__)
 
@@ -314,7 +314,7 @@ async def _create_bridge_delegation_record(
     Returns:
         An EATP DelegationRecord for this side of the bridge.
     """
-    from care_platform.config.schema import (
+    from care_platform.build.config.schema import (
         AgentConfig,
         CommunicationConstraintConfig,
         ConstraintEnvelopeConfig,

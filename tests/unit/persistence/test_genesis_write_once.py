@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.persistence.sqlite_store import (
+from care_platform.trust.store.sqlite_store import (
     GenesisAlreadyExistsError,
     SQLiteTrustStore,
 )

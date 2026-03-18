@@ -14,7 +14,7 @@ Mapping from effective posture to CARE verification gradient level:
 
 from __future__ import annotations
 
-from care_platform.config.schema import TrustPostureLevel, VerificationLevel
+from care_platform.build.config.schema import TrustPostureLevel, VerificationLevel
 from care_platform.trust.posture import POSTURE_ORDER
 
 

@@ -11,7 +11,7 @@ Tests the `care-platform org` subcommand group with:
 import pytest
 from click.testing import CliRunner
 
-from care_platform.cli import main
+from care_platform.build.cli import main
 
 # ---------------------------------------------------------------------------
 # Fixtures

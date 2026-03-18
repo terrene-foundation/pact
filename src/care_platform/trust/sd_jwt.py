@@ -23,7 +23,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import ConfidentialityLevel
+from care_platform.build.config.schema import ConfidentialityLevel
 from care_platform.trust.jcs import canonical_hash
 
 # Numeric ordering for confidentiality comparisons.

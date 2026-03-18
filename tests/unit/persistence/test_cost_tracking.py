@@ -5,7 +5,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from care_platform.persistence.cost_tracking import (
+from care_platform.trust.store.cost_tracking import (
     ApiCostRecord,
     CostTracker,
 )

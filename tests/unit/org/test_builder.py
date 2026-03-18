@@ -12,7 +12,7 @@ temporal/data path consistency, multi-team validation, and severity levels.
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -28,7 +28,7 @@ from care_platform.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from care_platform.org.builder import (
+from care_platform.build.org.builder import (
     OrgBuilder,
     OrgDefinition,
     OrgTemplate,

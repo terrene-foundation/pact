@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.persistence.posture_history import (
+from care_platform.trust.store.posture_history import (
     EligibilityResult,
     PostureChangeRecord,
     PostureChangeTrigger,

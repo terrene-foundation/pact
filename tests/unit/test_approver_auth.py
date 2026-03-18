@@ -18,8 +18,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.approver_auth import (
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.approver_auth import (
     ApproverRegistry,
     AuthenticatedApprovalQueue,
     SignedDecision,
@@ -495,7 +495,7 @@ class TestReplayProtection:
         # The simplest approach: create one with the correct fields.
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey as _PK
 
-        from care_platform.execution.approver_auth import _serialize_decision_for_signing
+        from care_platform.use.execution.approver_auth import _serialize_decision_for_signing
 
         old_time = datetime.now(UTC) - timedelta(seconds=120)
         nonce = signed.nonce
@@ -544,7 +544,7 @@ class TestApprovalAuditChainRecording:
 
     def test_approve_records_audit_anchor(self):
         """When audit_chain is provided, approve() should append an audit anchor."""
-        from care_platform.audit.anchor import AuditChain
+        from care_platform.trust.audit.anchor import AuditChain
 
         priv, pub = _generate_keypair()
         registry = ApproverRegistry()
@@ -581,7 +581,7 @@ class TestApprovalAuditChainRecording:
 
     def test_reject_records_audit_anchor(self):
         """When audit_chain is provided, reject() should append an audit anchor."""
-        from care_platform.audit.anchor import AuditChain
+        from care_platform.trust.audit.anchor import AuditChain
 
         priv, pub = _generate_keypair()
         registry = ApproverRegistry()

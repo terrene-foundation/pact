@@ -18,11 +18,11 @@ from typing import TYPE_CHECKING
 from eatp.chain import DelegationRecord
 from pydantic import BaseModel, Field
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
 )
-from care_platform.constraint.envelope import _is_time_window_tighter, _paths_covered_by
+from care_platform.trust.constraint.envelope import _is_time_window_tighter, _paths_covered_by
 from care_platform.trust.eatp_bridge import EATPBridge
 from care_platform.trust.lifecycle import TrustChainState, TrustChainStateMachine
 

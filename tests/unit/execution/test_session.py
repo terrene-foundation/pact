@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from care_platform.execution.session import (
+from care_platform.use.execution.session import (
     PlatformSession,
     SessionCheckpoint,
     SessionManager,

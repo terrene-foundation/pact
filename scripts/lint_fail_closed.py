@@ -25,9 +25,9 @@ from pathlib import Path
 # Directories to scan
 SCAN_DIRS = [
     "src/care_platform/trust",
-    "src/care_platform/constraint",
-    "src/care_platform/audit",
-    "src/care_platform/persistence",
+    "src/care_platform/trust/constraint",
+    "src/care_platform/trust/audit",
+    "src/care_platform/trust/store",
 ]
 
 # Files exempt from fail-closed requirement (intentional fail-open)
@@ -35,6 +35,7 @@ EXEMPT_FILES = {
     "shadow_enforcer.py",  # Observational — never blocks by design
     "shadow_enforcer_live.py",  # Live shadow — same exemption
     "decorators.py",  # Shadow decorator has intentional fail-open for observation
+    "firebase_admin.py",  # Auth helper — intentional ValueError catch on init
 }
 
 # Patterns that indicate fail-open violations

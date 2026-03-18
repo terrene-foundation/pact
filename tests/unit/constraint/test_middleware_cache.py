@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -22,10 +22,10 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.cache import VerificationCache
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.constraint.middleware import (
+from care_platform.trust.constraint.cache import VerificationCache
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )

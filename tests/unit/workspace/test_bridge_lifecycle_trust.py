@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from care_platform.workspace.bridge import (
+from care_platform.build.workspace.bridge import (
     Bridge,
     BridgeManager,
     BridgePermission,

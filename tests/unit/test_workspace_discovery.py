@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from care_platform.workspace.discovery import (
+from care_platform.build.workspace.discovery import (
     WorkspaceDiscovery,
     WorkspaceManifest,
 )

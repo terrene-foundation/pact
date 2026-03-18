@@ -9,9 +9,9 @@ structure match expectations.
 
 import pytest
 
-from care_platform.config.schema import ConstraintEnvelopeConfig
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.org.builder import OrgTemplate
+from care_platform.build.config.schema import ConstraintEnvelopeConfig
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.build.org.builder import OrgTemplate
 
 # ---------------------------------------------------------------------------
 # Fixtures

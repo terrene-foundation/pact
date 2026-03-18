@@ -14,8 +14,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from care_platform.api.server import SecurityHeadersMiddleware, create_app
-from care_platform.config.env import EnvConfig
+from care_platform.use.api.server import SecurityHeadersMiddleware, create_app
+from care_platform.build.config.env import EnvConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures

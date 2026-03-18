@@ -14,21 +14,21 @@ Tests cover:
 
 import pytest
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     TrustPostureLevel,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.llm_backend import (
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.llm_backend import (
     BackendRouter,
     StubBackend,
 )
-from care_platform.execution.posture_enforcer import PostureEnforcer
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.store import MemoryStore
+from care_platform.use.execution.posture_enforcer import PostureEnforcer
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.store import MemoryStore
 from care_platform.trust.posture import TrustPosture
 
 # ---------------------------------------------------------------------------

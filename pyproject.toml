@@ -91,7 +91,7 @@ dev = [
 ]
 
 [project.scripts]
-care-platform = "care_platform.cli:main"
+care-platform = "care_platform.build.cli:main"
 
 [project.urls]
 "Homepage" = "https://github.com/terrene-foundation/care"

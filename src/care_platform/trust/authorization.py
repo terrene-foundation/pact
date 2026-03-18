@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from care_platform.constraint.envelope import ConstraintEnvelope
     from care_platform.trust.attestation import CapabilityAttestation
+    from care_platform.trust.constraint.envelope import ConstraintEnvelope
 
 logger = logging.getLogger(__name__)
 

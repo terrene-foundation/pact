@@ -27,7 +27,7 @@ import logging
 import threading
 from dataclasses import dataclass
 
-from care_platform.config.schema import TrustPostureLevel, VerificationLevel
+from care_platform.build.config.schema import TrustPostureLevel, VerificationLevel
 
 logger = logging.getLogger(__name__)
 

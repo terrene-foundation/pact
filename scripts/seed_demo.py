@@ -27,7 +27,7 @@ from uuid import uuid4
 # ---------------------------------------------------------------------------
 # CARE Platform imports
 # ---------------------------------------------------------------------------
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -38,16 +38,16 @@ from care_platform.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from care_platform.execution.approval import ApprovalQueue, UrgencyLevel
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.cost_tracking import ApiCostRecord, CostTracker
-from care_platform.persistence.posture_history import (
+from care_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
+from care_platform.trust.store.posture_history import (
     PostureChangeRecord,
     PostureChangeTrigger,
     PostureHistoryStore,
 )
-from care_platform.workspace.bridge import BridgeManager, BridgePermission
-from care_platform.workspace.models import (
+from care_platform.build.workspace.bridge import BridgeManager, BridgePermission
+from care_platform.build.workspace.models import (
     Workspace,
     WorkspacePhase,
     WorkspaceRegistry,
@@ -94,7 +94,7 @@ TEAMS = {
 }
 
 AGENTS = [
-    # dm-team (canonical agents from care_platform.verticals.dm_team)
+    # dm-team (canonical agents from care_platform.build.verticals.dm_team)
     {
         "agent_id": "dm-team-lead",
         "name": "DM Team Lead",
@@ -294,7 +294,7 @@ AGENTS = [
 def _build_envelopes() -> dict[str, ConstraintEnvelopeConfig]:
     """Build constraint envelopes keyed by agent_id."""
     return {
-        # --- dm-team (canonical envelopes from care_platform.verticals.dm_team) ---
+        # --- dm-team (canonical envelopes from care_platform.build.verticals.dm_team) ---
         "dm-team-lead": ConstraintEnvelopeConfig(
             id="env-dm-team-lead",
             description="DM Team Lead: broadest authority within DM, $0 spend, internal-only",
@@ -1649,8 +1649,8 @@ def seed_shadow_evaluations() -> ShadowEnforcer:
     Returns:
         A fully populated ShadowEnforcer instance.
     """
-    from care_platform.constraint.envelope import ConstraintEnvelope
-    from care_platform.constraint.gradient import GradientEngine
+    from care_platform.trust.constraint.envelope import ConstraintEnvelope
+    from care_platform.trust.constraint.gradient import GradientEngine
     from care_platform.trust.shadow_enforcer import ShadowEnforcer
 
     # Build a permissive envelope for seeding — most actions pass cleanly
@@ -1686,7 +1686,7 @@ def seed_shadow_evaluations() -> ShadowEnforcer:
     envelope = ConstraintEnvelope(config=envelope_config)
 
     # Use a gradient engine that defaults to AUTO_APPROVED (most actions pass)
-    from care_platform.config.schema import GradientRuleConfig, VerificationGradientConfig
+    from care_platform.build.config.schema import GradientRuleConfig, VerificationGradientConfig
 
     gradient_config = VerificationGradientConfig(
         rules=[
@@ -1965,7 +1965,7 @@ def seed_dm_runner_tasks():
     Returns:
         The DMTeamRunner instance with completed tasks and calibration data.
     """
-    from care_platform.verticals.dm_runner import DMTeamRunner
+    from care_platform.build.verticals.dm_runner import DMTeamRunner
 
     runner = DMTeamRunner()
 

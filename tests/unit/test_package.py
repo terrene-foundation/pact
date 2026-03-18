@@ -12,16 +12,16 @@ def test_package_imports():
 
 def test_submodules_importable():
     """Verify all submodules are importable."""
-    import care_platform.audit
-    import care_platform.config
-    import care_platform.constraint
-    import care_platform.execution
+    import care_platform.trust.audit
+    import care_platform.build.config
+    import care_platform.trust.constraint
+    import care_platform.use.execution
     import care_platform.trust
-    import care_platform.workspace
+    import care_platform.build.workspace
 
     assert care_platform.trust is not None
-    assert care_platform.constraint is not None
-    assert care_platform.execution is not None
-    assert care_platform.audit is not None
-    assert care_platform.workspace is not None
-    assert care_platform.config is not None
+    assert care_platform.trust.constraint is not None
+    assert care_platform.use.execution is not None
+    assert care_platform.trust.audit is not None
+    assert care_platform.build.workspace is not None
+    assert care_platform.build.config is not None

@@ -12,12 +12,12 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from care_platform.api.endpoints import PlatformAPI
-from care_platform.api.server import create_app
-from care_platform.config.env import EnvConfig
-from care_platform.execution.registry import AgentRegistry
-from care_platform.persistence.cost_tracking import CostTracker
-from care_platform.verticals.dm_runner import DMTeamRunner
+from care_platform.use.api.endpoints import PlatformAPI
+from care_platform.use.api.server import create_app
+from care_platform.build.config.env import EnvConfig
+from care_platform.use.execution.registry import AgentRegistry
+from care_platform.trust.store.cost_tracking import CostTracker
+from care_platform.build.verticals.dm_runner import DMTeamRunner
 
 
 def _make_dev_env() -> EnvConfig:

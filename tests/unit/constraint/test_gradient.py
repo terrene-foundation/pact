@@ -2,13 +2,13 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for the verification gradient engine."""
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import EnvelopeEvaluation, EvaluationResult
-from care_platform.constraint.gradient import (
+from care_platform.trust.constraint.envelope import EnvelopeEvaluation, EvaluationResult
+from care_platform.trust.constraint.gradient import (
     GradientEngine,
     VerificationThoroughness,
 )

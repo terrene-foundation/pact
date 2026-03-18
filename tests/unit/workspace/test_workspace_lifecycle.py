@@ -4,8 +4,8 @@
 
 import pytest
 
-from care_platform.config.schema import WorkspaceConfig
-from care_platform.workspace.models import (
+from care_platform.build.config.schema import WorkspaceConfig
+from care_platform.build.workspace.models import (
     InvalidWorkspaceTransitionError,
     Workspace,
     WorkspacePhase,

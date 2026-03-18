@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for trust scoring model."""
 
-from care_platform.config.schema import TrustPostureLevel
+from care_platform.build.config.schema import TrustPostureLevel
 from care_platform.trust.scoring import (
     TrustFactors,
     TrustGrade,

@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.execution.llm_backend import (
+from care_platform.use.execution.llm_backend import (
     BackendRouter,
     LLMProvider,
     LLMRequest,

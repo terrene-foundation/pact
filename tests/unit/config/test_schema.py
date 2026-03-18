@@ -5,7 +5,7 @@
 import pytest
 from pydantic import ValidationError
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,

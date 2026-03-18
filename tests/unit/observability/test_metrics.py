@@ -14,7 +14,7 @@ Validates that:
 
 import pytest
 
-from care_platform.observability.metrics import (
+from care_platform.use.observability.metrics import (
     ACTIVE_AGENTS,
     APPROVAL_QUEUE_DEPTH,
     REQUEST_DURATION,
@@ -142,8 +142,8 @@ class TestMetricsEndpointInServer:
 
         from httpx import ASGITransport, AsyncClient
 
-        from care_platform.api.server import create_app
-        from care_platform.config.env import load_env_config
+        from care_platform.use.api.server import create_app
+        from care_platform.build.config.env import load_env_config
 
         env_config = load_env_config(load_dotenv=False)
         app = create_app(env_config=env_config)

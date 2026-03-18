@@ -34,14 +34,14 @@ from eatp.revocation.broadcaster import (
 )
 from pydantic import BaseModel, Field
 
-from care_platform.persistence.store import TrustStore
 from care_platform.trust.credentials import CredentialManager
+from care_platform.trust.store.store import TrustStore
 
 if TYPE_CHECKING:
-    from care_platform.constraint.cache import VerificationCache
+    from care_platform.build.workspace.bridge import BridgeManager
     from care_platform.trust.bridge_trust import BridgeTrustManager
+    from care_platform.trust.constraint.cache import VerificationCache
     from care_platform.trust.eatp_bridge import EATPBridge
-    from care_platform.workspace.bridge import BridgeManager
 
 logger = logging.getLogger(__name__)
 

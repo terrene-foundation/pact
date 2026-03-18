@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 # in config.schema to break a circular import chain. Re-export here so
 # existing callers that import from care_platform.trust.reasoning continue
 # to work. Do NOT redefine — use the canonical single source of truth.
-from care_platform.config.schema import (  # noqa: F401
+from care_platform.build.config.schema import (  # noqa: F401
     _CONFIDENTIALITY_ORDER,
     ConfidentialityLevel,
 )

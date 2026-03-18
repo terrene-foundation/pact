@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from care_platform.config.loader import load_config
+from care_platform.build.config.loader import load_config
 
 EXAMPLES_DIR = Path(__file__).parents[3] / "examples"
 

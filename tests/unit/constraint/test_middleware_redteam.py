@@ -11,8 +11,8 @@ Covers RT-03, RT-05, RT-08, RT-09 findings:
 
 from datetime import UTC, datetime, timedelta
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -22,13 +22,13 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.constraint.middleware import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )
-from care_platform.execution.approval import ApprovalQueue
+from care_platform.use.execution.approval import ApprovalQueue
 
 # ---------------------------------------------------------------------------
 # Helpers

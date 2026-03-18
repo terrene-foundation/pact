@@ -19,8 +19,8 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from care_platform.cli import main
-from care_platform.org.builder import OrgDefinition, OrgTemplate
+from care_platform.build.cli import main
+from care_platform.build.org.builder import OrgDefinition, OrgTemplate
 
 # ---------------------------------------------------------------------------
 # Fixtures

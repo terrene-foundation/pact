@@ -10,8 +10,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -23,12 +23,12 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import (
+from care_platform.trust.constraint.envelope import (
     ConstraintEnvelope,
     EnvelopeEvaluation,
     EvaluationResult,
 )
-from care_platform.constraint.gradient import (
+from care_platform.trust.constraint.gradient import (
     GradientEngine,
     VerificationThoroughness,
 )

@@ -15,14 +15,14 @@ Validates that:
 
 import pytest
 
-from care_platform.persistence.migrations import (
+from care_platform.trust.store.migrations import (
     Migration,
     MigrationError,
     current_version,
     get_pending_migrations,
     migrate,
 )
-from care_platform.persistence.sqlite_store import SQLiteTrustStore
+from care_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -214,7 +214,7 @@ class TestMigrationErrors:
         )
         with pytest.raises(MigrationError):
             # We test by directly applying a bad migration
-            from care_platform.persistence.migrations import _apply_migration
+            from care_platform.trust.store.migrations import _apply_migration
 
             _apply_migration(sqlite_store, bad_migration)
 
@@ -226,7 +226,7 @@ class TestMigrationErrors:
             sql_statements=["INVALID SQL GARBAGE"],
         )
         try:
-            from care_platform.persistence.migrations import _apply_migration
+            from care_platform.trust.store.migrations import _apply_migration
 
             _apply_migration(sqlite_store, bad_migration)
             pytest.fail("Should have raised MigrationError")

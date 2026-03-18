@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     GradientRuleConfig,
@@ -15,8 +15,8 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
 from care_platform.trust.posture import UPGRADE_REQUIREMENTS
 from care_platform.trust.shadow_enforcer import (
     ShadowEnforcer,
@@ -403,7 +403,7 @@ class TestPostureEvidenceConversion:
 
     def test_evidence_compatible_with_upgrade_requirements(self):
         """PostureEvidence fields match what UPGRADE_REQUIREMENTS expects."""
-        from care_platform.config.schema import TrustPostureLevel
+        from care_platform.build.config.schema import TrustPostureLevel
 
         # Verify requirements exist for SHARED_PLANNING (first upgrade target)
         assert TrustPostureLevel.SHARED_PLANNING in UPGRADE_REQUIREMENTS

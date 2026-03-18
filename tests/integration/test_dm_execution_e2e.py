@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import pytest
 
-from care_platform.config.schema import VerificationLevel
-from care_platform.verticals.dm_runner import DMTeamRunner
+from care_platform.build.config.schema import VerificationLevel
+from care_platform.build.verticals.dm_runner import DMTeamRunner
 
 
 class TestDMExecutionE2E:

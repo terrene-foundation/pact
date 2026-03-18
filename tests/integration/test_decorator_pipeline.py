@@ -9,7 +9,7 @@ end-to-end with real EATP SDK components (no mocks).
 
 import pytest
 
-from care_platform.config.schema import (
+from care_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,

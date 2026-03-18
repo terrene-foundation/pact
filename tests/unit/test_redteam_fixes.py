@@ -8,8 +8,8 @@ the behavioral change introduced by the fix.
 
 import pytest
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     GradientRuleConfig,
@@ -18,10 +18,10 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.constraint.middleware import ActionOutcome, VerificationMiddleware
-from care_platform.constraint.verification_level import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.trust.constraint.middleware import ActionOutcome, VerificationMiddleware
+from care_platform.trust.constraint.verification_level import (
     VerificationThoroughness,
     select_verification_level,
 )
@@ -307,7 +307,7 @@ class TestRT31VerificationThoroughness:
 
     def test_gradient_uses_same_thoroughness(self):
         """GradientEngine must use the same VerificationThoroughness class."""
-        from care_platform.constraint.gradient import (
+        from care_platform.trust.constraint.gradient import (
             VerificationThoroughness as GradientVT,
         )
 

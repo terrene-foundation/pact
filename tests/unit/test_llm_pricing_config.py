@@ -18,14 +18,14 @@ class TestOpenAIPricingConfig:
 
     def test_default_pricing_exists(self):
         """Default pricing should be present for known models."""
-        from care_platform.execution.backends.openai_backend import _OPENAI_PRICING
+        from care_platform.use.execution.backends.openai_backend import _OPENAI_PRICING
 
         assert "gpt-4o" in _OPENAI_PRICING
         assert "gpt-4o-mini" in _OPENAI_PRICING
 
     def test_default_pricing_values_match_original(self):
         """Default pricing values should match the original hardcoded values."""
-        from care_platform.execution.backends.openai_backend import _OPENAI_PRICING
+        from care_platform.use.execution.backends.openai_backend import _OPENAI_PRICING
 
         input_price, output_price = _OPENAI_PRICING["gpt-4o"]
         expected_input = Decimal("2.5") / Decimal("1000000")
@@ -48,7 +48,7 @@ class TestOpenAIPricingConfig:
         # Re-import to pick up the env var
         import importlib
 
-        import care_platform.execution.backends.openai_backend as mod
+        import care_platform.use.execution.backends.openai_backend as mod
 
         importlib.reload(mod)
 
@@ -68,7 +68,7 @@ class TestOpenAIPricingConfig:
 
         import importlib
 
-        import care_platform.execution.backends.openai_backend as mod
+        import care_platform.use.execution.backends.openai_backend as mod
 
         importlib.reload(mod)
 
@@ -81,9 +81,9 @@ class TestOpenAIPricingConfig:
 
     def test_estimate_cost_uses_pricing(self):
         """estimate_cost should use the configured pricing dict."""
-        from care_platform.config.env import EnvConfig
-        from care_platform.execution.backends.openai_backend import OpenAIBackend
-        from care_platform.execution.llm_backend import LLMResponse
+        from care_platform.build.config.env import EnvConfig
+        from care_platform.use.execution.backends.openai_backend import OpenAIBackend
+        from care_platform.use.execution.llm_backend import LLMResponse
 
         cfg = EnvConfig(care_dev_mode=True, openai_api_key="test-key")
         backend = OpenAIBackend(cfg)
@@ -106,14 +106,14 @@ class TestAnthropicPricingConfig:
 
     def test_default_pricing_exists(self):
         """Default pricing should be present for known models."""
-        from care_platform.execution.backends.anthropic_backend import _ANTHROPIC_PRICING
+        from care_platform.use.execution.backends.anthropic_backend import _ANTHROPIC_PRICING
 
         assert "claude-sonnet-4" in _ANTHROPIC_PRICING
         assert "claude-opus-4" in _ANTHROPIC_PRICING
 
     def test_default_pricing_values_match_original(self):
         """Default pricing values should match the original hardcoded values."""
-        from care_platform.execution.backends.anthropic_backend import _ANTHROPIC_PRICING
+        from care_platform.use.execution.backends.anthropic_backend import _ANTHROPIC_PRICING
 
         input_price, output_price = _ANTHROPIC_PRICING["claude-sonnet-4"]
         expected_input = Decimal("3") / Decimal("1000000")
@@ -135,7 +135,7 @@ class TestAnthropicPricingConfig:
 
         import importlib
 
-        import care_platform.execution.backends.anthropic_backend as mod
+        import care_platform.use.execution.backends.anthropic_backend as mod
 
         importlib.reload(mod)
 
@@ -154,7 +154,7 @@ class TestAnthropicPricingConfig:
 
         import importlib
 
-        import care_platform.execution.backends.anthropic_backend as mod
+        import care_platform.use.execution.backends.anthropic_backend as mod
 
         importlib.reload(mod)
 
@@ -166,9 +166,9 @@ class TestAnthropicPricingConfig:
 
     def test_estimate_cost_uses_pricing(self):
         """estimate_cost should use the configured pricing dict."""
-        from care_platform.config.env import EnvConfig
-        from care_platform.execution.backends.anthropic_backend import AnthropicBackend
-        from care_platform.execution.llm_backend import LLMResponse
+        from care_platform.build.config.env import EnvConfig
+        from care_platform.use.execution.backends.anthropic_backend import AnthropicBackend
+        from care_platform.use.execution.llm_backend import LLMResponse
 
         cfg = EnvConfig(care_dev_mode=True, anthropic_api_key="test-key")
         backend = AnthropicBackend(cfg)
@@ -203,8 +203,8 @@ class TestCombinedPricingOverride:
 
         import importlib
 
-        import care_platform.execution.backends.anthropic_backend as anthropic_mod
-        import care_platform.execution.backends.openai_backend as openai_mod
+        import care_platform.use.execution.backends.anthropic_backend as anthropic_mod
+        import care_platform.use.execution.backends.openai_backend as openai_mod
 
         importlib.reload(openai_mod)
         importlib.reload(anthropic_mod)

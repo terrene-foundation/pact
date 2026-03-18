@@ -18,19 +18,19 @@ from decimal import Decimal
 
 import pytest
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import VerificationLevel
-from care_platform.persistence.audit_query import AuditQuery, AuditReport
-from care_platform.persistence.cost_tracking import ApiCostRecord, CostTracker
-from care_platform.persistence.posture_history import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import VerificationLevel
+from care_platform.trust.store.audit_query import AuditQuery, AuditReport
+from care_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
+from care_platform.trust.store.posture_history import (
     EligibilityResult,
     PostureChangeRecord,
     PostureChangeTrigger,
     PostureEligibilityChecker,
     PostureHistoryStore,
 )
-from care_platform.persistence.store import MemoryStore
-from care_platform.persistence.versioning import VersionTracker
+from care_platform.trust.store.store import MemoryStore
+from care_platform.trust.store.versioning import VersionTracker
 
 # ===========================================================================
 # 1. Trust Object Round-Trip Through Store

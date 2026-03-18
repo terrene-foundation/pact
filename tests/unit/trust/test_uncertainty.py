@@ -4,7 +4,7 @@
 
 import pytest
 
-from care_platform.config.schema import VerificationLevel
+from care_platform.build.config.schema import VerificationLevel
 from care_platform.trust.uncertainty import (
     ActionMetadata,
     UncertaintyClassifier,

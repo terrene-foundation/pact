@@ -19,8 +19,8 @@ from __future__ import annotations
 import threading
 import time
 
-from care_platform.audit.anchor import AuditChain
-from care_platform.config.schema import (
+from care_platform.trust.audit.anchor import AuditChain
+from care_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     OperationalConstraintConfig,
@@ -28,16 +28,16 @@ from care_platform.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from care_platform.constraint.envelope import ConstraintEnvelope
-from care_platform.constraint.gradient import GradientEngine
-from care_platform.execution.approval import ApprovalQueue
-from care_platform.execution.registry import AgentRegistry, AgentStatus
-from care_platform.execution.runtime import (
+from care_platform.trust.constraint.envelope import ConstraintEnvelope
+from care_platform.trust.constraint.gradient import GradientEngine
+from care_platform.use.execution.approval import ApprovalQueue
+from care_platform.use.execution.registry import AgentRegistry, AgentStatus
+from care_platform.use.execution.runtime import (
     ExecutionRuntime,
     Task,
     TaskStatus,
 )
-from care_platform.persistence.store import MemoryStore
+from care_platform.trust.store.store import MemoryStore
 from care_platform.trust.posture import NEVER_DELEGATED_ACTIONS, TrustPosture
 from care_platform.trust.revocation import RevocationManager
 
@@ -676,7 +676,7 @@ class TestRT5_23_RedundantReclassification:
 
     def test_middleware_level_used_without_redundant_classify(self):
         """The middleware's more-restrictive level is used directly."""
-        from care_platform.constraint.middleware import VerificationMiddleware
+        from care_platform.trust.constraint.middleware import VerificationMiddleware
 
         store = _make_envelope_store("agent-1")
 
