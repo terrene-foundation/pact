@@ -209,9 +209,9 @@ class TestRoleCatalog:
 
         catalog = RoleCatalog()
         for role in catalog.list():
-            assert (
-                len(role.default_capabilities) > 0
-            ), f"Role '{role.role_id}' has empty default_capabilities"
+            assert len(role.default_capabilities) > 0, (
+                f"Role '{role.role_id}' has empty default_capabilities"
+            )
 
     def test_all_builtin_roles_have_valid_posture(self):
         """All built-in roles must have a valid TrustPostureLevel."""
@@ -219,9 +219,9 @@ class TestRoleCatalog:
 
         catalog = RoleCatalog()
         for role in catalog.list():
-            assert isinstance(
-                role.default_posture, TrustPostureLevel
-            ), f"Role '{role.role_id}' has invalid posture: {role.default_posture}"
+            assert isinstance(role.default_posture, TrustPostureLevel), (
+                f"Role '{role.role_id}' has invalid posture: {role.default_posture}"
+            )
 
     def test_all_builtin_roles_have_positive_limits(self):
         """All built-in roles must have positive action and cost limits."""
@@ -229,12 +229,12 @@ class TestRoleCatalog:
 
         catalog = RoleCatalog()
         for role in catalog.list():
-            assert (
-                role.default_max_actions_per_day > 0
-            ), f"Role '{role.role_id}' has non-positive max_actions_per_day"
-            assert (
-                role.default_max_cost_per_day >= 0.0
-            ), f"Role '{role.role_id}' has negative max_cost_per_day"
+            assert role.default_max_actions_per_day > 0, (
+                f"Role '{role.role_id}' has non-positive max_actions_per_day"
+            )
+            assert role.default_max_cost_per_day >= 0.0, (
+                f"Role '{role.role_id}' has negative max_cost_per_day"
+            )
 
 
 # ===========================================================================
@@ -290,9 +290,9 @@ class TestEnvelopeDeriverDepartment:
         assert dept_env.operational is not None
         dept_actions = set(dept_env.operational.allowed_actions)
         org_actions = set(org_envelope.operational.allowed_actions)
-        assert dept_actions.issubset(
-            org_actions
-        ), f"Department actions {dept_actions} not a subset of org actions {org_actions}"
+        assert dept_actions.issubset(org_actions), (
+            f"Department actions {dept_actions} not a subset of org actions {org_actions}"
+        )
 
     def test_derive_department_envelope_rate_limit_tightened(self):
         """Department rate limit must be tighter than or equal to org rate limit."""
@@ -449,9 +449,9 @@ class TestEnvelopeDeriverAgent:
         # Agent actions should be a subset of team actions
         agent_actions = set(agent_env.operational.allowed_actions)
         team_actions = set(team_envelope.operational.allowed_actions)
-        assert agent_actions.issubset(
-            team_actions
-        ), f"Agent actions {agent_actions} not subset of team {team_actions}"
+        assert agent_actions.issubset(team_actions), (
+            f"Agent actions {agent_actions} not subset of team {team_actions}"
+        )
 
 
 class TestEnvelopeDeriverValidateTightening:
@@ -654,10 +654,9 @@ class TestOrgGenerator:
         org = generator.generate(config)
         results = org.validate_org_detailed()
         errors = [r for r in results if r.is_error]
-        assert (
-            len(errors) == 0
-        ), f"Generated org has {len(errors)} validation errors:\n" + "\n".join(
-            f"  [{r.code}] {r.message}" for r in errors
+        assert len(errors) == 0, (
+            f"Generated org has {len(errors)} validation errors:\n"
+            + "\n".join(f"  [{r.code}] {r.message}" for r in errors)
         )
 
     def test_generated_org_passes_validate_org(self):
@@ -761,9 +760,9 @@ class TestOrgGenerator:
         # Org -> department tightening
         for dept in org.departments:
             if dept.envelope and org.org_envelope:
-                assert deriver.validate_tightening(
-                    org.org_envelope, dept.envelope
-                ), f"Department '{dept.department_id}' envelope not tighter than org envelope"
+                assert deriver.validate_tightening(org.org_envelope, dept.envelope), (
+                    f"Department '{dept.department_id}' envelope not tighter than org envelope"
+                )
 
     def test_generator_resolves_roles_from_catalog(self):
         """Generator uses RoleCatalog to resolve role IDs to agent definitions."""
@@ -776,9 +775,9 @@ class TestOrgGenerator:
         # Check that agent roles/capabilities match catalog entries
         agent_ids = {a.id for a in org.agents}
         # Should contain agents based on developer and reviewer roles
-        assert any(
-            "developer" in aid or "dev" in aid for aid in agent_ids
-        ), f"No developer agent found in {agent_ids}"
+        assert any("developer" in aid or "dev" in aid for aid in agent_ids), (
+            f"No developer agent found in {agent_ids}"
+        )
 
     def test_generator_raises_on_invalid_role(self):
         """Generator must raise ValueError for unknown role_ids."""
@@ -851,9 +850,9 @@ class TestCoordinatorInjection:
 
         for team in org.teams:
             coordinator_id = f"{team.id}-coordinator"
-            assert (
-                coordinator_id in team.agents
-            ), f"Team '{team.id}' missing coordinator agent '{coordinator_id}'"
+            assert coordinator_id in team.agents, (
+                f"Team '{team.id}' missing coordinator agent '{coordinator_id}'"
+            )
             # Coordinator must exist as an agent
             agent_ids = {a.id for a in org.agents}
             assert coordinator_id in agent_ids, f"Coordinator '{coordinator_id}' not in org agents"
@@ -876,9 +875,9 @@ class TestCoordinatorInjection:
                 "task_routing",
             ]
             for cap in expected_caps:
-                assert (
-                    cap in coordinator.capabilities
-                ), f"Coordinator '{coordinator_id}' missing capability '{cap}'"
+                assert cap in coordinator.capabilities, (
+                    f"Coordinator '{coordinator_id}' missing capability '{cap}'"
+                )
 
     def test_coordinator_posture_is_supervised(self):
         """Coordinator must start at SUPERVISED posture (never fully autonomous)."""
@@ -1077,9 +1076,9 @@ class TestOrgGenerateCLI:
 
         # Get the list of command names on the org group
         command_names = list(org.commands.keys()) if hasattr(org, "commands") else []
-        assert (
-            "generate" in command_names
-        ), f"'generate' command not found in org group. Found: {command_names}"
+        assert "generate" in command_names, (
+            f"'generate' command not found in org group. Found: {command_names}"
+        )
 
     def test_org_generate_produces_yaml_output(self, tmp_path):
         """`org generate --input <file> --output <file>` produces a YAML file."""

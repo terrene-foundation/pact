@@ -16,7 +16,8 @@ WORKDIR /app
 # Copy dependency manifests only — leverages Docker layer cache
 COPY package.json package-lock.json* ./
 
-RUN npm ci --omit=dev
+# Install all deps (including devDependencies like tailwindcss needed for build)
+RUN npm ci
 
 # ── Stage 2: builder ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder

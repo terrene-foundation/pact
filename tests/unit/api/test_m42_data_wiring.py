@@ -404,9 +404,9 @@ class TestAuditChainDashboardTrends:
 
         # Must have non-zero auto_approved (we seeded 5 per day)
         total_auto = sum(data["auto_approved"])
-        assert (
-            total_auto > 0
-        ), f"Expected non-zero auto_approved trend data, got {data['auto_approved']}"
+        assert total_auto > 0, (
+            f"Expected non-zero auto_approved trend data, got {data['auto_approved']}"
+        )
 
         # Must have non-zero flagged (we seeded 2 per day)
         total_flagged = sum(data["flagged"])
@@ -463,8 +463,7 @@ class TestAuditChainDashboardTrends:
 
         recent_anchors = [a for a in chain.anchors if a.timestamp >= seven_days_ago]
         assert len(recent_anchors) > 0, (
-            "Expected audit chain to have anchors within the last 7 days for "
-            "dashboard trend data"
+            "Expected audit chain to have anchors within the last 7 days for dashboard trend data"
         )
 
 
@@ -525,7 +524,7 @@ class TestUpgradeEvidenceEndpoint:
         actual_fields = set(data.keys())
         missing = required_fields - actual_fields
         assert not missing, (
-            f"upgrade-evidence response missing fields: {missing}. " f"Got: {sorted(actual_fields)}"
+            f"upgrade-evidence response missing fields: {missing}. Got: {sorted(actual_fields)}"
         )
 
     def test_upgrade_evidence_pass_rate_range(self, api_with_shadow):

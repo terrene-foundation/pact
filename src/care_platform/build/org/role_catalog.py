@@ -303,9 +303,7 @@ class RoleCatalog:
         role = self._roles.get(role_id)
         if role is None:
             available = sorted(self._roles.keys())
-            raise ValueError(
-                f"Role '{role_id}' not found in catalog. " f"Available roles: {available}"
-            )
+            raise ValueError(f"Role '{role_id}' not found in catalog. Available roles: {available}")
         return role
 
     def list(self) -> list[RoleDefinition]:

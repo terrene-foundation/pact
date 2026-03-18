@@ -605,9 +605,9 @@ class TestMonotonicTighteningOrgToDepartment:
         org = _make_org_with_departments()
         results = org.validate_org_detailed()
         tightening_errors = [r for r in results if "DEPT_ORG_TIGHTENING" in r.code]
-        assert (
-            len(tightening_errors) == 0
-        ), f"Expected no tightening errors, got: {tightening_errors}"
+        assert len(tightening_errors) == 0, (
+            f"Expected no tightening errors, got: {tightening_errors}"
+        )
 
     def test_dept_financial_exceeds_org_fails(self):
         """Department spending limit higher than org must fail."""
@@ -664,9 +664,9 @@ class TestMonotonicTighteningDeptToTeam:
         org = _make_org_with_departments()
         results = org.validate_org_detailed()
         tightening_errors = [r for r in results if "TEAM_DEPT_TIGHTENING" in r.code]
-        assert (
-            len(tightening_errors) == 0
-        ), f"Expected no tightening errors, got: {tightening_errors}"
+        assert len(tightening_errors) == 0, (
+            f"Expected no tightening errors, got: {tightening_errors}"
+        )
 
     def test_team_financial_exceeds_dept_fails(self):
         """Team spending limit higher than department must fail."""
@@ -712,9 +712,9 @@ class TestMonotonicTighteningFullChain:
         org = _make_org_with_departments()
         results = org.validate_org_detailed()
         tightening_errors = [r for r in results if "TIGHTENING" in r.code and r.is_error]
-        assert (
-            len(tightening_errors) == 0
-        ), f"Expected no tightening errors, got: {tightening_errors}"
+        assert len(tightening_errors) == 0, (
+            f"Expected no tightening errors, got: {tightening_errors}"
+        )
 
     def test_agent_looser_than_team_still_caught(self):
         """Agent envelope looser than team envelope is caught by existing team-level checks."""

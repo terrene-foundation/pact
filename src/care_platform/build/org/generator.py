@@ -86,7 +86,7 @@ class DepartmentSpec(BaseModel):
     def validate_teams_not_empty(cls, v: list[TeamSpec]) -> list[TeamSpec]:
         if not v:
             raise ValueError(
-                "Department must have at least one team. " "Received an empty teams list."
+                "Department must have at least one team. Received an empty teams list."
             )
         return v
 
@@ -432,7 +432,7 @@ class OrgGenerator:
             )
 
         logger.info(
-            "Generated organization '%s' with %d departments, %d teams, " "%d agents, %d envelopes",
+            "Generated organization '%s' with %d departments, %d teams, %d agents, %d envelopes",
             config.org_id,
             len(departments),
             len(teams),
