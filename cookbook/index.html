@@ -1070,7 +1070,7 @@ and can be run directly. For the full runnable quickstart, see <code>examples/qu
 <h2 id="example-1-setting-up-a-minimal-organization">Example 1: Setting Up a Minimal Organization<a class="headerlink" href="#example-1-setting-up-a-minimal-organization" title="Permanent link">&para;</a></h2>
 <p>Load a YAML configuration and inspect the resulting platform structure.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlatformConfig</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenesisConfig</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenesisConfig</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Option A: Build configuration in Python</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">config</span> <span class="o">=</span> <span class="n">PlatformConfig</span><span class="p">(</span>
@@ -1107,7 +1107,7 @@ and can be run directly. For the full runnable quickstart, see <code>examples/qu
 Each level has a constraint envelope, and each child envelope must be a monotonic
 tightening of the parent.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstraintEnvelope</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">CommunicationConstraintConfig</span><span class="p">,</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">ConstraintEnvelopeConfig</span><span class="p">,</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">DataAccessConstraintConfig</span><span class="p">,</span>
@@ -1196,7 +1196,7 @@ results.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstraintEnvelope</span><span class="p">,</span> <span class="n">EvaluationResult</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">CommunicationConstraintConfig</span><span class="p">,</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">ConstraintEnvelopeConfig</span><span class="p">,</span>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">DataAccessConstraintConfig</span><span class="p">,</span>
@@ -1257,7 +1257,7 @@ If any dimension returns DENIED, the overall result is DENIED.</p>
 <p>Demonstrate the rule that child envelopes can never expand permissions beyond
 the parent.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstraintEnvelope</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">CommunicationConstraintConfig</span><span class="p">,</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">ConstraintEnvelopeConfig</span><span class="p">,</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">FinancialConstraintConfig</span><span class="p">,</span>
@@ -1324,7 +1324,7 @@ rate limits, and communication restrictions.</p>
 <h2 id="example-5-walking-a-trust-chain">Example 5: Walking a Trust Chain<a class="headerlink" href="#example-5-walking-a-trust-chain" title="Permanent link">&para;</a></h2>
 <p>Build an audit chain, append actions, then walk the chain to verify integrity.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditAnchor</span><span class="p">,</span> <span class="n">AuditChain</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Create a new chain</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">chain</span> <span class="o">=</span> <span class="n">AuditChain</span><span class="p">(</span><span class="n">chain_id</span><span class="o">=</span><span class="s2">&quot;content-team-2026-03&quot;</span><span class="p">)</span>
@@ -1388,7 +1388,7 @@ point of tampering.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditChain</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">chain</span> <span class="o">=</span> <span class="n">AuditChain</span><span class="p">(</span><span class="n">chain_id</span><span class="o">=</span><span class="s2">&quot;dm-team-session-001&quot;</span><span class="p">)</span>
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>

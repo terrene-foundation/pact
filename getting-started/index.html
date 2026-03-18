@@ -1483,7 +1483,7 @@ dimensions: Financial, Operational, Temporal, Data Access, and Communication.</p
 <p>Here is an example that defines an agent who can collect metrics and generate
 reports, but cannot publish externally:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstraintEnvelope</span><span class="p">,</span> <span class="n">EvaluationResult</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">CommunicationConstraintConfig</span><span class="p">,</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">ConstraintEnvelopeConfig</span><span class="p">,</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">DataAccessConstraintConfig</span><span class="p">,</span>
@@ -1571,7 +1571,7 @@ its own permissions beyond what the parent granted. This is enforced by
 <p>Calculate a trust score that summarizes how well an agent's trust chain is
 established:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustScore</span><span class="p">,</span> <span class="n">calculate_trust_score</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustPostureLevel</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustPostureLevel</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.trust.scoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustFactors</span>
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
 <a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">factors</span> <span class="o">=</span> <span class="n">TrustFactors</span><span class="p">(</span>
@@ -1604,7 +1604,7 @@ established:</p>
 <p>Every agent action should produce an audit anchor -- a tamper-evident record that
 chains to the previous record for integrity verification:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditChain</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">care_platform.build.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">VerificationLevel</span>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">chain</span> <span class="o">=</span> <span class="n">AuditChain</span><span class="p">(</span><span class="n">chain_id</span><span class="o">=</span><span class="s2">&quot;analytics-team-chain&quot;</span><span class="p">)</span>
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>

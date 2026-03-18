@@ -1129,7 +1129,7 @@ Licensed under the Apache License, Version 2.0
 <hr />
 <h2 id="how-configuration-is-loaded">How Configuration Is Loaded<a class="headerlink" href="#how-configuration-is-loaded" title="Permanent link">&para;</a></h2>
 <ol>
-<li>At startup, <code>care_platform.config.env.load_env_config()</code> is called.</li>
+<li>At startup, <code>care_platform.build.config.env.load_env_config()</code> is called.</li>
 <li>It searches for a <code>.env</code> file starting from the current working directory, walking up to three parent directories.</li>
 <li>Variables already present in the process environment take precedence over <code>.env</code> values.</li>
 <li>In Docker Compose, <code>env_file: .env</code> injects the file into the container environment before the process starts.</li>
