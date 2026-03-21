@@ -4,7 +4,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { PlatformEvent, EventType } from "../../types/care-platform";
+import type { PlatformEvent, EventType } from "../../types/pact";
 import { useWebSocket } from "../../lib/use-api";
 
 /** Maximum events to keep in the feed (prevents unbounded memory). */

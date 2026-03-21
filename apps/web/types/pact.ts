@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * TypeScript interfaces matching the CARE Platform Python models.
+ * TypeScript interfaces matching the PACT Python models.
  *
  * These types mirror the Pydantic models and API response shapes from
- * src/care_platform/api/endpoints.py and related modules.
+ * src/pact/api/endpoints.py and related modules.
  */
 
 // ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ export interface CommunicationConstraint {
   external_requires_approval: boolean;
 }
 
-/** Full constraint envelope with all five CARE dimensions. */
+/** Full constraint envelope with all five PACT dimensions. */
 export interface ConstraintEnvelope {
   envelope_id: string;
   description: string;
@@ -311,7 +311,7 @@ export interface AgentDetail {
 // ShadowEnforcer
 // ---------------------------------------------------------------------------
 
-/** Mirrors care_platform.trust.shadow_enforcer.ShadowMetrics. */
+/** Mirrors pact.trust.shadow_enforcer.ShadowMetrics. */
 export interface ShadowMetrics {
   agent_id: string;
   total_evaluations: number;
@@ -325,7 +325,7 @@ export interface ShadowMetrics {
   previous_pass_rate: number;
 }
 
-/** Mirrors care_platform.trust.shadow_enforcer.ShadowReport. */
+/** Mirrors pact.trust.shadow_enforcer.ShadowReport. */
 export interface ShadowReport {
   agent_id: string;
   evaluation_period_days: number;

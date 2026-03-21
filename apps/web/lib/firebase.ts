@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * Firebase configuration for the CARE Platform dashboard.
+ * Firebase configuration for the PACT dashboard.
  *
  * Initializes Firebase Auth with Google and GitHub SSO providers.
  * All configuration comes from NEXT_PUBLIC_FIREBASE_* environment variables.

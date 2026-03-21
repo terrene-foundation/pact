@@ -10,7 +10,7 @@
 
 "use client";
 
-import type { Bridge } from "../../types/care-platform";
+import type { Bridge } from "../../types/pact";
 import StatusBadge from "../ui/StatusBadge";
 
 interface BridgeConnectionsProps {
@@ -84,7 +84,8 @@ export default function BridgeConnections({ bridges }: BridgeConnectionsProps) {
               <div className="flex flex-col items-center">
                 <span
                   className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                    BRIDGE_TYPE_COLORS[bridge.bridge_type] ?? "bg-gray-100 text-gray-700 border-gray-200"
+                    BRIDGE_TYPE_COLORS[bridge.bridge_type] ??
+                    "bg-gray-100 text-gray-700 border-gray-200"
                   }`}
                 >
                   {BRIDGE_TYPE_LABELS[bridge.bridge_type] ?? bridge.bridge_type}

@@ -11,7 +11,7 @@
 
 "use client";
 
-import type { ShadowMetrics } from "../../../types/care-platform";
+import type { ShadowMetrics } from "../../../types/pact";
 
 interface ShadowMetricsCardsProps {
   metrics: ShadowMetrics;

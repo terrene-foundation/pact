@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * Trust Chains page -- displays all trust chains from the CARE Platform API
+ * Trust Chains page -- displays all trust chains from the PACT API
  * as a visual tree grouped by team, showing genesis to delegation to agents.
  */
 
@@ -17,7 +17,7 @@ import { useApi } from "../../lib/use-api";
 export default function TrustChainsPage() {
   const { data, loading, error, refetch } = useApi(
     (client) => client.listTrustChains(),
-    []
+    [],
   );
 
   return (

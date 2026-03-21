@@ -10,7 +10,7 @@
 
 "use client";
 
-import type { Workspace, WorkspacePhase } from "../../types/care-platform";
+import type { Workspace, WorkspacePhase } from "../../types/pact";
 import StatusBadge from "../ui/StatusBadge";
 
 interface WorkspaceCardProps {

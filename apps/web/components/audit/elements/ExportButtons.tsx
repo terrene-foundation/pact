@@ -12,7 +12,7 @@
 
 "use client";
 
-import type { AuditAnchor } from "../../../types/care-platform";
+import type { AuditAnchor } from "../../../types/pact";
 
 interface ExportButtonsProps {
   /** The filtered audit anchors to export. */

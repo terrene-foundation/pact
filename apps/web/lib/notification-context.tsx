@@ -27,7 +27,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { PlatformEvent, EventType } from "../types/care-platform";
+import type { PlatformEvent, EventType } from "../types/pact";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,10 +97,15 @@ const MAX_NOTIFICATIONS = 50;
  * Convert a PlatformEvent into a user-facing Notification.
  * Returns null for event types that should not generate notifications.
  */
-export function eventToNotification(
-  event: PlatformEvent
-): Notification | null {
-  const { event_id, event_type, data, source_agent_id, source_team_id, timestamp } = event;
+export function eventToNotification(event: PlatformEvent): Notification | null {
+  const {
+    event_id,
+    event_type,
+    data,
+    source_agent_id,
+    source_team_id,
+    timestamp,
+  } = event;
 
   switch (event_type) {
     case "held_action": {
@@ -228,14 +233,16 @@ export function eventToNotification(
 // Context
 // ---------------------------------------------------------------------------
 
-const NotificationContext = createContext<NotificationContextValue | null>(null);
+const NotificationContext = createContext<NotificationContextValue | null>(
+  null,
+);
 
 /** Hook to access the notification context. Throws if used outside the provider. */
 export function useNotifications(): NotificationContextValue {
   const ctx = useContext(NotificationContext);
   if (!ctx) {
     throw new Error(
-      "useNotifications must be used within a <NotificationProvider>"
+      "useNotifications must be used within a <NotificationProvider>",
     );
   }
   return ctx;
@@ -303,7 +310,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const markAsRead = useCallback((id: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
   }, []);
 
@@ -322,7 +329,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const pendingApprovalCount = notifications.filter(
-    (n) => !n.read && n.eventType === "held_action"
+    (n) => !n.read && n.eventType === "held_action",
   ).length;
 
   return (

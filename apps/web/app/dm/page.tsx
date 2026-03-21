@@ -34,7 +34,7 @@ import type {
   DmAgentSummary,
   TrustPosture,
   AgentStatus,
-} from "../../types/care-platform";
+} from "../../types/pact";
 
 // ---------------------------------------------------------------------------
 // DM Status Loader
@@ -204,7 +204,7 @@ export default function DmPage() {
         {!loading && !error && !status && (
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-500">
             The DM team has not been provisioned yet. Configure the team in the
-            CARE Platform backend to see agent status and submit tasks.
+            PACT backend to see agent status and submit tasks.
           </div>
         )}
       </div>

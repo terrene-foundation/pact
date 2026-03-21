@@ -11,7 +11,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { AuditAnchor } from "../../../types/care-platform";
+import type { AuditAnchor } from "../../../types/pact";
 import StatusBadge from "../../ui/StatusBadge";
 
 interface AnchorDetailPanelProps {

@@ -121,7 +121,7 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
-/** Navigation sidebar for the CARE Platform dashboard. */
+/** Navigation sidebar for the PACT dashboard. */
 export default function Sidebar({
   activePath = "/",
   items = DASHBOARD_NAV,
@@ -161,7 +161,7 @@ export default function Sidebar({
               <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
                 <span className="text-sm font-bold text-white">C</span>
               </div>
-              <span className="text-lg font-semibold text-gray-900">CARE</span>
+              <span className="text-lg font-semibold text-gray-900">PACT</span>
             </div>
           )}
           {onToggle && (
@@ -269,9 +269,7 @@ export default function Sidebar({
 
         {/* Footer */}
         <div className="border-t border-gray-200 p-3">
-          {!collapsed && (
-            <p className="text-xs text-gray-400">CARE Platform v0.1.0</p>
-          )}
+          {!collapsed && <p className="text-xs text-gray-400">PACT v0.1.0</p>}
         </div>
       </aside>
     </>

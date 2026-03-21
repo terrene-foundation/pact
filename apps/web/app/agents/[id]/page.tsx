@@ -18,7 +18,7 @@ import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import { CardSkeleton } from "../../../components/ui/Skeleton";
 import { useApi, getApiClient } from "../../../lib/use-api";
 import { useAuth } from "../../../lib/auth-context";
-import type { TrustPosture } from "../../../types/care-platform";
+import type { TrustPosture } from "../../../types/pact";
 
 /** All trust postures in ascending autonomy order. */
 const ALL_POSTURES: TrustPosture[] = [

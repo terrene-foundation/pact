@@ -13,7 +13,7 @@
 
 import PostureBadge from "../../../components/agents/PostureBadge";
 import StatusBadge from "../../../components/ui/StatusBadge";
-import type { DmAgentSummary } from "../../../types/care-platform";
+import type { DmAgentSummary } from "../../../types/pact";
 
 interface DmAgentCardsProps {
   agents: DmAgentSummary[];

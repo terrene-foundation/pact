@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * Login page -- authentication entry point for the CARE Platform dashboard.
+ * Login page -- authentication entry point for the PACT dashboard.
  *
  * Primary: Firebase SSO with Google and GitHub sign-in buttons.
  * Fallback: Static API token input (expandable section) for CLI/API-only
@@ -174,9 +174,9 @@ export default function LoginPage() {
       {/* Brand */}
       <div className="mb-8 flex flex-col items-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-care-primary shadow-lg">
-          <span className="text-2xl font-bold text-white">C</span>
+          <span className="text-2xl font-bold text-white">P</span>
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">CARE Platform</h1>
+        <h1 className="mt-4 text-2xl font-bold text-gray-900">PACT</h1>
         <p className="mt-1 text-sm text-care-muted">
           Governed operational model for AI agent orchestration
         </p>
@@ -306,7 +306,7 @@ export default function LoginPage() {
                 className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-care-primary focus:outline-none focus:ring-1 focus:ring-care-primary disabled:opacity-50 font-mono"
               />
               <p className="mt-1 text-xs text-care-muted">
-                The bearer token configured in your CARE Platform backend.
+                The bearer token configured in your PACT backend.
               </p>
             </div>
 
@@ -346,7 +346,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <p className="mt-6 text-xs text-care-muted">
-        CARE Platform v0.1.0 &middot; Terrene Foundation
+        PACT v0.1.0 &middot; Terrene Foundation
       </p>
     </div>
   );

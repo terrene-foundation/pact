@@ -17,7 +17,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import ErrorAlert from "../../components/ui/ErrorAlert";
 import { CardSkeleton } from "../../components/ui/Skeleton";
 import { getApiClient } from "../../lib/use-api";
-import type { TrustPosture, AgentStatus } from "../../types/care-platform";
+import type { TrustPosture, AgentStatus } from "../../types/pact";
 
 /** Agent entry combined with its team. */
 interface AgentEntry {
@@ -90,10 +90,7 @@ export default function AgentsPage() {
     <DashboardShell
       activePath="/agents"
       title="Agents"
-      breadcrumbs={[
-        { label: "Dashboard", href: "/" },
-        { label: "Agents" },
-      ]}
+      breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Agents" }]}
     >
       <div className="space-y-6">
         <p className="text-sm text-gray-600">
@@ -106,7 +103,9 @@ export default function AgentsPage() {
         {!loading && agents.length > 0 && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-lg border border-gray-200 bg-white p-4 text-center">
-              <p className="text-2xl font-bold text-gray-900">{agents.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {agents.length}
+              </p>
               <p className="text-xs text-gray-500">Total Agents</p>
             </div>
             <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">

@@ -27,7 +27,7 @@ import type {
   TrustPosture,
   BridgeStatus,
   WorkspaceState,
-} from "../../types/care-platform";
+} from "../../types/pact";
 
 type BadgeVariant =
   | VerificationLevel

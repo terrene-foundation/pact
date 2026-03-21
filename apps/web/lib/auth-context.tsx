@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * AuthContext -- authentication state management for the CARE Platform dashboard.
+ * AuthContext -- authentication state management for the PACT dashboard.
  *
  * Supports two authentication methods:
  *   1. Firebase SSO (Google / GitHub) -- primary, when Firebase is configured
@@ -366,10 +366,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
 
         if (!response.ok) {
-          return "Unable to connect to the CARE Platform API. Please check the server is running.";
+          return "Unable to connect to the PACT API. Please check the server is running.";
         }
       } catch {
-        return "Unable to reach the CARE Platform API. Please check your network connection and ensure the server is running.";
+        return "Unable to reach the PACT API. Please check your network connection and ensure the server is running.";
       } finally {
         setLoading(false);
       }

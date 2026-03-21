@@ -5,7 +5,7 @@
  * Skeleton -- loading placeholder with shimmer animation.
  *
  * Used across all dashboard views to show loading states while
- * data is being fetched from the CARE Platform API.
+ * data is being fetched from the PACT API.
  */
 
 "use client";

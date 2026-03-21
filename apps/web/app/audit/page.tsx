@@ -27,7 +27,7 @@ import AnchorDetailPanel from "../../components/audit/elements/AnchorDetailPanel
 import ErrorAlert from "../../components/ui/ErrorAlert";
 import { TableSkeleton } from "../../components/ui/Skeleton";
 import { useApi } from "../../lib/use-api";
-import type { AuditAnchor } from "../../types/care-platform";
+import type { AuditAnchor } from "../../types/pact";
 
 const DEFAULT_PAGE_SIZE = 25;
 

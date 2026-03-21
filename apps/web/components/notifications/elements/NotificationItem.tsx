@@ -15,7 +15,7 @@ import type {
   Notification,
   NotificationPriority,
 } from "../../../lib/notification-context";
-import type { EventType } from "../../../types/care-platform";
+import type { EventType } from "../../../types/pact";
 
 // ---------------------------------------------------------------------------
 // Visual Configuration

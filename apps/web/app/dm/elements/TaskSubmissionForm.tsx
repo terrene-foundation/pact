@@ -15,11 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getApiClient } from "../../../lib/use-api";
 import { ApiError, NetworkError } from "../../../lib/api";
-import type {
-  DmAgentSummary,
-  DmTask,
-  DmTaskStatus,
-} from "../../../types/care-platform";
+import type { DmAgentSummary, DmTask, DmTaskStatus } from "../../../types/pact";
 
 interface TaskSubmissionFormProps {
   /** Available agents for the target selector. */

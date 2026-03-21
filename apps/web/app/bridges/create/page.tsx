@@ -18,10 +18,7 @@ import { useState } from "react";
 import DashboardShell from "../../../components/layout/DashboardShell";
 import ErrorAlert from "../../../components/ui/ErrorAlert";
 import { getApiClient } from "../../../lib/use-api";
-import type {
-  BridgeType,
-  CreateBridgeRequest,
-} from "../../../types/care-platform";
+import type { BridgeType, CreateBridgeRequest } from "../../../types/pact";
 
 /** Step definitions for the wizard. */
 const STEPS = [

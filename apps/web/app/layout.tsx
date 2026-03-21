@@ -8,8 +8,8 @@ import { NotificationProvider } from "../lib/notification-context";
 
 export const metadata: Metadata = {
   title: {
-    default: "CARE Platform",
-    template: "%s | CARE Platform",
+    default: "PACT",
+    template: "%s | PACT",
   },
   description:
     "Governed operational model for running organizations with AI agents under EATP trust governance",

@@ -5,7 +5,7 @@ __pycache__/
 *.so
 .Python
 /build/
-!src/care_platform/build/
+!src/pact/build/
 develop-eggs/
 dist/
 downloads/

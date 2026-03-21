@@ -6,7 +6,7 @@
  *
  * Provides action buttons with confirmation state and loading feedback.
  * Includes "Approve with Note" option for adding decision context.
- * Calls the CARE Platform API to approve or reject the held action.
+ * Calls the PACT API to approve or reject the held action.
  */
 
 "use client";

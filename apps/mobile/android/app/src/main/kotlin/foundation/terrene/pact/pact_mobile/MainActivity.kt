@@ -1,4 +1,4 @@
-package foundation.terrene.care.care_platform_mobile
+package foundation.terrene.pact.pact_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

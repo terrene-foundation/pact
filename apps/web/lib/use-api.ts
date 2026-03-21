@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * useApi -- React hook for data fetching from the CARE Platform API.
+ * useApi -- React hook for data fetching from the PACT API.
  *
  * Provides loading, error, and data states. Handles AbortController cleanup
  * on unmount to prevent state updates on unmounted components.
@@ -18,7 +18,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { ApiResponse, PlatformEvent } from "../types/care-platform";
+import type { ApiResponse, PlatformEvent } from "../types/pact";
 import type { WebSocketState } from "./api";
 import {
   CareApiClient,
@@ -136,7 +136,7 @@ export interface UseApiState<T> {
 }
 
 /**
- * Hook for fetching data from the CARE Platform API.
+ * Hook for fetching data from the PACT API.
  *
  * @param fetcher - Async function that calls the API client and returns data.
  * @param deps - Dependency array to re-fetch when values change.
@@ -239,7 +239,7 @@ function deriveWsUrl(baseUrl: string): string {
 }
 
 /**
- * Hook for real-time WebSocket events from the CARE Platform.
+ * Hook for real-time WebSocket events from PACT.
  *
  * @param onEvent - Optional callback invoked for every received event.
  * @param autoConnect - Whether to connect automatically on mount. Defaults to true.

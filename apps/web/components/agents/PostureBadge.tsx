@@ -14,7 +14,7 @@
 
 "use client";
 
-import type { TrustPosture } from "../../types/care-platform";
+import type { TrustPosture } from "../../types/pact";
 
 interface PostureBadgeProps {
   /** Trust posture value. */

@@ -14,7 +14,7 @@
 
 "use client";
 
-import type { TrustChainSummary, AgentStatus } from "../../types/care-platform";
+import type { TrustChainSummary, AgentStatus } from "../../types/pact";
 import StatusBadge from "../ui/StatusBadge";
 
 interface TrustChainGraphProps {

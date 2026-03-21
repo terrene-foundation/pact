@@ -349,8 +349,7 @@ describe("CareApiClient", () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () =>
-        Promise.resolve({ status: "healthy", service: "care-platform" }),
+      json: () => Promise.resolve({ status: "healthy", service: "pact" }),
     });
 
     const result = await client.health();

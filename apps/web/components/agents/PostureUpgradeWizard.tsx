@@ -11,7 +11,7 @@
  *   3. Decision -- approve (if eligible), override (with warning), or dismiss
  *
  * The upgrade requirements mirror UPGRADE_REQUIREMENTS from
- * src/care_platform/trust/posture.py.
+ * src/pact/trust/posture.py.
  */
 
 "use client";
@@ -19,7 +19,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import PostureBadge from "./PostureBadge";
 import { useApi } from "../../lib/use-api";
-import type { TrustPosture, AgentDetail } from "../../types/care-platform";
+import type { TrustPosture, AgentDetail } from "../../types/pact";
 
 // ---------------------------------------------------------------------------
 // Constants -- mirrors Python UPGRADE_REQUIREMENTS
@@ -54,7 +54,7 @@ const POSTURE_DESCRIPTIONS: Record<TrustPosture, string> = {
 
 /**
  * Upgrade requirements per target posture.
- * Mirrors UPGRADE_REQUIREMENTS from src/care_platform/trust/posture.py.
+ * Mirrors UPGRADE_REQUIREMENTS from src/pact/trust/posture.py.
  */
 interface UpgradeRequirements {
   min_days: number;

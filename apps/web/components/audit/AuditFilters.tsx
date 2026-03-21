@@ -16,7 +16,7 @@
 
 "use client";
 
-import type { VerificationLevel } from "../../types/care-platform";
+import type { VerificationLevel } from "../../types/pact";
 
 /** Current filter state. */
 export interface AuditFilterState {

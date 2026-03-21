@@ -15,7 +15,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { ShadowReport, TrustPosture } from "../../../types/care-platform";
+import type { ShadowReport, TrustPosture } from "../../../types/pact";
 import { getApiClient } from "../../../lib/use-api";
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import ErrorAlert from "../../components/ui/ErrorAlert";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { CardSkeleton } from "../../components/ui/Skeleton";
 import { useApi } from "../../lib/use-api";
-import type { BridgeStatus } from "../../types/care-platform";
+import type { BridgeStatus } from "../../types/pact";
 
 /** Human-readable labels for bridge types. */
 const BRIDGE_TYPE_LABELS: Record<string, string> = {

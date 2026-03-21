@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 /**
- * API client for the CARE Platform backend.
+ * API client for the PACT backend.
  *
  * Provides typed methods for every API endpoint. All methods return
  * properly typed ApiResponse<T> objects with error handling.
@@ -30,11 +30,11 @@ import type {
   TrustChainSummary,
   VerificationStats,
   Workspace,
-} from "../types/care-platform";
+} from "../types/pact";
 
 /** Configuration for the API client. */
 export interface ApiClientConfig {
-  /** Base URL of the CARE Platform API (e.g., "http://localhost:8000"). */
+  /** Base URL of the PACT API (e.g., "http://localhost:8000"). */
   baseUrl: string;
   /** Optional Bearer token for Authorization header. */
   token?: string;
@@ -66,7 +66,7 @@ export class NetworkError extends Error {
 }
 
 /**
- * CARE Platform API client.
+ * PACT API client.
  *
  * Usage:
  * ```ts
@@ -86,7 +86,7 @@ export class CareApiClient {
     if (!config.baseUrl) {
       throw new Error(
         "CareApiClient requires a non-empty baseUrl. " +
-          "Provide the CARE Platform API URL (e.g., 'http://localhost:8000').",
+          "Provide the PACT API URL (e.g., 'http://localhost:8000').",
       );
     }
     // Strip trailing slash for consistent URL construction
@@ -552,9 +552,7 @@ export class CareApiClient {
   // ------------------------------------------------------------------
 
   /** Get upgrade evidence for posture upgrade evaluation. */
-  async upgradeEvidence(
-    agentId: string,
-  ): Promise<
+  async upgradeEvidence(agentId: string): Promise<
     ApiResponse<{
       agent_id: string;
       total_operations: number;
@@ -632,7 +630,7 @@ export interface WebSocketClientConfig {
 }
 
 /**
- * WebSocket client for real-time CARE Platform events.
+ * WebSocket client for real-time PACT events.
  *
  * Features:
  * - Automatic reconnection with exponential backoff

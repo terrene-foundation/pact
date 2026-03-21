@@ -10,7 +10,7 @@
 
 "use client";
 
-import type { DmStatus } from "../../../types/care-platform";
+import type { DmStatus } from "../../../types/pact";
 
 interface DmTeamSummaryProps {
   status: DmStatus;

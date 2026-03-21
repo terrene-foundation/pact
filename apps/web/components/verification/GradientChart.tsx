@@ -15,7 +15,7 @@
 
 "use client";
 
-import type { VerificationStats } from "../../types/care-platform";
+import type { VerificationStats } from "../../types/pact";
 
 interface GradientChartProps {
   /** Verification stats from the API. */
@@ -69,7 +69,7 @@ export default function GradientChart({ stats }: GradientChartProps) {
     stats.FLAGGED,
     stats.HELD,
     stats.BLOCKED,
-    1
+    1,
   );
 
   return (
@@ -82,12 +82,12 @@ export default function GradientChart({ stats }: GradientChartProps) {
         <div className="space-y-4">
           {LEVEL_CONFIG.map((level) => {
             const count = stats[level.key];
-            const percentage = stats.total > 0
-              ? Math.round((count / stats.total) * 100)
-              : 0;
-            const barWidth = maxCount > 0
-              ? Math.max((count / maxCount) * 100, count > 0 ? 2 : 0)
-              : 0;
+            const percentage =
+              stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+            const barWidth =
+              maxCount > 0
+                ? Math.max((count / maxCount) * 100, count > 0 ? 2 : 0)
+                : 0;
 
             return (
               <div key={level.key}>
@@ -101,10 +101,14 @@ export default function GradientChart({ stats }: GradientChartProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${level.textColor}`}>
+                    <span
+                      className={`text-sm font-semibold ${level.textColor}`}
+                    >
                       {count.toLocaleString()}
                     </span>
-                    <span className="text-xs text-gray-400">({percentage}%)</span>
+                    <span className="text-xs text-gray-400">
+                      ({percentage}%)
+                    </span>
                   </div>
                 </div>
                 <div className="h-6 w-full rounded-full bg-gray-100">
@@ -128,9 +132,8 @@ export default function GradientChart({ stats }: GradientChartProps) {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {LEVEL_CONFIG.map((level) => {
           const count = stats[level.key];
-          const percentage = stats.total > 0
-            ? Math.round((count / stats.total) * 100)
-            : 0;
+          const percentage =
+            stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
 
           return (
             <div

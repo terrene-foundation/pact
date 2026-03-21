@@ -12,7 +12,7 @@
 import ApprovalActions from "./ApprovalActions";
 import StatusBadge from "../ui/StatusBadge";
 import PostureBadge from "../agents/PostureBadge";
-import type { TrustPosture } from "../../types/care-platform";
+import type { TrustPosture } from "../../types/pact";
 
 /** Held action data shape (matches API response). */
 export interface HeldAction {

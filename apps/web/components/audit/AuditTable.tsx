@@ -11,7 +11,7 @@
 
 "use client";
 
-import type { AuditAnchor } from "../../types/care-platform";
+import type { AuditAnchor } from "../../types/pact";
 import DataTable, { type Column } from "../ui/DataTable";
 import StatusBadge from "../ui/StatusBadge";
 

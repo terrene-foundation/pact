@@ -18,7 +18,7 @@ import {
   useNotifications,
   eventToNotification,
 } from "../../lib/notification-context";
-import type { PlatformEvent } from "../../types/care-platform";
+import type { PlatformEvent } from "../../types/pact";
 
 export default function NotificationListener() {
   const { addNotification } = useNotifications();

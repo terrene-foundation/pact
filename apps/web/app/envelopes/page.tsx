@@ -14,7 +14,7 @@ import DataTable, { type Column } from "../../components/ui/DataTable";
 import ErrorAlert from "../../components/ui/ErrorAlert";
 import { TableSkeleton } from "../../components/ui/Skeleton";
 import { useApi } from "../../lib/use-api";
-import type { EnvelopeSummary } from "../../types/care-platform";
+import type { EnvelopeSummary } from "../../types/pact";
 
 /** Column definitions for the envelope list table. */
 const COLUMNS: Column<EnvelopeSummary>[] = [
@@ -47,17 +47,14 @@ const COLUMNS: Column<EnvelopeSummary>[] = [
 export default function EnvelopesPage() {
   const { data, loading, error, refetch } = useApi(
     (client) => client.listEnvelopes(),
-    []
+    [],
   );
 
   return (
     <DashboardShell
       activePath="/envelopes"
       title="Constraint Envelopes"
-      breadcrumbs={[
-        { label: "Dashboard", href: "/" },
-        { label: "Envelopes" },
-      ]}
+      breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Envelopes" }]}
     >
       <div className="space-y-6">
         <p className="text-sm text-gray-600">

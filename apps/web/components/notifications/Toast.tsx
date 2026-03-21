@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Notification } from "../../lib/notification-context";
 import { useNotifications } from "../../lib/notification-context";
-import type { EventType } from "../../types/care-platform";
+import type { EventType } from "../../types/pact";
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -4,10 +4,10 @@
 site_name: PACT
 site_description: Governed operational model for running organizations with AI agents under EATP trust governance
 site_author: Terrene Foundation
-site_url: https://terrene-foundation.github.io/care/
+site_url: https://terrene-foundation.github.io/pact/
 
-repo_name: terrene-foundation/care
-repo_url: https://github.com/terrene-foundation/care
+repo_name: terrene-foundation/pact
+repo_url: https://github.com/terrene-foundation/pact
 
 theme:
   name: material
@@ -66,6 +66,6 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/terrene-foundation/care
+      link: https://github.com/terrene-foundation/pact
   version:
     provider: mike

@@ -1,7 +1,7 @@
 include LICENSE
 include README.md
 include pyproject.toml
-recursive-include src/care_platform py.typed *.py
+recursive-include src/pact py.typed *.py
 recursive-exclude tests *
 recursive-exclude docs *
 recursive-exclude scripts *
