@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/conftest.py
+# hypothesis_version: 6.151.9
+
+[' #', '"', '#', "'", '.env', '=', 'export ']

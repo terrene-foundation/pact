@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/examples/university/org.py
+# hypothesis_version: 6.151.9
+
+['Academic Affairs', 'Administration', 'CS Chair', 'CS Department', 'CS Faculty Member', 'Dean of Engineering', 'Dean of Medicine', 'Disciplinary Board', 'Disciplinary Officer', 'Finance', 'Finance Director', 'HR', 'HR Director', 'IRB Director', 'President', 'Provost', 'Research Lab', 'School of Medicine', 'State University', 'Student Affairs', 'VP Administration', 'VP Student Affairs', 'd-academic-affairs', 'd-administration', 'd-engineering', 'd-medicine', 'd-president-office', 'd-student-affairs', 'r-cs-chair', 'r-cs-faculty', 'r-dean-eng', 'r-dean-med', 'r-finance-director', 'r-hr-director', 'r-irb-director', 'r-president', 'r-provost', 'r-vp-admin', 'r-vp-student-affairs', 't-cs-dept', 't-disciplinary', 't-finance', 't-hr', 't-research-lab', 'university-001', 'ws-cs', 'ws-disciplinary', 'ws-finance', 'ws-hr', 'ws-research']

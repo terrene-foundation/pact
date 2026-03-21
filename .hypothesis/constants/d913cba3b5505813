@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/messaging.py
+# hypothesis_version: 6.151.9
+
+[100000, 'care_message_type', 'channel_id', 'data_request', 'delegation_request', 'delegation_response', 'envelope_id', 'nonce', 'nonce:', 'notification', 'request', 'response', 'timestamp']

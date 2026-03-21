@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/reasoning.py
+# hypothesis_version: 6.151.9
+
+[0.7, 0.8, 0.9, 0.95, 1.0, 100, 10000, 50000, '. ', '[REDACTED]', 'confidentiality', 'created_at', 'decision', 'delegation', 'genesis_binding_hash', 'json', 'manual_override', 'parent_record_id', 'parent_record_type', 'policy_rule', 'posture_change', 'rationale', 'reasoning', 'threshold_met', 'trace_id', 'verification']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/envelope.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.8, 1.0, '%H:%M', '%Y-%m-%d', '%m-%d', '*', ':', 'UTC', 'allowed', 'communication', 'confidentiality', 'config', 'created_at', 'data_access', 'denied', 'expires_at', 'expiry', 'financial', 'id', 'near_boundary', 'operational', 'read', 'reasoning', 'temporal', 'tzinfo', 'unknown', 'write']

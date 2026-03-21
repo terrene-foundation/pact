@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/yaml_loader.py
+# hypothesis_version: 6.151.9
+
+['BridgeSpec', 'ClearanceSpec', 'ConfigurationError', 'EnvelopeSpec', 'KspSpec', 'LoadedOrg', 'agent', 'bilateral', 'bridges', 'clearances', 'communication', 'compartments', 'confidential', 'data_access', 'defined_by', 'departments', 'envelopes', 'financial', 'heads', 'id', 'ksps', 'level', 'load_org_yaml', 'max_classification', 'name', 'nda_signed', 'operational', 'org_id', 'public', 'reports_to', 'restricted', 'role', 'role_a', 'role_b', 'roles', 'secret', 'source', 'target', 'teams', 'temporal', 'top_secret', 'type', 'utf-8']

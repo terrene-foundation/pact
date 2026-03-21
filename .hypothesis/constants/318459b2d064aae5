@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/hook_enforcer.py
+# hypothesis_version: 6.151.9
+
+['__hook_helper__', 'allow', 'block', 'envelope', 'gradient_engine', 'hold', 'total']

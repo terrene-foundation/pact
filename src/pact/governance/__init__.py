@@ -57,6 +57,10 @@ from pact.governance.store import (
     OrgStore,
 )
 from pact.governance.engine import GovernanceEngine
+from pact.governance.envelope_adapter import (
+    EnvelopeAdapterError,
+    GovernanceEnvelopeAdapter,
+)
 from pact.governance.explain import (
     describe_address,
     explain_access,
@@ -126,6 +130,9 @@ __all__ = [
     "OrgStore",
     # Engine (TODO-7010, 7012, 7014, 7015)
     "GovernanceEngine",
+    # Envelope Adapter (TODO-7020)
+    "EnvelopeAdapterError",
+    "GovernanceEnvelopeAdapter",
     # Verdict (TODO-7010)
     "GovernanceVerdict",
     # YAML loader (TODO-7011)

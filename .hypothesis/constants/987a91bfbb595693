@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/runtime.py
+# hypothesis_version: 6.151.9
+
+[0.0, 200, '(auto)', 'Higher = more urgent', 'access_type', 'action', 'agent', 'agent_id', 'agent_name', 'agent_role', 'approved', 'approver_id', 'assigned', 'authority_id', 'blocked', 'blocked_pseudo_agent', 'bridge_source_team', 'bridge_target_team', 'capabilities', 'completed', 'config', 'cumulative_spend', 'current_action_count', 'current_posture', 'data_paths', 'delegatee_id', 'delegator_id', 'denied', 'envelope_id', 'envelope_reeval', 'event', 'executed', 'executing', 'failed', 'held', 'id', 'is_external', 'json', 'level', 'pending', 're-evaluation failed', 'read', 'reason', 'rejected', 'spend_amount', 'status', 'task_id', 'team_id', 'unassigned', 'unknown', 'verifying', 'write']

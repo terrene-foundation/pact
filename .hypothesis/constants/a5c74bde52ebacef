@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/constraints/builtin.py
+# hypothesis_version: 6.151.9
+
+[0.0, '\x00', '*', '**', '***', '.', '..', '.internal.', '.local.', '/', '/*', '/**', '127.0.0.1', '\\', 'allow_all', 'allowed_domains', 'cents', 'communication', 'communication_target', 'contains_pii', 'cost_limit', 'cost_used', 'current_time', 'data access allowed', 'data_access', 'data_classification', 'day', 'end', 'external', 'hour', 'internal', 'internal_only', 'limit', 'localhost', 'minute', 'mode', 'no PII present', 'no_pii', 'none', 'outside time window', 'overnight', 'pattern_count', 'period', 'rate_limit', 'requests_in_period', 'resource_requested', 'resources', 'restricted', 'second', 'start', 'time_window', 'unit', 'within budget', 'within rate limit', 'within time window']

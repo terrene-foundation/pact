@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/registry/models.py
+# hypothesis_version: 6.151.9
+
+['ACTIVE', 'AgentMetadata', 'INACTIVE', 'REVOKED', 'SUSPENDED', 'UNKNOWN', 'agent_id', 'agent_type', 'capabilities', 'constraints', 'endpoint', 'last_seen', 'metadata', 'public_key', 'registered_at', 'status', 'trust_chain_hash']

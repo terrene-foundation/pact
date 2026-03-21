@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/exceptions.py
+# hypothesis_version: 6.151.9
+
+[' -> ', 'DelegationCycleError', 'DelegationError', 'HookError', 'HookTimeoutError', 'Invalid signature', 'KMSConnectionError', 'PathTraversalError', 'PostureStoreError', 'ProximityError', 'RevocationError', 'TrustError', 'TrustStoreError', 'action', 'agent_id', 'authority_id', 'capability', 'context', 'cycle_detected', 'delegatee_id', 'delegator_id', 'expired', 'hook_name', 'invalid_id', 'operation', 'reason', 'record_id', 'record_type', 'timeout_seconds', 'violations']

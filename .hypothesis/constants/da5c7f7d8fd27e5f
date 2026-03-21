@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/decorators.py
+# hypothesis_version: 6.151.9
+
+[b'args:', b'kwargs:', b'result:', 256, 'F', '^[a-zA-Z0-9._-]+$', 'agent_id', 'args_hash', 'function', 'module', 'result_hash']

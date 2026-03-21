@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/revocation/broadcaster.py
+# hypothesis_version: 6.151.9
+
+[100, 1000, 10000, 'DeadLetterEntry', 'DelegationRegistry', 'MAX_CASCADE_DEPTH', 'RevocationEvent', 'RevocationType', 'TrustRevocationList', 'affected_agents', 'agent_revoked', 'asyncio.Future[None]', 'broadcast', 'cascade_from', 'cascade_revocation', 'delegation_revoked', 'event_id', 'key_revoked', 'reason', 'revocation_type', 'revoked_by', 'target_id', 'timestamp']

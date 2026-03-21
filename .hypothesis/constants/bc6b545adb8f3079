@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/audit/anchor.py
+# hypothesis_version: 6.151.9
+
+['[REDACTED]', 'api_key', 'chain_id', 'credential', 'ed25519', 'encryption_key', 'hmac-sha256', 'json', 'latest_hash', 'latest_sequence', 'length', 'metadata', 'password', 'private', 'private_key', 'reason', 'secret', 'signing_key', 'timestamp', 'token', 'utf-8']

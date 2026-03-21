@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/workspace/__init__.py
+# hypothesis_version: 6.151.9
+
+['Bridge', 'BridgeManager', 'BridgePermission', 'BridgeReviewPolicy', 'BridgeStatus', 'BridgeType', 'DiscoveredWorkspace', 'KnowledgePolicy', 'PhaseTransition', 'PolicyDecision', 'PolicyViolation', 'Workspace', 'WorkspaceDiscovery', 'WorkspaceManifest', 'WorkspacePhase', 'WorkspaceRegistry']

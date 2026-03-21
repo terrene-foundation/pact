@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/constraints/budget_store.py
+# hypothesis_version: 6.151.9
+
+[100, 10000, '\x00', '..', 'BudgetStore', 'BudgetStoreError', 'SQLiteBudgetStore', '[/\\\\]', '^[a-zA-Z0-9_-]+$', 'allocated', 'amount', 'committed', 'conn', 'db_path', 'event_type', 'id', 'limit', 'nt', 'timestamp', 'tracker_id']

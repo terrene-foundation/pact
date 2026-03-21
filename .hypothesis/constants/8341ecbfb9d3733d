@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/messaging/envelope.py
+# hypothesis_version: 6.151.9
+
+[300, ',', ':', 'Ed25519', 'MessageMetadata', 'application/json', 'content_type', 'correlation_id', 'created_at', 'encryption', 'message_id', 'metadata', 'nonce', 'normal', 'payload', 'priority', 'recipient_agent_id', 'reply_to', 'sender_agent_id', 'signature', 'signature_algorithm', 'timestamp', 'trust_chain_hash', 'ttl_seconds', 'utf-8']

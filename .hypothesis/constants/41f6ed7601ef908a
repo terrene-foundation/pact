@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/health.py
+# hypothesis_version: 6.151.9
+
+['degraded', 'healthy', 'unreachable']

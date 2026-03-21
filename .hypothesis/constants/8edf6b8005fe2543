@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/approver_auth.py
+# hypothesis_version: 6.151.9
+
+[300, 'action_id', 'approved', 'decision', 'nonce', 'reason', 'rejected', 'signed_at']

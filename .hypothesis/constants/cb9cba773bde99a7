@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/examples/university/barriers.py
+# hypothesis_version: 6.151.9
+
+[180, 'D1-R1', 'D1-R1-D1', 'D1-R1-D1-R1', 'D1-R1-D1-R1-D1-R1', 'D1-R1-D1-R1-D2-R1', 'D1-R1-D2-R1', 'D1-R1-D2-R1-T1', 'joint-research', 'ksp-acad-to-hr', 'scoped', 'standing']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/context.py
+# hypothesis_version: 6.151.9
+
+['GovernanceContext', 'active', 'allowed_actions', 'clearance', 'compartments', 'created_at', 'effective_envelope', 'max_clearance', 'nda_signed', 'org_id', 'posture', 'review_at', 'role_address', 'vetting_status']

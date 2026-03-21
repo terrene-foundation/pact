@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/constraints/evaluator.py
+# hypothesis_version: 6.151.9
+
+[0.1, 0.95, 'conjunctive', 'disjunctive', 'hierarchical', 'independent']

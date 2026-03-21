@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/vocabulary.py
+# hypothesis_version: 6.151.9
+
+['POSTURE_VOCABULARY', 'audit_requirement', 'autonomy_level', 'communication', 'constraint_from_eatp', 'constraint_to_eatp', 'continuous_insight', 'cost_limit', 'data_access', 'delegated', 'description', 'dimension', 'eatp:constraint:', 'eatp:posture:', 'eatp_id', 'financial', 'operational', 'posture_from_eatp', 'posture_to_eatp', 'pseudo_agent', 'reasoning_required', 'resources', 'shared_planning', 'supervised', 'temporal', 'time_window']

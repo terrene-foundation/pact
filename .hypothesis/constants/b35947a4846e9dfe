@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/enforcement.py
+# hypothesis_version: 6.151.9
+
+[10000, 'detail', 'dimension', 'flag_threshold', 'gradient', 'held_callback', 'on_held']

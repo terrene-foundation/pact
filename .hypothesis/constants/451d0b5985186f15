@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/operations/__init__.py
+# hypothesis_version: 6.151.9
+
+['*', ', ', ':', '; ', '=', 'Constraint violation', 'Ed25519', 'No trust chain found', 'Trust chain expired', '_expanded', '_increased', '_removed', 'audit_required', 'business_hours_only', 'constraint', 'constraint_id', 'constraint_overrides', 'constraint_type', 'constraint_value', 'constraints', 'contains_pii', 'create', 'current_time', 'delegate', 'delegation_id', 'delete', 'derived_from', 'detail', 'envelope', 'export', 'genesis', 'modify', 'no_delegation', 'no_pii_export', 'parent_record_id', 'permitted', 'read_only', 'reason', 'reasoning', 'reasoning_required', 'severity', 'time_window', 'type', 'unknown', 'update', 'warning', 'write']

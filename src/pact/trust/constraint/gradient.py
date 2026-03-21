@@ -14,8 +14,9 @@ from __future__ import annotations
 import fnmatch
 import logging
 import time
+import warnings
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +26,9 @@ from pact.build.config.schema import (
 )
 from pact.trust.constraint.envelope import EnvelopeEvaluation, EvaluationResult
 from pact.trust.constraint.verification_level import VerificationThoroughness
+
+if TYPE_CHECKING:
+    from pact.governance.engine import GovernanceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +87,7 @@ class GradientEngine:
         *,
         near_boundary_threshold: float = 0.8,
         proximity_scanner: Any | None = None,
+        governance_engine: GovernanceEngine | None = None,
     ) -> None:
         """Initialize the gradient engine.
 
@@ -92,10 +97,30 @@ class GradientEngine:
             proximity_scanner: Optional EATP ProximityScanner for constraint
                 utilization scanning. If provided, envelope dimension evaluations
                 are fed through the scanner for proximity alert generation.
+            governance_engine: Optional GovernanceEngine for governance-integrated
+                classification. When provided, classify() can use verify_action()
+                from the governance layer. When absent, a DeprecationWarning is
+                emitted directing callers to use the governance path.
+
+        .. deprecated::
+            Constructing GradientEngine without ``governance_engine`` is deprecated.
+            Pass a GovernanceEngine instance to enable governance-integrated
+            classification. The legacy path (without governance_engine) will be
+            removed in a future version.
         """
+        if governance_engine is None:
+            warnings.warn(
+                "GradientEngine constructed without governance_engine. "
+                "Pass governance_engine=<GovernanceEngine> for governance-integrated "
+                "classification. The legacy path without governance_engine is "
+                "deprecated and will be removed in a future version.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._config = config
         self._near_boundary_threshold = near_boundary_threshold
         self._proximity_scanner = proximity_scanner
+        self._governance_engine = governance_engine
 
     def classify(
         self,

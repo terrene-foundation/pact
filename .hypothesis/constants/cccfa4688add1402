@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/explain.py
+# hypothesis_version: 6.151.9
+
+['    Financial: none', '  4d: KSP -- NO', '  4e: bridge -- NO', ' > ', '4a', '4b', '4c', '4d', '4e', 'KSP', 'T-inherits-D', 'access_path', 'bridge', 'bridge_id', 'describe_address', 'downward visibility', 'explain_access', 'explain_envelope', 'ksp', 'ksp_id', 'same unit', 'step']

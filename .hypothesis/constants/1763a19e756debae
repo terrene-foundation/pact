@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/posture.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.9, 0.95, 0.98, 0.99, 1.0, 100, 180, 365, 500, 1000, 'content_strategy', 'crisis_response', 'evidence', 'external_publication', 'financial_decisions', 'max_incidents', 'min_days', 'min_operations', 'min_success_rate', 'modify_constraints', 'modify_governance', 'novel_outreach', 'shadow_pass_rate']

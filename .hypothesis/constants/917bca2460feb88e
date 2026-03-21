@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/verdict.py
+# hypothesis_version: 6.151.9
+
+['GovernanceVerdict', 'access_decision', 'action', 'allowed', 'audit_details', 'auto_approved', 'flagged', 'level', 'reason', 'role_address', 'step_failed', 'timestamp']

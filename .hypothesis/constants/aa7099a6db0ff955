@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/access.py
+# hypothesis_version: 6.151.9
+
+['-', '4a', '4b', '4c', '4d', '4e', 'AccessDecision', 'D', 'KnowledgeSharePolicy', 'PactBridge', 'T', 'access_path', 'bridge', 'bridge_id', 'bridge_type', 'can_access', 'detail', 'downward', 'effective_clearance', 'item_classification', 'item_compartments', 'item_id', 'item_owner', 'ksp', 'ksp_id', 'missing_clearance', 'missing_compartments', 'no_access_path', 'posture', 'role_address', 'role_compartments', 'role_max_clearance', 'same_unit', 'step', 't_inherits_d', 'vetting_not_active', 'vetting_status']

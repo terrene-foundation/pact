@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/org/builder.py
+# hypothesis_version: 6.151.9
+
+['*', '-', 'All team definitions', 'CAP_NOT_IN_ENVELOPE', 'DEPT_ORG_TIGHTENING', 'ERR_DUPLICATE_AGENT', 'ERR_DUPLICATE_TEAM', 'FINANCIAL_TIGHTENING', 'TEAM_DEPT_TIGHTENING', 'TEMPORAL_TIGHTENING', 'Terrene Foundation', 'agents', 'capabilities', 'constraint_envelope', 'envelopes', 'error', 'id', 'json', 'lead', 'team_lead', 'teams', 'terrene-foundation', 'terrene.foundation', 'warning', 'workspace', 'workspaces/dm/', 'ws-dm']

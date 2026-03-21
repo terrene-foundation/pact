@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/config/loader.py
+# hypothesis_version: 6.151.9
+
+[' -> ', '.yaml', '.yml', 'loc']

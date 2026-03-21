@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/approval.py
+# hypothesis_version: 6.151.9
+
+[0.0, 100, 10000, 'approved', 'batch', 'expired', 'immediate', 'pending', 'pending_count', 'rejected', 'resolved_count', 'standard']

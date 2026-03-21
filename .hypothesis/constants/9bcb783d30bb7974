@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/workspace/knowledge_policy.py
+# hypothesis_version: 6.151.9
+
+['access_type', 'classification', 'data_type', 'internal', 'policy_lookup', 'read', 'workspace_id', 'write']

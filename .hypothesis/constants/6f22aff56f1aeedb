@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/bridge_trust.py
+# hypothesis_version: 6.151.9
+
+[0.0, 'SUCCESS', 'bridge_message', 'bridge_read', 'bridge_write', 'source_to_target', 'target_to_source']

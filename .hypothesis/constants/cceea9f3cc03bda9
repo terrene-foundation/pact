@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/examples/university/clearance.py
+# hypothesis_version: 6.151.9
+
+['D1-R1', 'D1-R1-D1-R1', 'D1-R1-D1-R1-D1-R1', 'D1-R1-D1-R1-D2-R1', 'D1-R1-D2-R1', 'D1-R1-D2-R1-T1-R1', 'D1-R1-D2-R1-T2-R1', 'D1-R1-D3-R1', 'D1-R1-D3-R1-T1-R1', 'human-subjects', 'personnel', 'student-records']

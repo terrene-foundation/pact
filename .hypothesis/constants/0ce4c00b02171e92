@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/revocation/cascade.py
+# hypothesis_version: 6.151.9
+
+['RevocationResult', 'cascade_revoke', 'errors', 'events', 'revoked_agents', 'success']

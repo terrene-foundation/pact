@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/reasoning.py
+# hypothesis_version: 6.151.9
+
+[0.0, 1.0, 100, 1000, 5000, 10000, 50000, 'ConfidentialityLevel', 'EvidenceReference', 'ReasoningTrace', '[REDACTED]', 'confidence', 'confidential', 'confidentiality', 'decision', 'evidence', 'evidence_type', 'methodology', 'public', 'rationale', 'redacted', 'reference', 'restricted', 'secret', 'summary', 'timestamp', 'top_secret', 'utf-8']

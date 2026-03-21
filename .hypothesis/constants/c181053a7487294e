@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/roles.py
+# hypothesis_version: 6.151.9
+
+['None', 'ROLE_PERMISSIONS', 'TrustRole', 'admin', 'audit', 'auditor', 'check_permission', 'delegate', 'establish', 'observer', 'operator', 'read', 'require_permission', 'verify']

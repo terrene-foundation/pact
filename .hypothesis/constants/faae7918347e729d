@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/signing.py
+# hypothesis_version: 6.151.9
+
+['config', 'jcs-rfc8785', 'signer_id', 'version']

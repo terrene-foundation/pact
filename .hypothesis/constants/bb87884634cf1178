@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/crypto.py
+# hypothesis_version: 6.151.9
+
+[100000, ',', ':', 'DualSignature', 'NACL_AVAILABLE', 'SALT_LENGTH', 'capability_ids', 'constraint_hash', 'delegation_ids', 'derive_key_with_salt', 'dual_sign', 'dual_verify', 'ed25519_signature', 'generate_keypair', 'generate_salt', 'genesis_id', 'hash_chain', 'hash_reasoning_trace', 'hmac_algorithm', 'hmac_sign', 'hmac_signature', 'hmac_verify', 'parent_record_id', 'previous_state_hash', 'reasoning', 'salt', 'sha256', 'sha384', 'sha512', 'sign', 'sign_reasoning_trace', 'utf-8', 'verify_signature']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/revocation.py
+# hypothesis_version: 6.151.9
+
+[3600, 10000, 'affected_agents', 'agent_id', 'bridge_delegation', 'cascade', 'delegation_id', 'get_delegation_tree', 'json', 'reason', 'revocation_id', 'revocation_type', 'revoked_at', 'revoker_id', 'surgical', 'tree']

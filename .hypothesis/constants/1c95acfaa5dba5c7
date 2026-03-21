@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/execution_context.py
+# hypothesis_version: 6.151.9
+
+[' -> ', 'ExecutionContext', 'HumanOrigin', '[]', 'auth_provider', 'authenticated_at', 'child_value', 'constraint', 'constraints', 'delegation_chain', 'delegation_depth', 'display_name', 'execution_context', 'extra_items', 'human_id', 'human_origin', 'parent_value', 'rule', 'session_id', 'trace_id']

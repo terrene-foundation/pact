@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/registry/exceptions.py
+# hypothesis_version: 6.151.9
+
+['agent_id', 'errors', 'operation', 'original_error', 'reason']

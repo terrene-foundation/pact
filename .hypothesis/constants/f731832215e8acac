@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/compilation.py
+# hypothesis_version: 6.151.9
+
+[500, 100000, '-', 'CompilationError', 'CompiledOrg', 'D', 'MAX_TOTAL_NODES', 'OrgNode', 'RoleDefinition', 'VacancyStatus', 'address', 'children_addresses', 'compile_org', 'nodes', 'roles']

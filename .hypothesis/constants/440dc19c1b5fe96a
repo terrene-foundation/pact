@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/scoring.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.5, 0.65, 0.75, 0.85, 0.95, 1.0, 5.0, 365, 'A', 'A+', 'B', 'B+', 'C', 'D', 'F', 'chain_completeness', 'chain_recency', 'constraint_coverage', 'delegation_depth', 'posture_level']

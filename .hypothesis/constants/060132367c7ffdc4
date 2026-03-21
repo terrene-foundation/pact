@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/messaging/channel.py
+# hypothesis_version: 6.151.9
+
+['message_id', 'message_type', 'messages_received', 'messages_rejected', 'messages_sent', 'messages_verified', 'not_expired', 'not_replayed', 'receive', 'recipient', 'send', 'send_reply', 'sender', 'signature_valid', 'since', 'timestamp', 'trust_valid', 'uptime_seconds', 'valid', 'verification_result']

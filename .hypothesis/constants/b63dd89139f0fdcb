@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/bridge_envelope.py
+# hypothesis_version: 6.151.9
+
+['00:00', ':', 'auto_share', 'never_share', 'request_share', 'source', 'target']

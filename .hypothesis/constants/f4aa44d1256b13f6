@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/credentials.py
+# hypothesis_version: 6.151.9
+
+[b'\x00', 0.0, 300, 'STANDARD', 'active', 'grace_expires', 'key_bytes', 'key_version', 'registered_at']

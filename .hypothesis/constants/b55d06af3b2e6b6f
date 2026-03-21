@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/envelopes.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.2, 10.0, 100.0, 1000.0, 10000.0, 100000.0, '/data/classified', '/data/department', '/data/org', '/data/public', '/data/team', '23:59', '; ', 'RoleEnvelope', 'TaskEnvelope', 'allowed_actions', 'allowed_channels', 'api', 'approve', 'confidentiality', 'delegate', 'deploy', 'email', 'execute', 'external', 'fixed', 'internal', 'internal_only', 'intersect_envelopes', 'max_spend_usd', 'plan', 'propose', 'read', 'read_paths', 'rolling', 'slack', 'teams', 'write', 'write_paths']

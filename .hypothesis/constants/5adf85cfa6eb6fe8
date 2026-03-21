@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/gradient.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.8, 1.0, 100, 1000, 'dimension', 'level', 'proximity_alerts', 'reason', 'unknown', 'usage_ratio']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/eatp_bridge.py
+# hypothesis_version: 6.151.9
+
+['*', 'DENIED', 'FAILURE', 'FULL', 'PARTIAL', 'QUICK', 'STANDARD', 'SUCCESS', 'UTC', 'agent_name', 'agent_role', 'authority_name', 'comm:internal_only', 'envelope_id', 'policy_reference', 'reasoning']

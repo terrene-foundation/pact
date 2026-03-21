@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/engine.py
+# hypothesis_version: 6.151.9
+
+[0.8, 'Clearance revoked', 'GovernanceEngine', 'action', 'auto_approved', 'blocked', 'cost', 'error', 'flagged', 'has_envelope', 'held', 'internal_error', 'item_id', 'level', 'posture', 'reason', 'resource', 'role_address', 'task_id', 'verify_action']

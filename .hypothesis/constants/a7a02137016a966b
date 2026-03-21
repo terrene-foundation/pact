@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/audit.py
+# hypothesis_version: 6.151.9
+
+['PactAuditAction', 'address_computed', 'barrier_enforced', 'bridge_established', 'bridge_revoked', 'clearance_granted', 'clearance_revoked', 'envelope_created', 'envelope_modified', 'ksp_created', 'ksp_revoked', 'pact_action', 'reason', 'role_address', 'step_failed', 'target_address']

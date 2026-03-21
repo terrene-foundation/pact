@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/circuit_breaker.py
+# hypothesis_version: 6.151.9
+
+['T', 'closed', 'half_open', 'open']

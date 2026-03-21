@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/session.py
+# hypothesis_version: 6.151.9
+
+['=', 'Active teams: none', 'Agent statuses:', 'Session Briefing', 'Session ended', 'active', 'ended', 'suspended']

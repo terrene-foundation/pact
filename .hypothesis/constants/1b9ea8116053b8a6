@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/enforce/decorators.py
+# hypothesis_version: 6.151.9
+
+['F', 'args', 'args_hash', 'audited', 'function', 'kwargs', 'module', 'result_hash', 'shadow', 'verified']

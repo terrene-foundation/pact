@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/agent_mapping.py
+# hypothesis_version: 6.151.9
+
+['AgentRoleMapping', 'D', 'R', 'T']

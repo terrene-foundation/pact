@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/authority.py
+# hypothesis_version: 6.151.9
+
+['AuthorityPermission', 'authority_type', 'create_agents', 'created_at', 'deactivate_agents', 'delegate_trust', 'grant_capabilities', 'id', 'is_active', 'metadata', 'name', 'parent_authority_id', 'permissions', 'public_key', 'revoke_capabilities', 'signing_key_id', 'updated_at']

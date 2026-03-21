@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/audit/pipeline.py
+# hypothesis_version: 6.151.9
+
+['SUCCESS', 'json', 'reasoning', 'resource']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/versioning.py
+# hypothesis_version: 6.151.9
+
+['<unset>', 'communication', 'data_access', 'financial', 'operational', 'temporal']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/constraints/budget_tracker.py
+# hypothesis_version: 6.151.9
+
+[100, 10000, 1000000, 'BudgetCheckResult', 'BudgetEvent', 'BudgetSnapshot', 'BudgetTracker', 'BudgetTrackerError', 'actual_committed', 'actual_microdollars', 'allocated', 'allowed', 'amount', 'available', 'committed', 'committed_after', 'event_type', 'exhausted', 'keys_present', 'microdollars_to_usd', 'missing_keys', 'op', 'record', 'reserve', 'reserved_after', 'reserved_released', 'store', 'success', 'threshold_80', 'threshold_95', 'timestamp', 'timestamp_raw', 'ts', 'usd_to_microdollars']

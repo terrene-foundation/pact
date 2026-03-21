@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/backup.py
+# hypothesis_version: 6.151.9
+
+[1000000, 'Backup written to %s', 'Restore complete', '_attestations', '_delegations', '_genesis', '_get_connection', '_org_definitions', '_posture', 'agent_id', 'anchor_id', 'attestation_id', 'attestations', 'audit_anchors', 'authority_id', 'created_at', 'delegatee_id', 'delegation_id', 'delegations', 'delegator_id', 'envelope_id', 'envelopes', 'genesis_records', 'metadata', 'org_definitions', 'org_id', 'posture_changes', 'revocation_id', 'revocations', 'version']

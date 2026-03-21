@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/enforce/strict.py
+# hypothesis_version: 6.151.9
+
+[10000, 'EATPBlockedError', 'EATPHeldError', 'EnforcementRecord', 'HeldBehavior', 'StrictEnforcer', 'Verdict', 'Verification failed', 'auto_approved', 'blocked', 'callback', 'dimension', 'flagged', 'held', 'queue', 'raise', 'reasoning', 'reasoning_present', 'reasoning_verified', 'valid', 'verdict', 'violations']

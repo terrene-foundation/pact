@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/middleware.py
+# hypothesis_version: 6.151.9
+
+[0.0, 60.0, 3600.0, 'Auto-approved', 'Flagged for review', 'Held for approval', '__cumulative_spend__', '__system__', 'approval threshold', 'approved', 'approver_id', 'cache_hit', 'delegation_id', 'emergency_halt', 'emergency_resume', 'executed', 'executed_flagged', 'halt_activated', 'halt_lifted', 'matched_rule', 'middleware', 'near_boundary', 'pending', 'queued', 'reason', 'rejected', 'rejection_reason', 'request_id', 'resource', 'spends', 'verification_level']

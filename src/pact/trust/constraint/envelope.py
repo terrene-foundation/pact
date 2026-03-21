@@ -9,6 +9,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import logging
+import warnings
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -274,7 +275,20 @@ class ConstraintEnvelope(BaseModel):
 
         Returns an EnvelopeEvaluation with per-dimension results and an overall verdict.
         The overall result is the most restrictive dimension result.
+
+        .. deprecated::
+            Direct use of ConstraintEnvelope.evaluate_action() is deprecated.
+            Use GovernanceEngine.verify_action() for all governance decisions.
+            The governance layer computes effective envelopes canonically.
         """
+        warnings.warn(
+            "ConstraintEnvelope.evaluate_action() is deprecated. "
+            "Use GovernanceEngine.verify_action() for governance decisions. "
+            "The governance layer computes effective envelopes canonically.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         now = current_time or datetime.now(UTC)
 
         # RT2-09: Check expiry inside evaluate_action so direct callers are protected

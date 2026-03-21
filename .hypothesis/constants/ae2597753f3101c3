@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/config/defaults.py
+# hypothesis_version: 6.151.9
+
+[0.0, '09:00', '18:00', 'UTC', 'financial_records', 'legal_documents', 'modify_config', 'pii', 'publish_external', 'send_email']

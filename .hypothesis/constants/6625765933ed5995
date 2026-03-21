@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/constraint_validator.py
+# hypothesis_version: 6.151.9
+
+['$', '*', '**', '-', '.*', '/', '/*', '/**', '/?', ':', '?', '[^/]', '[^/]*', '^', 'allowed_actions', 'budget_limit', 'cost_limit', 'cost_limit_increased', 'data_scope_expanded', 'data_scopes', 'forbidden_actions', 'geo_restrictions', 'inf', 'max_api_calls', 'max_delegation_depth', 'rate_limit', 'rate_limit_increased', 'resources', 'resources_expanded', 'time_window', 'time_window_expanded']

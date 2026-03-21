@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/workspace/models.py
+# hypothesis_version: 6.151.9
+
+['(none)', 'active', 'analyze', 'archived', 'codify', 'decommissioned', 'implement', 'plan', 'provisioning', 'validate']

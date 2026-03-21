@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/use/execution/llm_backend.py
+# hypothesis_version: 6.151.9
+
+[0.7, 4096, 'anthropic', 'google', 'local', 'openai', 'stub response', 'stub-model']

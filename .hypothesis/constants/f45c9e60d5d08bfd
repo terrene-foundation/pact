@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/hooks.py
+# hypothesis_version: 6.151.9
+
+[5.0, 100, 'EATPHook', 'HookContext', 'HookRegistry', 'HookResult', 'HookType', 'action', 'agent_id', 'allow', 'authority_id', 'hook_type', 'metadata', 'modified_context', 'post_delegation', 'post_verification', 'pre_delegation', 'pre_verification', 'reason', 'resource', 'timestamp', 'trace_id']

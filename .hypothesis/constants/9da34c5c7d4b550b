@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/cache.py
+# hypothesis_version: 6.151.9
+
+[0.0, 1.0, 'Number of cache hits', 'expiry', 'value']

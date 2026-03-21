@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/store.py
+# hypothesis_version: 6.151.9
+
+[10000, '-', 'AccessPolicyStore', 'ClearanceStore', 'EnvelopeStore', 'MAX_STORE_SIZE', 'MemoryClearanceStore', 'MemoryEnvelopeStore', 'MemoryOrgStore', 'OrgStore']

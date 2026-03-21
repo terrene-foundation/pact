@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/config/schema.py
+# hypothesis_version: 6.151.9
+
+[0.0, '01-analysis/', '02-plans/', '1.0', ':', 'AUTO_APPROVED', 'All team definitions', 'BLOCKED', 'FLAGGED', 'HELD', 'Organization name', 'UTC', 'active_hours_end', 'active_hours_start', 'agents', 'anthropic', 'api_cost_budget_usd', 'briefs/', 'communication', 'confidential', 'constraint_envelopes', 'continuous_insight', 'data_access', 'delegated', 'financial', 'fixed', 'max_spend_usd', 'operational', 'path', 'pseudo_agent', 'public', 'restricted', 'rolling', 'secret', 'shared_planning', 'supervised', 'teams', 'temporal', 'top_secret']

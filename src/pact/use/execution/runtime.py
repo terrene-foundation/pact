@@ -56,7 +56,8 @@ from pact.trust.constraint.envelope import (
     EvaluationResult,
     select_active_envelope,
 )
-from pact.trust.constraint.gradient import GradientEngine
+from pact.trust.constraint.gradient import GradientEngine, VerificationResult
+from pact.trust.constraint.verification_level import VerificationThoroughness
 from pact.trust.posture import NEVER_DELEGATED_ACTIONS
 from pact.use.execution.approval import ApprovalQueue
 from pact.use.execution.approver_auth import AuthenticatedApprovalQueue
@@ -65,6 +66,7 @@ from pact.use.execution.registry import AgentRecord, AgentRegistry, AgentStatus
 if TYPE_CHECKING:
     from pact.build.config.schema import VerificationGradientConfig
     from pact.build.workspace.bridge import BridgeManager
+    from pact.governance.engine import GovernanceEngine
     from pact.trust.bridge_trust import BridgeTrustManager
     from pact.trust.constraint.enforcer import ConstraintEnforcer
     from pact.trust.constraint.middleware import VerificationMiddleware
@@ -162,6 +164,7 @@ class ExecutionRuntime:
         constraint_enforcer: ConstraintEnforcer | None = None,
         bridge_manager: BridgeManager | None = None,
         bridge_trust_manager: BridgeTrustManager | None = None,
+        governance_engine: GovernanceEngine | None = None,
     ) -> None:
         """Initialize the execution runtime.
 
@@ -191,6 +194,11 @@ class ExecutionRuntime:
                 through the bridge trust pipeline.
             bridge_trust_manager: Optional BridgeTrustManager for bridge
                 delegation lookups (M33-3301).
+            governance_engine: Optional GovernanceEngine for PACT governance
+                integration (TODO-7022). When provided, verify_action() is used
+                for pre-execution checks instead of standalone gradient/envelope
+                evaluation. Agents receive GovernanceContext (frozen), not the
+                engine itself.
         """
         self._registry = registry
         self._gradient = gradient
@@ -214,6 +222,10 @@ class ExecutionRuntime:
         # M33-3301: Bridge integration for cross-team verification
         self._bridge_manager: BridgeManager | None = bridge_manager
         self._bridge_trust_manager: BridgeTrustManager | None = bridge_trust_manager
+        # TODO-7022: PACT GovernanceEngine integration
+        self._governance_engine: GovernanceEngine | None = governance_engine
+        # TODO-7022: Agent ID -> D/T/R role address mapping for governance lookups
+        self._agent_role_addresses: dict[str, str] = {}
 
         # RT4-M9: Thread-safe task queue
         self._lock = threading.Lock()
@@ -358,6 +370,25 @@ class ExecutionRuntime:
             executor: A TaskExecutor instance.
         """
         self._executor = executor
+
+    def set_agent_role_address(self, agent_id: str, role_address: str) -> None:
+        """Map an agent ID to a D/T/R role address for governance lookups.
+
+        When a GovernanceEngine is configured, the runtime needs to know which
+        D/T/R address each agent occupies so it can call verify_action() with
+        the correct positional address.
+
+        Args:
+            agent_id: The agent ID (as registered in the AgentRegistry).
+            role_address: The D/T/R positional address of the role the agent occupies.
+        """
+        with self._lock:
+            self._agent_role_addresses[agent_id] = role_address
+        logger.info(
+            "TODO-7022: Mapped agent '%s' to role address '%s'",
+            agent_id,
+            role_address,
+        )
 
     def submit(
         self,
@@ -558,10 +589,34 @@ class ExecutionRuntime:
                     task.metadata["bridge_source_team"] = task.team_id
                     task.metadata["bridge_target_team"] = agent.team_id
 
+        # TODO-7022: GovernanceEngine verification path.
+        # When governance_engine is provided AND we have a role address for the
+        # agent, use governance_engine.verify_action() instead of the standalone
+        # gradient/envelope path. This replaces constraint enforcer, envelope
+        # evaluation, and gradient classification for governed agents.
+        if self._governance_engine is not None:
+            role_address = self._agent_role_addresses.get(agent.agent_id)
+            if role_address is not None:
+                governance_result = self._run_governance_verification(
+                    task=task,
+                    agent=agent,
+                    role_address=role_address,
+                )
+                if governance_result is not None:
+                    # Governance path handled the task -- return it
+                    return governance_result
+                # If _run_governance_verification returned None, it means
+                # governance approved (auto_approved or flagged) and we should
+                # fall through to execution below. But we need to skip the
+                # standalone verification paths since governance already checked.
+                # We set a flag on the task metadata to signal this.
+                task.metadata["_governance_verified"] = True
+
         # M16-01: Constraint enforcer check before gradient classification.
         # If the enforcer is provided, check constraints first. BLOCKED results
         # reject the task immediately without proceeding to gradient classification.
-        if self._constraint_enforcer is not None:
+        # Skip if governance already verified this task.
+        if self._constraint_enforcer is not None and not task.metadata.get("_governance_verified"):
             enforcer_result = self._constraint_enforcer.check(
                 action=task.action,
                 agent_id=agent.agent_id,
@@ -591,9 +646,10 @@ class ExecutionRuntime:
                 self._record_audit(task, enforcer_result.verification_level)
                 return task
 
-        # RT5-01: Look up constraint envelope from store and evaluate
+        # RT5-01: Look up constraint envelope from store and evaluate.
+        # Skip if governance engine already verified this task (TODO-7022).
         envelope_evaluation: EnvelopeEvaluation | None = None
-        if self._trust_store is not None:
+        if self._trust_store is not None and not task.metadata.get("_governance_verified"):
             envelopes = self._trust_store.list_envelopes(agent_id=agent.agent_id)
             if envelopes:
                 # RT7-06/RT8-03: Select most recent non-expired envelope.
@@ -656,59 +712,76 @@ class ExecutionRuntime:
                             exc,
                         )
 
-        # Step 2: Verify through gradient
-        verification = self._gradient.classify(
+        # Step 2: Verify through gradient.
+        # Skip if governance engine already verified this task (TODO-7022).
+        # Initialize verification to a default so it is always bound for Pyright.
+        # When governance verified the task, this default is unused because
+        # task.verification_level is already AUTO_APPROVED or FLAGGED (set by
+        # _run_governance_verification), so the BLOCKED/HELD branches below
+        # that reference verification.reason are never reached.
+        verification = VerificationResult(
             action=task.action,
             agent_id=agent.agent_id,
-            envelope_evaluation=envelope_evaluation,
+            level=task.verification_level or VerificationLevel.AUTO_APPROVED,
+            thoroughness=VerificationThoroughness.STANDARD,
+            reason="Governance-verified; standalone gradient skipped",
         )
-        task.verification_level = verification.level
-
-        # RT5-06: Force HELD for NEVER_DELEGATED_ACTIONS (unless already BLOCKED)
-        if (
-            task.action in NEVER_DELEGATED_ACTIONS
-            and verification.level != VerificationLevel.BLOCKED
-        ):
-            verification = verification.model_copy(
-                update={
-                    "level": VerificationLevel.HELD,
-                    "reason": verification.reason
-                    or f"Action '{task.action}' is a never-delegated action requiring human approval",
-                }
+        if not task.metadata.get("_governance_verified"):
+            verification = self._gradient.classify(
+                action=task.action,
+                agent_id=agent.agent_id,
+                envelope_evaluation=envelope_evaluation,
             )
-            task.verification_level = VerificationLevel.HELD
-            logger.info(
-                "NEVER_DELEGATED_ACTIONS: escalated '%s' to HELD for task '%s'",
-                task.action,
-                task.task_id,
-            )
+            task.verification_level = verification.level
 
-        # RT5-07: SUPERVISED posture escalation — escalate AUTO_APPROVED and
-        # FLAGGED to HELD for SUPERVISED agents (mirrors middleware behavior)
-        if self._posture_manager is not None:
-            posture = self._posture_manager.get(agent.agent_id)
+            # RT5-06: Force HELD for NEVER_DELEGATED_ACTIONS (unless already BLOCKED)
             if (
-                posture is not None
-                and posture.current_level == TrustPostureLevel.SUPERVISED
-                and task.verification_level
-                in (VerificationLevel.AUTO_APPROVED, VerificationLevel.FLAGGED)
+                task.action in NEVER_DELEGATED_ACTIONS
+                and verification.level != VerificationLevel.BLOCKED
             ):
                 verification = verification.model_copy(
                     update={
                         "level": VerificationLevel.HELD,
                         "reason": verification.reason
-                        or "SUPERVISED agent: escalated to HELD for human approval",
+                        or f"Action '{task.action}' is a never-delegated action requiring human approval",
                     }
                 )
                 task.verification_level = VerificationLevel.HELD
                 logger.info(
-                    "SUPERVISED escalation: escalated '%s' to HELD for agent '%s'",
+                    "NEVER_DELEGATED_ACTIONS: escalated '%s' to HELD for task '%s'",
                     task.action,
-                    agent.agent_id,
+                    task.task_id,
                 )
 
-        # RT4-H9 + RT5-23: Optionally also run through verification middleware
-        if self._verification_middleware is not None:
+            # RT5-07: SUPERVISED posture escalation — escalate AUTO_APPROVED and
+            # FLAGGED to HELD for SUPERVISED agents (mirrors middleware behavior)
+            if self._posture_manager is not None:
+                posture = self._posture_manager.get(agent.agent_id)
+                if (
+                    posture is not None
+                    and posture.current_level == TrustPostureLevel.SUPERVISED
+                    and task.verification_level
+                    in (VerificationLevel.AUTO_APPROVED, VerificationLevel.FLAGGED)
+                ):
+                    verification = verification.model_copy(
+                        update={
+                            "level": VerificationLevel.HELD,
+                            "reason": verification.reason
+                            or "SUPERVISED agent: escalated to HELD for human approval",
+                        }
+                    )
+                    task.verification_level = VerificationLevel.HELD
+                    logger.info(
+                        "SUPERVISED escalation: escalated '%s' to HELD for agent '%s'",
+                        task.action,
+                        agent.agent_id,
+                    )
+
+        # RT4-H9 + RT5-23: Optionally also run through verification middleware.
+        # Skip if governance engine already verified this task (TODO-7022).
+        if self._verification_middleware is not None and not task.metadata.get(
+            "_governance_verified"
+        ):
             try:
                 mw_result = self._verification_middleware.process_action(
                     agent_id=agent.agent_id,
@@ -722,7 +795,8 @@ class ExecutionRuntime:
                     VerificationLevel.BLOCKED: 3,
                 }
                 mw_severity = _level_severity.get(mw_result.verification_level, 0)
-                gradient_severity = _level_severity.get(task.verification_level, 0)
+                current_level = task.verification_level or VerificationLevel.AUTO_APPROVED
+                gradient_severity = _level_severity.get(current_level, 0)
                 if mw_severity > gradient_severity:
                     # RT5-23: Use middleware level directly without redundant
                     # re-classification. Preserve the middleware's reason.
@@ -1238,6 +1312,120 @@ class ExecutionRuntime:
         )
 
         return level
+
+    def _run_governance_verification(
+        self,
+        task: Task,
+        agent: AgentRecord,
+        role_address: str,
+    ) -> Task | None:
+        """Run governance engine verification for a task (TODO-7022).
+
+        Uses GovernanceEngine.verify_action() for pre-execution checks.
+        Returns the task if it was BLOCKED or HELD (no further processing needed),
+        or None if the action is approved (auto_approved or flagged) and execution
+        should continue.
+
+        Args:
+            task: The task being processed.
+            agent: The assigned agent.
+            role_address: The D/T/R address of the agent's role.
+
+        Returns:
+            The task if governance blocked or held it (returned to caller),
+            or None if execution should continue.
+        """
+        if self._governance_engine is None:
+            return None
+
+        try:
+            # Build context dict from task metadata
+            context: dict[str, Any] = {}
+            cost = task.metadata.get("cost")
+            if cost is not None:
+                context["cost"] = float(cost)
+            task_id_val = task.metadata.get("task_id") or task.task_id
+            context["task_id"] = task_id_val
+
+            # Call governance engine verify_action
+            verdict = self._governance_engine.verify_action(
+                role_address=role_address,
+                action=task.action,
+                context=context if context else None,
+            )
+
+            logger.info(
+                "TODO-7022: Governance verdict for task '%s' agent '%s' "
+                "role '%s' action '%s': %s -- %s",
+                task.task_id,
+                agent.agent_id,
+                role_address,
+                task.action,
+                verdict.level,
+                verdict.reason,
+            )
+
+            # Map governance verdict levels to runtime behavior
+            if verdict.level == "blocked":
+                with self._lock:
+                    task.status = TaskStatus.BLOCKED
+                    task.verification_level = VerificationLevel.BLOCKED
+                    task.result = TaskResult(error=f"Governance blocked: {verdict.reason}")
+                    task.completed_at = datetime.now(UTC)
+                self._record_audit(task, VerificationLevel.BLOCKED)
+                return task
+
+            if verdict.level == "held":
+                with self._lock:
+                    task.status = TaskStatus.HELD
+                    task.verification_level = VerificationLevel.HELD
+                self._approval_queue.submit(
+                    agent_id=agent.agent_id,
+                    action=task.action,
+                    reason=verdict.reason or "Held by governance engine for human approval",
+                    team_id=task.team_id,
+                )
+                self._record_audit(task, VerificationLevel.HELD)
+                return task
+
+            if verdict.level == "flagged":
+                logger.warning(
+                    "TODO-7022: Governance FLAGGED action '%s' for agent '%s' "
+                    "role '%s': %s -- proceeding with execution",
+                    task.action,
+                    agent.agent_id,
+                    role_address,
+                    verdict.reason,
+                )
+                with self._lock:
+                    task.verification_level = VerificationLevel.FLAGGED
+                # Fall through to execution (return None)
+                return None
+
+            # auto_approved -- proceed silently
+            with self._lock:
+                task.verification_level = VerificationLevel.AUTO_APPROVED
+            return None
+
+        except Exception as exc:
+            # Fail-closed: governance error -> BLOCKED
+            logger.error(
+                "TODO-7022: Governance verification failed for task '%s' "
+                "agent '%s' role '%s': %s -- fail-closed to BLOCKED",
+                task.task_id,
+                agent.agent_id,
+                role_address,
+                exc,
+            )
+            with self._lock:
+                task.status = TaskStatus.BLOCKED
+                task.verification_level = VerificationLevel.BLOCKED
+                task.result = TaskResult(
+                    error=f"Governance verification error (fail-closed): {exc}"
+                )
+                task.completed_at = datetime.now(UTC)
+            self._record_audit(task, VerificationLevel.BLOCKED)
+            return task
 
     def _assign_agent(self, task: Task) -> AgentRecord | None:
         """Select an agent for the task.

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/enforce/proximity.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.7, 0.8, 0.9, 0.95, 1.0, 'ProximityAlert', 'ProximityConfig', 'ProximityScanner', 'dimension', 'escalated_verdict', 'limit', 'original_verdict', 'unknown', 'usage_ratio', 'used']

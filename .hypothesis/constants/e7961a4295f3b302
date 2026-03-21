@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/kailash/kailash-py/packages/eatp/src/eatp/enforce/challenge.py
+# hypothesis_version: 6.151.9
+
+[100, 100000, '...', 'ChallengeError', 'ChallengeProtocol', 'ChallengeRequest', 'ChallengeResponse', 'agent_id', 'attestation_id', 'attester_id', 'capability', 'capability_type', 'challenge_count', 'challenge_id', 'challenger_id', 'constraints', 'expires_at', 'max_allowed', 'nonce_prefix', 'now', 'required_proof', 'target_agent_id', 'window_seconds']

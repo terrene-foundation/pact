@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/store.py
+# hypothesis_version: 6.151.9
+
+[100, '*.json', '/', 'action', 'agent_id', 'anchor_id', 'anchors', 'attestation_id', 'attestations', 'authority_id', 'delegatee_id', 'delegation_id', 'delegations', 'delegator_id', 'envelope_id', 'envelopes', 'genesis', 'org_definitions', 'org_id', 'posture', 'revocation_id', 'revocations', 'timestamp', 'verification_level']

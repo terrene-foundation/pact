@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/workspace/bridge.py
+# hypothesis_version: 6.151.9
+
+[100, 256, 10000, '(none)', '?', 'Both sides approved', 'Bridge resumed', 'access_type', 'active', 'ad_hoc', 'agent_id', 'bridges', 'closed', 'count', 'expired', 'negotiating', 'notes', 'path', 'pending', 'purpose', 'read', 'reviewer_id', 'revoked', 'scoped', 'source_team', 'standing', 'suggest_standing', 'suspended', 'target_team', 'timestamp', 'write']

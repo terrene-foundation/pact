@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/build/workspace/discovery.py
+# hypothesis_version: 6.151.9
+
+['.claude', '.git', '.idea', '.jbeval', '.obsidian', '.venv', '/', '01-analysis', '01-analysis/', '02-plans', '02-plans/', '__pycache__', 'briefs', 'briefs/', 'coc_pattern', 'manifest', 'node_modules', 'todos', 'workspace.yaml', 'workspace.yml']

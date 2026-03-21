@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/governance/clearance.py
+# hypothesis_version: 6.151.9
+
+['POSTURE_CEILING', 'RoleClearance', 'VettingStatus', 'active', 'effective_clearance', 'expired', 'pending', 'revoked']

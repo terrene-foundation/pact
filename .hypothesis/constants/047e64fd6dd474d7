@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/posture_history.py
+# hypothesis_version: 6.151.9
+
+[0.0, '_initialized', '_lock', '_records', '_sequence_counter', 'approval', 'blocked', 'cascade_revocation', 'downgrade', 'drift', 'eligible', 'escalation', 'incident', 'manual', 'min_days', 'min_operations', 'not_yet', 'review', 'scheduled', 'shadow_pass_rate', 'trust_score']

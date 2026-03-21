@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/store/sqlite_store.py
+# hypothesis_version: 6.151.9
+
+[100, ' AND ', '1=1', ':memory:', 'SELECT 1', 'action', 'action = ?', 'agent_id', 'agent_id = ?', 'conn', 'delegatee_id', 'delegator_id', 'timestamp', 'timestamp <= ?', 'timestamp >= ?', 'verification_level']

@@ -1,0 +1,4 @@
+# file: /Users/esperie/repos/terrene/pact/src/pact/trust/constraint/verification_level.py
+# hypothesis_version: 6.151.9
+
+['full', 'quick', 'standard']
