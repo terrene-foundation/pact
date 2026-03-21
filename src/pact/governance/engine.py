@@ -36,8 +36,9 @@ from pact.governance.access import (
     can_access,
 )
 from pact.governance.audit import PactAuditAction, create_pact_audit_details
-from pact.governance.clearance import RoleClearance
+from pact.governance.clearance import RoleClearance, effective_clearance
 from pact.governance.compilation import CompiledOrg, OrgNode, compile_org
+from pact.governance.context import GovernanceContext
 from pact.governance.envelopes import (
     RoleEnvelope,
     TaskEnvelope,
@@ -92,28 +93,61 @@ class GovernanceEngine:
         access_policy_store: AccessPolicyStore | None = None,
         org_store: OrgStore | None = None,
         audit_chain: Any | None = None,  # AuditChain (lazy import to avoid cycles)
+        store_backend: str = "memory",  # "memory" or "sqlite"
+        store_url: str | None = None,  # Path for sqlite backend
     ) -> None:
         self._lock = threading.Lock()
 
-        # Initialize stores -- default to memory implementations
-        self._envelope_store: EnvelopeStore = (
-            envelope_store if envelope_store is not None else MemoryEnvelopeStore()
-        )
-        self._clearance_store: ClearanceStore = (
-            clearance_store if clearance_store is not None else MemoryClearanceStore()
-        )
-        self._access_policy_store: AccessPolicyStore = (
-            access_policy_store if access_policy_store is not None else MemoryAccessPolicyStore()
-        )
-        self._org_store: OrgStore = org_store if org_store is not None else MemoryOrgStore()
+        # Initialize stores -- use factory if store_backend specified,
+        # otherwise use explicit stores or default to memory
+        if (
+            store_backend == "sqlite"
+            and store_url is not None
+            and all(
+                s is None for s in (envelope_store, clearance_store, access_policy_store, org_store)
+            )
+        ):
+            from pact.governance.stores.sqlite import (
+                SqliteAccessPolicyStore,
+                SqliteClearanceStore,
+                SqliteEnvelopeStore,
+                SqliteOrgStore,
+            )
+
+            self._envelope_store: EnvelopeStore = SqliteEnvelopeStore(store_url)
+            self._clearance_store: ClearanceStore = SqliteClearanceStore(store_url)
+            self._access_policy_store: AccessPolicyStore = SqliteAccessPolicyStore(store_url)
+            self._org_store: OrgStore = SqliteOrgStore(store_url)
+            logger.info("GovernanceEngine using SQLite stores at %s", store_url)
+        elif store_backend == "sqlite" and store_url is None:
+            raise ValueError("store_backend='sqlite' requires store_url parameter")
+        elif store_backend not in ("memory", "sqlite"):
+            raise ValueError(
+                f"Unsupported store_backend '{store_backend}'. Use 'memory' or 'sqlite'."
+            )
+        else:
+            self._envelope_store = (
+                envelope_store if envelope_store is not None else MemoryEnvelopeStore()
+            )
+            self._clearance_store = (
+                clearance_store if clearance_store is not None else MemoryClearanceStore()
+            )
+            self._access_policy_store = (
+                access_policy_store
+                if access_policy_store is not None
+                else MemoryAccessPolicyStore()
+            )
+            self._org_store = org_store if org_store is not None else MemoryOrgStore()
         self._audit_chain = audit_chain
 
         # Compile if OrgDefinition, or use directly if CompiledOrg
         if isinstance(org, CompiledOrg):
             self._compiled_org = org
+            self._org_name: str = org.org_id
         else:
-            # Assume OrgDefinition -- compile it
+            # Assume OrgDefinition -- compile it and preserve the human-readable name
             self._compiled_org = compile_org(org)
+            self._org_name = getattr(org, "name", org.org_id) or org.org_id
 
         # Save compiled org in the org store
         self._org_store.save_org(self._compiled_org)
@@ -447,6 +481,15 @@ class GovernanceEngine:
     # Query API
     # -------------------------------------------------------------------
 
+    @property
+    def org_name(self) -> str:
+        """Human-readable organization name.
+
+        When initialized from an OrgDefinition, returns the OrgDefinition.name.
+        When initialized from a CompiledOrg, returns the org_id.
+        """
+        return self._org_name
+
     def get_org(self) -> CompiledOrg:
         """Return the compiled organization. Thread-safe.
 
@@ -467,6 +510,65 @@ class GovernanceEngine:
         """
         with self._lock:
             return self._compiled_org.nodes.get(address)
+
+    def get_context(
+        self,
+        role_address: str,
+        posture: TrustPostureLevel = TrustPostureLevel.SUPERVISED,
+    ) -> GovernanceContext:
+        """Create a frozen GovernanceContext snapshot for an agent.
+
+        This is the anti-self-modification defense: agents receive a frozen
+        snapshot of their governance state, NOT the engine itself. They cannot
+        call grant_clearance(), set_role_envelope(), or any mutation method.
+
+        The context includes:
+        - The role's effective envelope (computed from role + ancestors)
+        - The role's clearance and posture-capped effective clearance level
+        - Allowed actions derived from the operational envelope dimension
+        - Compartments from the clearance assignment
+
+        Args:
+            role_address: The D/T/R positional address of the role.
+            posture: The trust posture level for this agent. Defaults to
+                SUPERVISED (the safest starting posture).
+
+        Returns:
+            A frozen GovernanceContext suitable for agent consumption.
+        """
+        with self._lock:
+            # Compute effective envelope
+            effective_env = self._compute_envelope_locked(role_address)
+
+            # Get clearance if it exists
+            clearance = self._clearance_store.get_clearance(role_address)
+
+            # Compute effective clearance level (posture-capped)
+            eff_clearance_level = None
+            if clearance is not None:
+                eff_clearance_level = effective_clearance(clearance, posture)
+
+            # Derive allowed_actions from envelope
+            allowed_actions: frozenset[str] = frozenset()
+            if effective_env is not None:
+                allowed_actions = frozenset(effective_env.operational.allowed_actions)
+
+            # Derive compartments from clearance
+            compartments: frozenset[str] = frozenset()
+            if clearance is not None:
+                compartments = clearance.compartments
+
+            return GovernanceContext(
+                role_address=role_address,
+                posture=posture,
+                effective_envelope=effective_env,
+                clearance=clearance,
+                effective_clearance_level=eff_clearance_level,
+                allowed_actions=allowed_actions,
+                compartments=compartments,
+                org_id=self._compiled_org.org_id,
+                created_at=datetime.now(UTC),
+            )
 
     # -------------------------------------------------------------------
     # State Mutation API

@@ -38,8 +38,16 @@ from pact.governance.envelopes import (
     default_envelope_for_posture,
     intersect_envelopes,
 )
+from pact.governance.agent import (
+    GovernanceBlockedError,
+    GovernanceHeldError,
+    PactGovernedAgent,
+)
 from pact.governance.agent_mapping import AgentRoleMapping
 from pact.governance.context import GovernanceContext
+from pact.governance.decorators import governed_tool
+from pact.governance.middleware import PactGovernanceMiddleware
+from pact.governance.testing import MockGovernedAgent
 from pact.governance.knowledge import KnowledgeItem
 from pact.governance.audit import (
     PactAuditAction,
@@ -147,4 +155,14 @@ __all__ = [
     "describe_address",
     "explain_access",
     "explain_envelope",
+    # Governed agent (TODO-7030)
+    "GovernanceBlockedError",
+    "GovernanceHeldError",
+    "PactGovernedAgent",
+    # Governance middleware (TODO-7031)
+    "PactGovernanceMiddleware",
+    # Governance decorators (TODO-7032, 7033)
+    "governed_tool",
+    # Testing utilities (TODO-7035)
+    "MockGovernedAgent",
 ]
