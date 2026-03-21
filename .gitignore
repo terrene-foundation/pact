@@ -78,3 +78,4 @@ apps/mobile/.dart_tool/
 # Python build
 dist/
 *.egg-info/
+.hypothesis/

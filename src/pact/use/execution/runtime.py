@@ -814,16 +814,20 @@ class ExecutionRuntime:
                     exc,
                 )
 
-        # Step 3: Act on verification result
-        if task.verification_level == VerificationLevel.BLOCKED:
+        # Step 3: Act on verification result.
+        # Capture verification_level in a local for Pyright type narrowing:
+        # task.verification_level is VerificationLevel | None but after the
+        # equality check Pyright cannot narrow mutable attributes.
+        final_level = task.verification_level or VerificationLevel.AUTO_APPROVED
+        if final_level == VerificationLevel.BLOCKED:
             with self._lock:
                 task.status = TaskStatus.BLOCKED
                 task.result = TaskResult(error=f"Action blocked: {verification.reason}")
                 task.completed_at = datetime.now(UTC)
-            self._record_audit(task, task.verification_level)
+            self._record_audit(task, final_level)
             return task
 
-        if task.verification_level == VerificationLevel.HELD:
+        if final_level == VerificationLevel.HELD:
             with self._lock:
                 task.status = TaskStatus.HELD
             self._approval_queue.submit(
@@ -832,7 +836,7 @@ class ExecutionRuntime:
                 reason=verification.reason or "Held by verification gradient",
                 team_id=task.team_id,
             )
-            self._record_audit(task, task.verification_level)
+            self._record_audit(task, final_level)
             return task
 
         # Step 4: Execute
