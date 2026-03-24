@@ -4,8 +4,8 @@
 
 import time
 
-from pact.build.config.schema import TrustPostureLevel
-from pact.trust.constraint.cache import (
+from pact_platform.build.config.schema import TrustPostureLevel
+from pact_platform.trust.constraint.cache import (
     CachedVerification,
     CacheStats,
     VerificationCache,

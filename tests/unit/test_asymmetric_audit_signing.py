@@ -15,8 +15,8 @@ import hmac as hmac_mod
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from pact.build.config.schema import VerificationLevel
-from pact.trust.audit.anchor import AuditAnchor, AuditChain
+from pact_platform.build.config.schema import VerificationLevel
+from pact_platform.trust.audit.anchor import AuditAnchor, AuditChain
 
 # ---------------------------------------------------------------------------
 # Helpers

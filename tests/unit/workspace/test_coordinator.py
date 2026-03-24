@@ -9,12 +9,12 @@ and listing active bridges.
 
 import pytest
 
-from pact.build.workspace.bridge import (
+from pact_platform.build.workspace.bridge import (
     BridgeManager,
     BridgePermission,
     BridgeStatus,
 )
-from pact.build.workspace.coordinator import (
+from pact_platform.build.workspace.coordinator import (
     CoordinatorAgent,
     CoordinatorEnvelope,
     RoutingResult,

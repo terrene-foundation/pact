@@ -3,21 +3,21 @@
 """Tests for CARE enforcement pipeline — GradientEngine + StrictEnforcer."""
 
 import pytest
-from eatp.enforce.strict import EATPBlockedError, EATPHeldError, HeldBehavior, Verdict
+from kailash.trust.enforce.strict import EATPBlockedError, EATPHeldError, HeldBehavior, Verdict
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.constraint.enforcement import (
+from pact_platform.trust.constraint.enforcement import (
     CareEnforcementPipeline,
     EnforcementResult,
     care_result_to_eatp_result,
     verdict_to_care_level,
 )
-from pact.trust.constraint.gradient import GradientEngine, VerificationResult
-from pact.trust.constraint.verification_level import VerificationThoroughness
+from pact_platform.trust.constraint.gradient import GradientEngine, VerificationResult
+from pact_platform.trust.constraint.verification_level import VerificationThoroughness
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -293,9 +293,9 @@ class TestApprovalHeldCallback:
         """Callback submits held action to approval queue."""
         from unittest.mock import MagicMock
 
-        from eatp.chain import VerificationResult as EATPResult
+        from kailash.trust.chain import VerificationResult as EATPResult
 
-        from pact.trust.constraint.enforcement import create_approval_held_callback
+        from pact_platform.trust.constraint.enforcement import create_approval_held_callback
 
         mock_queue = MagicMock()
         callback = create_approval_held_callback(mock_queue)
@@ -314,9 +314,9 @@ class TestApprovalHeldCallback:
         """Callback returns False when queue submission fails."""
         from unittest.mock import MagicMock
 
-        from eatp.chain import VerificationResult as EATPResult
+        from kailash.trust.chain import VerificationResult as EATPResult
 
-        from pact.trust.constraint.enforcement import create_approval_held_callback
+        from pact_platform.trust.constraint.enforcement import create_approval_held_callback
 
         mock_queue = MagicMock()
         mock_queue.submit.side_effect = RuntimeError("Queue full")

@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from pact.build.bootstrap import BootstrapResult, PlatformBootstrap
-from pact.build.config.schema import (
+from pact_platform.build.bootstrap import BootstrapResult, PlatformBootstrap
+from pact_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -29,7 +29,7 @@ from pact.build.config.schema import (
     TrustPostureLevel,
     WorkspaceConfig,
 )
-from pact.trust.store.sqlite_store import SQLiteTrustStore
+from pact_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # Fixtures

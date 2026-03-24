@@ -13,9 +13,9 @@ import logging
 
 import pytest
 
-import pact.use.api.server as server_module
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import create_app
+import pact_platform.use.api.server as server_module
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -110,7 +110,7 @@ class TestCorsValidationProduction:
             pact_api_token="test-token-12345",
             pact_cors_origins=["http://insecure.com", "*"],
         )
-        with caplog.at_level(logging.WARNING, logger="pact.use.api.server"):
+        with caplog.at_level(logging.WARNING, logger="pact_platform.use.api.server"):
             create_app(env_config=cfg)
         assert any("CORS" in r.message for r in caplog.records)
 

@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pact.build.workspace.bridge import (
+from pact_platform.build.workspace.bridge import (
     Bridge,
     BridgeManager,
     BridgePermission,

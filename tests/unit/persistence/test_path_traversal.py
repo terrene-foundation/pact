@@ -11,7 +11,7 @@ Tests that:
 
 import pytest
 
-from pact.trust.store.store import FilesystemStore
+from pact_platform.trust.store.store import FilesystemStore
 
 
 class TestPathTraversalProtection:

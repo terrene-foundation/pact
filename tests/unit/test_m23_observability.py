@@ -23,14 +23,14 @@ class TestStructuredLogging:
 
     def test_configure_structured_logging(self):
         """Should be able to configure structured logging."""
-        from pact.use.observability.logging import configure_logging
+        from pact_platform.use.observability.logging import configure_logging
 
         logger = configure_logging(json_output=True)
         assert logger is not None
 
     def test_generate_correlation_id(self):
         """Should generate unique correlation IDs."""
-        from pact.use.observability.logging import generate_correlation_id
+        from pact_platform.use.observability.logging import generate_correlation_id
 
         id1 = generate_correlation_id()
         id2 = generate_correlation_id()
@@ -39,7 +39,7 @@ class TestStructuredLogging:
 
     def test_correlation_context_manager(self):
         """Should provide a context manager for correlation ID propagation."""
-        from pact.use.observability.logging import correlation_context, get_correlation_id
+        from pact_platform.use.observability.logging import correlation_context, get_correlation_id
 
         with correlation_context("test-corr-123"):
             assert get_correlation_id() == "test-corr-123"
@@ -49,7 +49,7 @@ class TestStructuredLogging:
 
     def test_log_includes_required_fields(self):
         """Log messages should include timestamp, level, correlation_id."""
-        from pact.use.observability.logging import (
+        from pact_platform.use.observability.logging import (
             CareLogProcessor,
             correlation_context,
         )
@@ -65,7 +65,7 @@ class TestStructuredLogging:
 
     def test_log_includes_agent_id_when_available(self):
         """Log messages should include agent_id when set in context."""
-        from pact.use.observability.logging import (
+        from pact_platform.use.observability.logging import (
             CareLogProcessor,
             agent_context,
         )
@@ -80,7 +80,7 @@ class TestStructuredLogging:
 
     def test_log_without_context_has_none_correlation_id(self):
         """Without correlation context, correlation_id should be None."""
-        from pact.use.observability.logging import CareLogProcessor
+        from pact_platform.use.observability.logging import CareLogProcessor
 
         processor = CareLogProcessor()
         _, _, event_dict = processor(None, "info", {"event": "test"})
@@ -99,7 +99,7 @@ class TestAlertSeverity:
 
     def test_severity_levels_exist(self):
         """Should define CRITICAL, HIGH, MEDIUM, LOW severity levels."""
-        from pact.use.observability.alerting import AlertSeverity
+        from pact_platform.use.observability.alerting import AlertSeverity
 
         assert AlertSeverity.CRITICAL is not None
         assert AlertSeverity.HIGH is not None
@@ -108,7 +108,7 @@ class TestAlertSeverity:
 
     def test_severity_ordering(self):
         """CRITICAL > HIGH > MEDIUM > LOW."""
-        from pact.use.observability.alerting import AlertSeverity
+        from pact_platform.use.observability.alerting import AlertSeverity
 
         assert AlertSeverity.CRITICAL.value > AlertSeverity.HIGH.value
         assert AlertSeverity.HIGH.value > AlertSeverity.MEDIUM.value
@@ -120,21 +120,21 @@ class TestAlertManager:
 
     def test_create_alert_manager(self):
         """Should be able to create an AlertManager with webhook URLs."""
-        from pact.use.observability.alerting import AlertManager
+        from pact_platform.use.observability.alerting import AlertManager
 
         mgr = AlertManager(webhook_urls=["https://hooks.example.com/alert"])
         assert mgr is not None
 
     def test_alert_manager_raises_without_webhooks(self):
         """Should raise ValueError if no webhook URLs are provided."""
-        from pact.use.observability.alerting import AlertManager
+        from pact_platform.use.observability.alerting import AlertManager
 
         with pytest.raises(ValueError, match="webhook"):
             AlertManager(webhook_urls=[])
 
     def test_send_alert(self):
         """Should be able to send an alert."""
-        from pact.use.observability.alerting import AlertManager, AlertSeverity
+        from pact_platform.use.observability.alerting import AlertManager, AlertSeverity
 
         mgr = AlertManager(webhook_urls=["https://hooks.example.com/alert"])
 
@@ -151,7 +151,7 @@ class TestAlertManager:
 
     def test_rate_limits_alerts(self):
         """Should rate-limit alerts to prevent flooding."""
-        from pact.use.observability.alerting import AlertManager, AlertSeverity
+        from pact_platform.use.observability.alerting import AlertManager, AlertSeverity
 
         mgr = AlertManager(
             webhook_urls=["https://hooks.example.com/alert"],
@@ -181,7 +181,7 @@ class TestAlertManager:
 
     def test_critical_alerts_bypass_rate_limit(self):
         """CRITICAL alerts should bypass rate limiting."""
-        from pact.use.observability.alerting import AlertManager, AlertSeverity
+        from pact_platform.use.observability.alerting import AlertManager, AlertSeverity
 
         mgr = AlertManager(
             webhook_urls=["https://hooks.example.com/alert"],
@@ -207,7 +207,7 @@ class TestAlertManager:
 
     def test_alert_on_blocked_action(self):
         """Should alert when constraint middleware returns BLOCKED."""
-        from pact.use.observability.alerting import AlertManager
+        from pact_platform.use.observability.alerting import AlertManager
 
         mgr = AlertManager(webhook_urls=["https://hooks.example.com/alert"])
 
@@ -227,7 +227,7 @@ class TestAlertManager:
 
     def test_alert_on_trust_store_health_failure(self):
         """Should alert when trust store health check fails."""
-        from pact.use.observability.alerting import AlertManager
+        from pact_platform.use.observability.alerting import AlertManager
 
         mgr = AlertManager(webhook_urls=["https://hooks.example.com/alert"])
 

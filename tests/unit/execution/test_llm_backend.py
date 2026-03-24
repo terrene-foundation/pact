@@ -4,7 +4,7 @@
 
 import pytest
 
-from pact.use.execution.llm_backend import (
+from pact_platform.use.execution.llm_backend import (
     BackendRouter,
     LLMProvider,
     LLMRequest,

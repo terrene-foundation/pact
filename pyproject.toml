@@ -3,9 +3,9 @@ requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kailash-pact"
-version = "0.2.0"
-description = "PACT — Principled Architecture for Constrained Trust: D/T/R governance, operating envelopes, knowledge clearance, and verification gradient for AI-agent organizations"
+name = "pact-platform"
+version = "0.3.0"
+description = "PACT Platform — human judgment surface for governed AI operations. Org definition, approval UX, work management, dashboard, and deployment on top of kailash-pact governance primitives."
 authors = [
     {name = "Terrene Foundation", email = "info@terrene.foundation"}
 ]
@@ -23,10 +23,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 dependencies = [
-    # Core dependencies (always required)
-    "pydantic>=2.0",
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
+    # Kailash SDK ecosystem (aligned with kailash-coc-claude-py template)
+    "kailash[trust,pact]>=2.1.0",
+    "kailash-pact>=0.4.0",
+    "kailash-dataflow>=1.2.0",
+    "kailash-kaizen>=2.2.1",
     # CLI Framework
     "click>=8.0",
     "rich>=13.0.0",
@@ -44,34 +45,28 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "structlog>=23.1.0",
     "pyyaml>=6.0",
-    # EATP SDK (trust protocol — core to PACT, always required)
-    "eatp>=0.1.0",
-    # Trust Plane (EATP reference implementation)
-    "trust-plane>=0.2.0",
 ]
 
 [project.optional-dependencies]
-# Kailash SDK frameworks (install with: pip install kailash-pact[kailash])
-kailash = [
-    "kailash>=1.0.0",
-    "eatp>=0.1.0",
+# Nexus multi-channel deployment
+nexus = [
+    "kailash-nexus>=1.4.3",
 ]
-# Kaizen agent framework (install with: pip install kailash-pact[kaizen])
-kaizen = [
-    "kailash-kaizen>=1.0.0",
+# kaizen-agents (GovernedSupervisor — Delegate engine)
+agents = [
+    "kaizen-agents>=0.1.0",
 ]
 # Firebase Admin SDK for SSO token verification
-# (install with: pip install kailash-pact[firebase])
 firebase = [
     "firebase-admin>=6.0",
 ]
-# PostgreSQL support (install with: pip install kailash-pact[postgres])
+# PostgreSQL support
 postgres = [
     "psycopg[binary]>=3.0",
 ]
 # All optional dependencies
 all = [
-    "kailash-pact[kailash,kaizen,firebase,postgres]",
+    "pact-platform[nexus,agents,firebase,postgres]",
 ]
 dev = [
     # Testing (pytest>=7.2.0 removes vulnerable py dependency)
@@ -84,6 +79,8 @@ dev = [
     # PostgreSQL for tests
     "psycopg[binary]>=3.0",
     # Linting & Formatting
+    "black>=23.0",
+    "isort>=5.12.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
     # Security & Pre-commit
@@ -92,7 +89,7 @@ dev = [
 ]
 
 [project.scripts]
-kailash-pact = "pact.governance.cli:main"
+pact = "pact_platform.cli:main"
 
 [project.urls]
 "Homepage" = "https://github.com/terrene-foundation/pact"

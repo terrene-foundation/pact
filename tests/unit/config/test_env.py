@@ -4,7 +4,7 @@
 
 import pytest
 
-from pact.build.config.env import EnvConfig, EnvConfigError, load_env_config
+from pact_platform.build.config.env import EnvConfig, EnvConfigError, load_env_config
 
 
 class TestEnvConfig:

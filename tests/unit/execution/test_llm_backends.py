@@ -18,8 +18,8 @@ import pytest
 # Skip entire module if anthropic SDK is not installed (not in CI deps)
 pytest.importorskip("anthropic", reason="anthropic SDK not installed")
 
-from pact.build.config.env import EnvConfig
-from pact.use.execution.llm_backend import (
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.execution.llm_backend import (
     BackendRouter,
     LLMProvider,
     LLMRequest,
@@ -35,14 +35,14 @@ class TestAnthropicBackendInit:
     """AnthropicBackend must read config from EnvConfig, never hardcode keys."""
 
     def test_provider_is_anthropic(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
         assert backend.provider == LLMProvider.ANTHROPIC
 
     def test_default_model_from_config(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(
             anthropic_api_key="sk-test-key", anthropic_model="claude-sonnet-4-20250514"
@@ -52,7 +52,7 @@ class TestAnthropicBackendInit:
 
     def test_default_model_raises_when_not_configured(self):
         """When no model is configured, accessing default_model must raise, not return a fallback."""
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="")
         backend = AnthropicBackend(config)
@@ -60,14 +60,14 @@ class TestAnthropicBackendInit:
             _ = backend.default_model
 
     def test_is_available_true_when_key_configured(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
         assert backend.is_available() is True
 
     def test_is_available_false_when_key_missing(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
@@ -78,12 +78,12 @@ class TestAnthropicBackendMessageMapping:
     """AnthropicBackend must separate system messages from user/assistant messages."""
 
     def _make_backend(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         return AnthropicBackend(config)
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_system_message_separated(self, mock_anthropic_module):
         """Anthropic API takes system as a top-level param, not in messages."""
         backend = self._make_backend()
@@ -125,7 +125,7 @@ class TestAnthropicBackendMessageMapping:
         for msg in messages_arg:
             assert msg["role"] != "system", "System message must not be in messages list"
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_response_mapped_to_llm_response(self, mock_anthropic_module):
         """LLMResponse must have content, model, provider, and token counts."""
         backend = self._make_backend()
@@ -159,7 +159,7 @@ class TestAnthropicBackendMessageMapping:
         assert response.output_tokens == 25
         assert response.finish_reason == "end_turn"
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_no_system_message_works(self, mock_anthropic_module):
         """When there is no system message, system param should not be set."""
         backend = self._make_backend()
@@ -190,7 +190,7 @@ class TestAnthropicBackendMessageMapping:
         system_val = call_kwargs.get("system")
         assert not system_val, "system param should be empty/absent when no system message"
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_tool_calls_mapped_from_response(self, mock_anthropic_module):
         """Tool use blocks in Anthropic response must be mapped to tool_calls."""
         backend = self._make_backend()
@@ -229,7 +229,7 @@ class TestAnthropicBackendMessageMapping:
         assert response.tool_calls[0]["input"] == {"query": "test"}
         assert response.finish_reason == "tool_use"
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_uses_request_model_over_default(self, mock_anthropic_module):
         """When request specifies a model, use it instead of default_model."""
         backend = self._make_backend()
@@ -258,7 +258,7 @@ class TestAnthropicBackendMessageMapping:
         call_kwargs = mock_client.messages.create.call_args.kwargs
         assert call_kwargs["model"] == "claude-sonnet-4-20250514"
 
-    @patch("pact.use.execution.backends.anthropic_backend.anthropic")
+    @patch("pact_platform.use.execution.backends.anthropic_backend.anthropic")
     def test_uses_default_model_when_request_model_empty(self, mock_anthropic_module):
         """When request has no model, fall back to config default_model."""
         backend = self._make_backend()
@@ -296,14 +296,14 @@ class TestOpenAIBackendInit:
     """OpenAIBackend must read config from EnvConfig, never hardcode keys."""
 
     def test_provider_is_openai(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(openai_api_key="sk-test-key", openai_prod_model="gpt-4o")
         backend = OpenAIBackend(config)
         assert backend.provider == LLMProvider.OPENAI
 
     def test_default_model_from_prod_config(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(
             openai_api_key="sk-test-key",
@@ -315,7 +315,7 @@ class TestOpenAIBackendInit:
 
     def test_default_model_falls_back_to_dev_model(self):
         """When prod model is empty but dev model is set, use dev model."""
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(
             openai_api_key="sk-test-key",
@@ -327,7 +327,7 @@ class TestOpenAIBackendInit:
 
     def test_default_model_raises_when_not_configured(self):
         """When no model is configured, accessing default_model must raise."""
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(
             openai_api_key="sk-test-key",
@@ -339,14 +339,14 @@ class TestOpenAIBackendInit:
             _ = backend.default_model
 
     def test_is_available_true_when_key_configured(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(openai_api_key="sk-test-key", openai_prod_model="gpt-4o")
         backend = OpenAIBackend(config)
         assert backend.is_available() is True
 
     def test_is_available_false_when_key_missing(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(openai_api_key="", openai_prod_model="gpt-4o")
         backend = OpenAIBackend(config)
@@ -357,12 +357,12 @@ class TestOpenAIBackendMessageMapping:
     """OpenAIBackend must map LLMRequest to OpenAI chat completions format."""
 
     def _make_backend(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(openai_api_key="sk-test-key", openai_prod_model="gpt-4o")
         return OpenAIBackend(config)
 
-    @patch("pact.use.execution.backends.openai_backend.openai")
+    @patch("pact_platform.use.execution.backends.openai_backend.openai")
     def test_messages_passed_directly(self, mock_openai_module):
         """OpenAI accepts system messages inline -- messages should pass through."""
         backend = self._make_backend()
@@ -399,7 +399,7 @@ class TestOpenAIBackendMessageMapping:
         assert call_kwargs["temperature"] == 0.3
         assert call_kwargs["max_tokens"] == 512
 
-    @patch("pact.use.execution.backends.openai_backend.openai")
+    @patch("pact_platform.use.execution.backends.openai_backend.openai")
     def test_response_mapped_to_llm_response(self, mock_openai_module):
         """LLMResponse must have content, model, provider, and token counts."""
         backend = self._make_backend()
@@ -433,7 +433,7 @@ class TestOpenAIBackendMessageMapping:
         assert response.output_tokens == 20
         assert response.finish_reason == "stop"
 
-    @patch("pact.use.execution.backends.openai_backend.openai")
+    @patch("pact_platform.use.execution.backends.openai_backend.openai")
     def test_tool_calls_mapped_from_response(self, mock_openai_module):
         """OpenAI tool_calls must be mapped to LLMResponse.tool_calls."""
         backend = self._make_backend()
@@ -471,7 +471,7 @@ class TestOpenAIBackendMessageMapping:
         assert response.tool_calls[0]["arguments"] == '{"city": "Singapore"}'
         assert response.finish_reason == "tool_calls"
 
-    @patch("pact.use.execution.backends.openai_backend.openai")
+    @patch("pact_platform.use.execution.backends.openai_backend.openai")
     def test_uses_request_model_over_default(self, mock_openai_module):
         backend = self._make_backend()
 
@@ -499,7 +499,7 @@ class TestOpenAIBackendMessageMapping:
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         assert call_kwargs["model"] == "gpt-4o-mini"
 
-    @patch("pact.use.execution.backends.openai_backend.openai")
+    @patch("pact_platform.use.execution.backends.openai_backend.openai")
     def test_uses_default_model_when_request_model_empty(self, mock_openai_module):
         backend = self._make_backend()
 
@@ -536,7 +536,7 @@ class TestBackendRouterFactory:
     """create_backend_router must wire up backends based on EnvConfig."""
 
     def test_creates_router_with_anthropic_when_key_present(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig(
             anthropic_api_key="sk-anthropic-key",
@@ -547,7 +547,7 @@ class TestBackendRouterFactory:
         assert LLMProvider.ANTHROPIC in router.available_backends()
 
     def test_creates_router_with_openai_when_key_present(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig(
             openai_api_key="sk-openai-key",
@@ -558,7 +558,7 @@ class TestBackendRouterFactory:
         assert LLMProvider.OPENAI in router.available_backends()
 
     def test_creates_router_with_both_when_both_configured(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig(
             anthropic_api_key="sk-anthropic-key",
@@ -572,7 +572,7 @@ class TestBackendRouterFactory:
         assert LLMProvider.OPENAI in available
 
     def test_creates_router_with_no_backends_when_no_keys(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig()
         router = create_backend_router(config)
@@ -580,7 +580,7 @@ class TestBackendRouterFactory:
 
     def test_fallback_order_set_when_multiple_backends(self):
         """When both backends are available, fallback order must be set."""
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig(
             anthropic_api_key="sk-anthropic-key",
@@ -600,7 +600,7 @@ class TestBackendRouterFactory:
             pass  # The real validation is that create_backend_router sets fallback order
 
     def test_anthropic_only_backend_excluded_when_key_missing(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         config = EnvConfig(
             anthropic_api_key="",
@@ -621,7 +621,7 @@ class TestCostTrackingIntegration:
     """Cost tracking must work with real token counts from LLMResponse."""
 
     def test_estimate_cost_anthropic(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
@@ -638,7 +638,7 @@ class TestCostTrackingIntegration:
         assert cost > Decimal("0"), "Cost must be positive for non-zero token counts"
 
     def test_estimate_cost_openai(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         config = EnvConfig(openai_api_key="sk-test-key", openai_prod_model="gpt-4o")
         backend = OpenAIBackend(config)
@@ -655,7 +655,7 @@ class TestCostTrackingIntegration:
         assert cost > Decimal("0"), "Cost must be positive for non-zero token counts"
 
     def test_estimate_cost_zero_tokens(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
@@ -672,7 +672,7 @@ class TestCostTrackingIntegration:
 
     def test_cost_record_from_response(self):
         """CostTracker must accept records built from LLMResponse data."""
-        from pact.trust.store.cost_tracking import ApiCostRecord, CostTracker
+        from pact_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
 
         tracker = CostTracker()
         # Simulate what the platform does after getting an LLMResponse
@@ -698,7 +698,7 @@ class TestCostTrackingIntegration:
 
     def test_create_cost_record_helper(self):
         """Backends must provide a create_cost_record helper for convenience."""
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         config = EnvConfig(anthropic_api_key="sk-test-key", anthropic_model="claude-opus-4-6")
         backend = AnthropicBackend(config)
@@ -710,7 +710,7 @@ class TestCostTrackingIntegration:
             input_tokens=100,
             output_tokens=50,
         )
-        from pact.trust.store.cost_tracking import ApiCostRecord
+        from pact_platform.trust.store.cost_tracking import ApiCostRecord
 
         record = backend.create_cost_record(
             response=response,
@@ -736,22 +736,22 @@ class TestModuleImports:
     """Backend package must export correct symbols."""
 
     def test_anthropic_backend_importable(self):
-        from pact.use.execution.backends.anthropic_backend import AnthropicBackend
+        from pact_platform.use.execution.backends.anthropic_backend import AnthropicBackend
 
         assert AnthropicBackend is not None
 
     def test_openai_backend_importable(self):
-        from pact.use.execution.backends.openai_backend import OpenAIBackend
+        from pact_platform.use.execution.backends.openai_backend import OpenAIBackend
 
         assert OpenAIBackend is not None
 
     def test_factory_importable(self):
-        from pact.use.execution.backends import create_backend_router
+        from pact_platform.use.execution.backends import create_backend_router
 
         assert callable(create_backend_router)
 
     def test_package_exports_all_backends(self):
-        from pact.use.execution.backends import (
+        from pact_platform.use.execution.backends import (
             AnthropicBackend,
             OpenAIBackend,
             create_backend_router,

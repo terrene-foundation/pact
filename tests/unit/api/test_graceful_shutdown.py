@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import pytest
 
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import create_app
-from pact.use.api.shutdown import ShutdownManager
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import create_app
+from pact_platform.use.api.shutdown import ShutdownManager
 
 # ---------------------------------------------------------------------------
 # Fixtures

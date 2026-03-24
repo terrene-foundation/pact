@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -24,22 +24,22 @@ from pact.build.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from pact.build.workspace.bridge import (
+from pact_platform.build.workspace.bridge import (
     BridgeManager,
     BridgePermission,
 )
-from pact.build.workspace.models import (
+from pact_platform.build.workspace.models import (
     Workspace,
     WorkspacePhase,
     WorkspaceRegistry,
 )
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.store.cost_tracking import CostTracker
-from pact.use.api.endpoints import (
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.use.api.endpoints import (
     PactAPI,
 )
-from pact.use.execution.approval import ApprovalQueue, UrgencyLevel
-from pact.use.execution.registry import AgentRegistry
+from pact_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from pact_platform.use.execution.registry import AgentRegistry
 
 # ---------------------------------------------------------------------------
 # Fixtures

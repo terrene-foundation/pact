@@ -18,19 +18,19 @@ from decimal import Decimal
 
 import pytest
 
-from pact.build.config.schema import VerificationLevel
-from pact.trust.audit.anchor import AuditChain
-from pact.trust.store.audit_query import AuditQuery, AuditReport
-from pact.trust.store.cost_tracking import ApiCostRecord, CostTracker
-from pact.trust.store.posture_history import (
+from pact_platform.build.config.schema import VerificationLevel
+from pact_platform.trust.audit.anchor import AuditChain
+from pact_platform.trust.store.audit_query import AuditQuery, AuditReport
+from pact_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
+from pact_platform.trust.store.posture_history import (
     EligibilityResult,
     PostureChangeRecord,
     PostureChangeTrigger,
     PostureEligibilityChecker,
     PostureHistoryStore,
 )
-from pact.trust.store.store import MemoryStore
-from pact.trust.store.versioning import VersionTracker
+from pact_platform.trust.store.store import MemoryStore
+from pact_platform.trust.store.versioning import VersionTracker
 
 # ===========================================================================
 # 1. Trust Object Round-Trip Through Store

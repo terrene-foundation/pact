@@ -7,8 +7,8 @@ Tests audit chain EATP completeness — ensuring all required fields are present
 
 from __future__ import annotations
 
-from pact.build.config.schema import VerificationLevel
-from pact.trust.audit.anchor import AuditAnchor, AuditChain
+from pact_platform.build.config.schema import VerificationLevel
+from pact_platform.trust.audit.anchor import AuditAnchor, AuditChain
 
 
 class TestAuditEATPCompleteness:

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from pact.build.config.loader import load_config
+from pact_platform.build.config.loader import load_config
 
 EXAMPLES_DIR = Path(__file__).parents[3] / "examples"
 

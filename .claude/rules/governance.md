@@ -4,9 +4,9 @@
 
 These rules apply when editing files in:
 
-- `src/pact/governance/**`
-- `src/pact/build/org/**`
-- `src/pact/build/config/schema.py`
+- `pact.governance` (kailash-pact, upstream)
+- `src/pact_platform/build/org/**`
+- `src/pact_platform/build/config/schema.py`
 - Tests for governance modules
 
 These rules supplement `.claude/rules/security.md` and `.claude/rules/trust-plane-security.md`. All three apply to governance files.

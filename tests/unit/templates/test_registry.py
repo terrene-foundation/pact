@@ -8,7 +8,7 @@ templates for media, governance, standards, and partnerships teams.
 
 import pytest
 
-from pact.build.templates.registry import (
+from pact_platform.build.templates.registry import (
     TeamTemplate,
     TemplateRegistry,
 )
@@ -95,7 +95,7 @@ class TestRegistryGet:
 class TestTeamTemplateStructure:
     def test_media_template_has_agent_configs(self, registry):
         """Media template agents are AgentConfig instances."""
-        from pact.build.config.schema import AgentConfig
+        from pact_platform.build.config.schema import AgentConfig
 
         tpl = registry.get("media")
         for agent in tpl.agents:
@@ -103,7 +103,7 @@ class TestTeamTemplateStructure:
 
     def test_media_template_has_envelope_configs(self, registry):
         """Media template envelopes are ConstraintEnvelopeConfig instances."""
-        from pact.build.config.schema import ConstraintEnvelopeConfig
+        from pact_platform.build.config.schema import ConstraintEnvelopeConfig
 
         tpl = registry.get("media")
         for env in tpl.envelopes:
@@ -111,7 +111,7 @@ class TestTeamTemplateStructure:
 
     def test_media_template_has_team_config(self, registry):
         """Media template has a TeamConfig."""
-        from pact.build.config.schema import TeamConfig
+        from pact_platform.build.config.schema import TeamConfig
 
         tpl = registry.get("media")
         assert isinstance(tpl.team, TeamConfig)

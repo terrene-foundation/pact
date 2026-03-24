@@ -4,7 +4,7 @@
 
 import pytest
 
-from pact.trust.resilience.failure_modes import (
+from pact_platform.trust.resilience.failure_modes import (
     FailureDetector,
     FailureMode,
     FailureSeverity,

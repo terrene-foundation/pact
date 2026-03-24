@@ -14,7 +14,7 @@ Validates that:
 
 import pytest
 
-from pact.use.observability.metrics import (
+from pact_platform.use.observability.metrics import (
     ACTIVE_AGENTS,
     APPROVAL_QUEUE_DEPTH,
     REQUEST_DURATION,
@@ -142,8 +142,8 @@ class TestMetricsEndpointInServer:
 
         from httpx import ASGITransport, AsyncClient
 
-        from pact.build.config.env import load_env_config
-        from pact.use.api.server import create_app
+        from pact_platform.build.config.env import load_env_config
+        from pact_platform.use.api.server import create_app
 
         env_config = load_env_config(load_dotenv=False)
         app = create_app(env_config=env_config)

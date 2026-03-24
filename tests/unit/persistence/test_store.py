@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from pact.trust.store.store import (
+from pact_platform.trust.store.store import (
     FilesystemStore,
     MemoryStore,
     TrustStore,

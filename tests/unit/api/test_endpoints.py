@@ -8,14 +8,14 @@ dataclasses/Pydantic — not FastAPI or Nexus (which are not installed).
 
 import pytest
 
-from pact.trust.store.cost_tracking import CostTracker
-from pact.use.api.endpoints import (
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.use.api.endpoints import (
     ApiResponse,
     EndpointDefinition,
     PactAPI,
 )
-from pact.use.execution.approval import ApprovalQueue, UrgencyLevel
-from pact.use.execution.registry import AgentRegistry
+from pact_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from pact_platform.use.execution.registry import AgentRegistry
 
 # ---------------------------------------------------------------------------
 # Fixtures

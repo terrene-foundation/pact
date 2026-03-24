@@ -11,7 +11,7 @@ Tests that:
 
 import pytest
 
-from pact.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.approval import ApprovalQueue
 
 
 class TestApproverAuthorization:

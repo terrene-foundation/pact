@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -22,10 +22,10 @@ from pact.build.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.constraint.cache import VerificationCache
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.constraint.gradient import GradientEngine
-from pact.trust.constraint.middleware import (
+from pact_platform.trust.constraint.cache import VerificationCache
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.constraint.gradient import GradientEngine
+from pact_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )

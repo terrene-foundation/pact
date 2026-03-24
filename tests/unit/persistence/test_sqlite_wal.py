@@ -11,7 +11,7 @@ Validates that:
 
 import threading
 
-from pact.trust.store.sqlite_store import SQLiteTrustStore
+from pact_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # WAL Mode Verification

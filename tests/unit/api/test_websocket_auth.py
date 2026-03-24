@@ -16,8 +16,8 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import create_app
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import create_app
 
 # ---------------------------------------------------------------------------
 # Fixtures

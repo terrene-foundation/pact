@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from pact.trust.store.sqlite_store import (
+from pact_platform.trust.store.sqlite_store import (
     GenesisAlreadyExistsError,
     SQLiteTrustStore,
 )

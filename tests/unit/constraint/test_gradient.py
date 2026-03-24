@@ -2,13 +2,13 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for the verification gradient engine."""
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.constraint.envelope import EnvelopeEvaluation, EvaluationResult
-from pact.trust.constraint.gradient import (
+from pact_platform.trust.constraint.envelope import EnvelopeEvaluation, EvaluationResult
+from pact_platform.trust.constraint.gradient import (
     GradientEngine,
     VerificationThoroughness,
 )

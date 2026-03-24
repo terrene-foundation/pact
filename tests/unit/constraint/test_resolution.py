@@ -4,7 +4,7 @@
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -12,7 +12,7 @@ from pact.build.config.schema import (
     OperationalConstraintConfig,
     TemporalConstraintConfig,
 )
-from pact.trust.constraint.resolution import (
+from pact_platform.trust.constraint.resolution import (
     ConstraintResolutionError,
     resolve_constraints,
 )

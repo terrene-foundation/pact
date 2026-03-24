@@ -15,8 +15,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pact.build.bootstrap import PlatformBootstrap
-from pact.build.config.schema import (
+from pact_platform.build.bootstrap import PlatformBootstrap
+from pact_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -27,7 +27,7 @@ from pact.build.config.schema import (
     TrustPostureLevel,
     WorkspaceConfig,
 )
-from pact.trust.store.store import MemoryStore
+from pact_platform.trust.store.store import MemoryStore
 
 # ---------------------------------------------------------------------------
 # Fixtures

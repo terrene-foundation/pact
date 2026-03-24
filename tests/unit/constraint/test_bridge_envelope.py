@@ -4,7 +4,7 @@
 and bridge tightening validation (M32 — Constraint Intersection).
 """
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -12,8 +12,8 @@ from pact.build.config.schema import (
     OperationalConstraintConfig,
     TemporalConstraintConfig,
 )
-from pact.build.workspace.bridge import BridgePermission
-from pact.trust.constraint.bridge_envelope import (
+from pact_platform.build.workspace.bridge import BridgePermission
+from pact_platform.trust.constraint.bridge_envelope import (
     BridgeSharingPolicy,
     FieldSharingRule,
     SharingMode,

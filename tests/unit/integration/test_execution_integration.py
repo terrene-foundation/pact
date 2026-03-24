@@ -15,15 +15,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pact.use.execution.approval import ApprovalQueue, UrgencyLevel
-from pact.use.execution.llm_backend import (
+from pact_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from pact_platform.use.execution.llm_backend import (
     BackendRouter,
     LLMProvider,
     LLMRequest,
     StubBackend,
 )
-from pact.use.execution.registry import AgentRegistry, AgentStatus
-from pact.use.execution.session import SessionManager, SessionState
+from pact_platform.use.execution.registry import AgentRegistry, AgentStatus
+from pact_platform.use.execution.session import SessionManager, SessionState
 
 # ===========================================================================
 # 1. Agent Registration and Discovery

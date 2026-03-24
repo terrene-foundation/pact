@@ -33,7 +33,7 @@ services:
       # Remove in production if direct DB access is not required
       - "5432:5432"
     networks:
-      - care_net
+      - pact_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U care -d pact"]
       interval: 10s
@@ -53,17 +53,17 @@ services:
       # Override DATABASE_URL to point at the db container
       DATABASE_URL: postgresql://care:${POSTGRES_PASSWORD}@db:5432/pact
       # Allow CORS from the web container and local development
-      CARE_CORS_ORIGINS: "http://localhost:3000,http://web:3000"
+      PACT_CORS_ORIGINS: "http://localhost:3000,http://web:3000"
       # Bind to all interfaces inside the container
-      CARE_API_HOST: "0.0.0.0"
-      CARE_API_PORT: "8000"
+      PACT_API_HOST: "0.0.0.0"
+      PACT_API_PORT: "8000"
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - care_net
+      - pact_net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -93,7 +93,7 @@ services:
       api:
         condition: service_healthy
     networks:
-      - care_net
+      - pact_net
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
       interval: 30s
@@ -108,5 +108,5 @@ volumes:
 
 # ── Networks ───────────────────────────────────────────────────────────────
 networks:
-  care_net:
+  pact_net:
     driver: bridge

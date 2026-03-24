@@ -11,7 +11,7 @@ Tests the `pact org` subcommand group with:
 import pytest
 from click.testing import CliRunner
 
-from pact.build.cli import main
+from pact_platform.build.cli import main
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -14,8 +14,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from pact.trust.store.sqlite_store import GenesisAlreadyExistsError, SQLiteTrustStore
-from pact.trust.store.store import TrustStore
+from pact_platform.trust.store.sqlite_store import GenesisAlreadyExistsError, SQLiteTrustStore
+from pact_platform.trust.store.store import TrustStore
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -529,7 +529,7 @@ class TestExtendedProtocolConformance:
     """RT4-H12: Verify that MemoryStore and FilesystemStore satisfy the extended protocol."""
 
     def test_memory_store_has_genesis_methods(self):
-        from pact.trust.store.store import MemoryStore
+        from pact_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_genesis("auth-1", {"name": "test"})
@@ -537,7 +537,7 @@ class TestExtendedProtocolConformance:
         assert store.get_genesis("missing") is None
 
     def test_memory_store_has_delegation_methods(self):
-        from pact.trust.store.store import MemoryStore
+        from pact_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_delegation("del-1", {"delegator_id": "root", "delegatee_id": "a"})
@@ -547,7 +547,7 @@ class TestExtendedProtocolConformance:
         assert len(results) == 1
 
     def test_memory_store_has_attestation_methods(self):
-        from pact.trust.store.store import MemoryStore
+        from pact_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         store.store_attestation("att-1", {"agent_id": "a", "cap": "read"})
@@ -557,13 +557,13 @@ class TestExtendedProtocolConformance:
         assert len(results) == 1
 
     def test_memory_store_satisfies_protocol(self):
-        from pact.trust.store.store import MemoryStore
+        from pact_platform.trust.store.store import MemoryStore
 
         store = MemoryStore()
         assert isinstance(store, TrustStore)
 
     def test_filesystem_store_has_genesis_methods(self, tmp_path):
-        from pact.trust.store.store import FilesystemStore
+        from pact_platform.trust.store.store import FilesystemStore
 
         store = FilesystemStore(tmp_path)
         store.store_genesis("auth-1", {"name": "test"})
@@ -571,7 +571,7 @@ class TestExtendedProtocolConformance:
         assert store.get_genesis("missing") is None
 
     def test_filesystem_store_has_delegation_methods(self, tmp_path):
-        from pact.trust.store.store import FilesystemStore
+        from pact_platform.trust.store.store import FilesystemStore
 
         store = FilesystemStore(tmp_path)
         store.store_delegation("del-1", {"delegator_id": "root", "delegatee_id": "a"})
@@ -581,7 +581,7 @@ class TestExtendedProtocolConformance:
         assert len(results) == 1
 
     def test_filesystem_store_has_attestation_methods(self, tmp_path):
-        from pact.trust.store.store import FilesystemStore
+        from pact_platform.trust.store.store import FilesystemStore
 
         store = FilesystemStore(tmp_path)
         store.store_attestation("att-1", {"agent_id": "a", "cap": "read"})
@@ -591,7 +591,7 @@ class TestExtendedProtocolConformance:
         assert len(results) == 1
 
     def test_filesystem_store_satisfies_protocol(self, tmp_path):
-        from pact.trust.store.store import FilesystemStore
+        from pact_platform.trust.store.store import FilesystemStore
 
         store = FilesystemStore(tmp_path)
         assert isinstance(store, TrustStore)

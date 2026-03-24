@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import pytest
 
-from pact.build.workspace.bridge import BridgeManager
-from pact.trust.store.cost_tracking import CostTracker
-from pact.use.api.endpoints import (
+from pact_platform.build.workspace.bridge import BridgeManager
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.use.api.endpoints import (
     PactAPI,
 )
-from pact.use.execution.approval import ApprovalQueue
-from pact.use.execution.registry import AgentRegistry
+from pact_platform.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.registry import AgentRegistry
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -12,7 +12,7 @@ temporal/data path consistency, multi-team validation, and severity levels.
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -28,7 +28,7 @@ from pact.build.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from pact.build.org.builder import (
+from pact_platform.build.org.builder import (
     OrgBuilder,
     OrgDefinition,
     OrgTemplate,
@@ -279,29 +279,6 @@ class TestOrgTemplateMinimal:
     def test_minimal_template_has_at_least_one_envelope(self):
         org = OrgTemplate.minimal_template("Minimal Org")
         assert len(org.envelopes) >= 1
-
-
-class TestOrgTemplateFoundation:
-    """Test 706: Foundation template has expected structure."""
-
-    def test_foundation_template_is_valid(self):
-        org = OrgTemplate.foundation_template()
-        valid, errors = org.validate_org()
-        assert valid is True, f"Foundation template invalid: {errors}"
-
-    def test_foundation_template_has_dm_team(self):
-        """Foundation template must include the DM team."""
-        org = OrgTemplate.foundation_template()
-        team_ids = {t.id for t in org.teams}
-        assert "dm-team" in team_ids, f"Expected 'dm-team' in {team_ids}"
-
-    def test_foundation_template_name(self):
-        org = OrgTemplate.foundation_template()
-        assert org.name == "Terrene Foundation"
-
-    def test_foundation_template_authority(self):
-        org = OrgTemplate.foundation_template()
-        assert org.authority_id == "terrene.foundation"
 
 
 class TestOrgGetTeamAgents:
@@ -1266,16 +1243,3 @@ class TestMultiTeamValidation:
         results = org.validate_org_detailed()
         path_errors = [r for r in results if r.code == "CONFLICTING_WORKSPACE_PATHS" and r.is_error]
         assert len(path_errors) >= 1
-
-
-class TestDMTeamPassesAllValidations:
-    """Verify the DM team config passes all new M19 validations."""
-
-    def test_dm_team_passes_validate_org_detailed(self):
-        """The Foundation template (DM team) must pass all M19 validations with no errors."""
-        org = OrgTemplate.foundation_template()
-        results = org.validate_org_detailed()
-        errors = [r for r in results if r.is_error]
-        assert len(errors) == 0, f"DM team has {len(errors)} validation error(s):\n" + "\n".join(
-            f"  [{e.code}] {e.message}" for e in errors
-        )

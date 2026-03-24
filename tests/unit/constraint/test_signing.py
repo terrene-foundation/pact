@@ -8,13 +8,13 @@ from datetime import UTC, datetime, timedelta
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
     OperationalConstraintConfig,
 )
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.constraint.signing import EnvelopeVersionHistory, SignedEnvelope
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.constraint.signing import EnvelopeVersionHistory, SignedEnvelope
 
 
 def _make_envelope(**kwargs) -> ConstraintEnvelope:

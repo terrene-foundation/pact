@@ -14,8 +14,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import SecurityHeadersMiddleware, create_app
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import SecurityHeadersMiddleware, create_app
 
 # ---------------------------------------------------------------------------
 # Fixtures

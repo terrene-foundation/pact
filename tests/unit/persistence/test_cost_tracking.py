@@ -5,7 +5,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from pact.trust.store.cost_tracking import (
+from pact_platform.trust.store.cost_tracking import (
     ApiCostRecord,
     CostTracker,
 )

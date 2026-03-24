@@ -11,7 +11,7 @@ Covers RT-03, RT-05, RT-08, RT-09 findings:
 
 from datetime import UTC, datetime, timedelta
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,
@@ -21,14 +21,14 @@ from pact.build.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.audit.anchor import AuditChain
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.constraint.gradient import GradientEngine
-from pact.trust.constraint.middleware import (
+from pact_platform.trust.audit.anchor import AuditChain
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.constraint.gradient import GradientEngine
+from pact_platform.trust.constraint.middleware import (
     ActionOutcome,
     VerificationMiddleware,
 )
-from pact.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.approval import ApprovalQueue
 
 # ---------------------------------------------------------------------------
 # Helpers

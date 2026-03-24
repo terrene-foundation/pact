@@ -2,15 +2,15 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for COC hook enforcer (Task 404)."""
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
     GradientRuleConfig,
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.constraint.gradient import GradientEngine
-from pact.use.execution.hook_enforcer import HookEnforcer, HookResult, HookVerdict
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.constraint.gradient import GradientEngine
+from pact_platform.use.execution.hook_enforcer import HookEnforcer, HookResult, HookVerdict
 
 
 def _make_gradient_engine(

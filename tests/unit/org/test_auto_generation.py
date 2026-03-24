@@ -13,7 +13,7 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -22,7 +22,7 @@ from pact.build.config.schema import (
     TemporalConstraintConfig,
     TrustPostureLevel,
 )
-from pact.build.org.builder import (
+from pact_platform.build.org.builder import (
     OrgDefinition,
 )
 
@@ -72,7 +72,7 @@ class TestRoleDefinition:
 
     def test_create_role_definition(self):
         """RoleDefinition can be created with all required fields."""
-        from pact.build.org.role_catalog import RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleDefinition
 
         role = RoleDefinition(
             role_id="content_creator",
@@ -93,7 +93,7 @@ class TestRoleDefinition:
 
     def test_role_definition_requires_role_id(self):
         """RoleDefinition must require a role_id."""
-        from pact.build.org.role_catalog import RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleDefinition
 
         with pytest.raises(Exception):
             RoleDefinition(
@@ -111,7 +111,7 @@ class TestRoleCatalog:
 
     def test_catalog_has_builtin_roles(self):
         """RoleCatalog must have all 14 built-in roles."""
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         catalog = RoleCatalog()
         expected_roles = [
@@ -137,7 +137,7 @@ class TestRoleCatalog:
 
     def test_catalog_get_returns_role_definition(self):
         """get() returns a RoleDefinition with valid fields."""
-        from pact.build.org.role_catalog import RoleCatalog, RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleCatalog, RoleDefinition
 
         catalog = RoleCatalog()
         role = catalog.get("developer")
@@ -150,7 +150,7 @@ class TestRoleCatalog:
 
     def test_catalog_get_nonexistent_raises(self):
         """get() must raise ValueError for unknown role_id."""
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         catalog = RoleCatalog()
         with pytest.raises(ValueError, match="not found"):
@@ -158,7 +158,7 @@ class TestRoleCatalog:
 
     def test_catalog_list_returns_all_roles(self):
         """list() returns all registered RoleDefinitions."""
-        from pact.build.org.role_catalog import RoleCatalog, RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleCatalog, RoleDefinition
 
         catalog = RoleCatalog()
         roles = catalog.list()
@@ -169,7 +169,7 @@ class TestRoleCatalog:
 
     def test_catalog_register_custom_role(self):
         """register() allows adding custom roles."""
-        from pact.build.org.role_catalog import RoleCatalog, RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleCatalog, RoleDefinition
 
         catalog = RoleCatalog()
         custom = RoleDefinition(
@@ -188,7 +188,7 @@ class TestRoleCatalog:
 
     def test_catalog_register_duplicate_raises(self):
         """register() must raise ValueError when role_id already exists."""
-        from pact.build.org.role_catalog import RoleCatalog, RoleDefinition
+        from pact_platform.build.org.role_catalog import RoleCatalog, RoleDefinition
 
         catalog = RoleCatalog()
         dup = RoleDefinition(
@@ -205,7 +205,7 @@ class TestRoleCatalog:
 
     def test_all_builtin_roles_have_valid_capabilities(self):
         """All built-in roles must have non-empty default_capabilities."""
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         catalog = RoleCatalog()
         for role in catalog.list():
@@ -215,7 +215,7 @@ class TestRoleCatalog:
 
     def test_all_builtin_roles_have_valid_posture(self):
         """All built-in roles must have a valid TrustPostureLevel."""
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         catalog = RoleCatalog()
         for role in catalog.list():
@@ -225,7 +225,7 @@ class TestRoleCatalog:
 
     def test_all_builtin_roles_have_positive_limits(self):
         """All built-in roles must have positive action and cost limits."""
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         catalog = RoleCatalog()
         for role in catalog.list():
@@ -247,7 +247,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_basic(self):
         """derive_department_envelope returns a ConstraintEnvelopeConfig."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope(
             "org-env",
@@ -267,7 +267,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_financial_tightening(self):
         """Department financial limit must be tightened by the tightening_factor."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope("org-env", max_spend=10000.0)
         deriver = EnvelopeDeriver()
@@ -279,7 +279,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_operational_subset(self):
         """Department allowed actions must be a subset of org allowed actions."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope(
             "org-env",
@@ -296,7 +296,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_rate_limit_tightened(self):
         """Department rate limit must be tighter than or equal to org rate limit."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope("org-env", max_actions_per_day=200)
         deriver = EnvelopeDeriver()
@@ -308,7 +308,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_preserves_temporal(self):
         """Temporal constraints should be preserved or tightened from parent."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope(
             "org-env",
@@ -326,7 +326,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_preserves_communication(self):
         """Communication constraints should be preserved or tightened from parent."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope("org-env", internal_only=True)
         deriver = EnvelopeDeriver()
@@ -337,7 +337,7 @@ class TestEnvelopeDeriverDepartment:
 
     def test_derive_department_envelope_custom_tightening_factor(self):
         """Custom tightening factor should be applied."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope("org-env", max_spend=10000.0)
         deriver = EnvelopeDeriver()
@@ -353,7 +353,7 @@ class TestEnvelopeDeriverTeam:
 
     def test_derive_team_envelope_basic(self):
         """derive_team_envelope returns a ConstraintEnvelopeConfig."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         dept_envelope = _make_envelope(
             "dept-env",
@@ -367,7 +367,7 @@ class TestEnvelopeDeriverTeam:
 
     def test_derive_team_envelope_financial_tightening(self):
         """Team financial limit must be tighter than department."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         dept_envelope = _make_envelope("dept-env", max_spend=8000.0)
         deriver = EnvelopeDeriver()
@@ -379,7 +379,7 @@ class TestEnvelopeDeriverTeam:
 
     def test_derive_team_envelope_actions_subset(self):
         """Team allowed actions must be a subset of department actions."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         dept_envelope = _make_envelope("dept-env", allowed_actions=["read", "write", "deploy"])
         deriver = EnvelopeDeriver()
@@ -394,8 +394,8 @@ class TestEnvelopeDeriverAgent:
 
     def test_derive_agent_envelope_basic(self):
         """derive_agent_envelope returns a ConstraintEnvelopeConfig."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         team_envelope = _make_envelope(
             "team-env",
@@ -411,8 +411,8 @@ class TestEnvelopeDeriverAgent:
 
     def test_derive_agent_envelope_financial_tightening(self):
         """Agent financial limit must be tighter than team."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         team_envelope = _make_envelope("team-env", max_spend=5600.0)
         catalog = RoleCatalog()
@@ -424,8 +424,8 @@ class TestEnvelopeDeriverAgent:
 
     def test_derive_agent_envelope_capabilities_in_actions(self):
         """Agent capabilities must be included in allowed_actions for envelope alignment."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
-        from pact.build.org.role_catalog import RoleCatalog
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.role_catalog import RoleCatalog
 
         team_envelope = _make_envelope(
             "team-env",
@@ -459,7 +459,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_valid(self):
         """validate_tightening returns True for a valid parent-child pair."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope(
             "parent",
@@ -480,7 +480,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_financial_violation(self):
         """validate_tightening returns False when child exceeds parent financially."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope("parent", max_spend=1000.0)
         child = _make_envelope("child", max_spend=5000.0)
@@ -489,7 +489,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_operational_violation(self):
         """validate_tightening returns False when child has actions not in parent."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope("parent", allowed_actions=["read"])
         child = _make_envelope("child", allowed_actions=["read", "write"])
@@ -498,7 +498,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_rate_limit_violation(self):
         """validate_tightening returns False when child rate exceeds parent."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope("parent", max_actions_per_day=50)
         child = _make_envelope("child", max_actions_per_day=100)
@@ -507,7 +507,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_communication_violation(self):
         """validate_tightening returns False when parent is internal but child is not."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope("parent", internal_only=True)
         child = _make_envelope("child", internal_only=False)
@@ -516,7 +516,7 @@ class TestEnvelopeDeriverValidateTightening:
 
     def test_validate_tightening_all_five_dimensions(self):
         """validate_tightening checks all 5 CARE constraint dimensions."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         parent = _make_envelope(
             "parent",
@@ -555,7 +555,7 @@ class TestOrgGeneratorConfig:
 
     def test_org_generator_config_creation(self):
         """OrgGeneratorConfig can be created with required fields."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGeneratorConfig,
             TeamSpec,
@@ -587,7 +587,7 @@ class TestOrgGeneratorConfig:
 
     def test_team_spec_with_roles(self):
         """TeamSpec holds role_ids from the catalog."""
-        from pact.build.org.generator import TeamSpec
+        from pact_platform.build.org.generator import TeamSpec
 
         spec = TeamSpec(name="Dev Team", roles=["developer", "reviewer"])
         assert spec.name == "Dev Team"
@@ -596,7 +596,7 @@ class TestOrgGeneratorConfig:
 
     def test_department_spec_with_teams(self):
         """DepartmentSpec holds team specs."""
-        from pact.build.org.generator import DepartmentSpec, TeamSpec
+        from pact_platform.build.org.generator import DepartmentSpec, TeamSpec
 
         spec = DepartmentSpec(
             name="Engineering",
@@ -614,7 +614,7 @@ class TestOrgGenerator:
 
     def _make_simple_config(self):
         """Helper to create a simple OrgGeneratorConfig."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGeneratorConfig,
             TeamSpec,
@@ -638,7 +638,7 @@ class TestOrgGenerator:
 
     def test_generate_returns_org_definition(self):
         """generate() must return an OrgDefinition."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -647,7 +647,7 @@ class TestOrgGenerator:
 
     def test_generated_org_passes_validation(self):
         """Generated org MUST pass validate_org_detailed() with zero ERRORs."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -661,7 +661,7 @@ class TestOrgGenerator:
 
     def test_generated_org_passes_validate_org(self):
         """Generated org must also pass validate_org()."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -671,7 +671,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_correct_id_and_name(self):
         """Generated org has the specified org_id and name."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -681,7 +681,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_departments(self):
         """Generated org includes departments from the config."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -691,7 +691,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_teams(self):
         """Generated org includes teams from the config."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -701,7 +701,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_agents(self):
         """Generated org includes agents resolved from role catalog."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -711,7 +711,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_envelopes(self):
         """Generated org includes constraint envelopes for all levels."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -721,7 +721,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_workspaces(self):
         """Generated org includes workspaces for each team."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -730,7 +730,7 @@ class TestOrgGenerator:
 
     def test_generated_org_has_org_envelope(self):
         """Generated org has an org-level envelope."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -739,7 +739,7 @@ class TestOrgGenerator:
 
     def test_generated_org_department_has_envelope(self):
         """Each generated department must have a constraint envelope."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -749,8 +749,8 @@ class TestOrgGenerator:
 
     def test_generated_envelope_hierarchy_is_monotonically_tighter(self):
         """Generated envelope hierarchy must satisfy monotonic tightening."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -766,7 +766,7 @@ class TestOrgGenerator:
 
     def test_generator_resolves_roles_from_catalog(self):
         """Generator uses RoleCatalog to resolve role IDs to agent definitions."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -781,7 +781,7 @@ class TestOrgGenerator:
 
     def test_generator_raises_on_invalid_role(self):
         """Generator must raise ValueError for unknown role_ids."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGenerator,
             OrgGeneratorConfig,
@@ -818,7 +818,7 @@ class TestCoordinatorInjection:
 
     def _make_simple_config(self):
         """Helper to create a simple OrgGeneratorConfig."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGeneratorConfig,
             TeamSpec,
@@ -842,7 +842,7 @@ class TestCoordinatorInjection:
 
     def test_coordinator_injected_per_team(self):
         """Each team must have a coordinator agent auto-injected."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -859,7 +859,7 @@ class TestCoordinatorInjection:
 
     def test_coordinator_has_bridge_capabilities(self):
         """Coordinator must have bridge_management, cross_team_communication, task_routing."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -881,7 +881,7 @@ class TestCoordinatorInjection:
 
     def test_coordinator_posture_is_supervised(self):
         """Coordinator must start at SUPERVISED posture (never fully autonomous)."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -895,8 +895,8 @@ class TestCoordinatorInjection:
 
     def test_coordinator_envelope_tighter_than_team(self):
         """Coordinator envelope must be tighter than the team-level envelope."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -913,7 +913,7 @@ class TestCoordinatorInjection:
 
     def test_generated_org_with_coordinator_still_validates(self):
         """Full org with injected coordinators must pass validate_org_detailed()."""
-        from pact.build.org.generator import OrgGenerator
+        from pact_platform.build.org.generator import OrgGenerator
 
         config = self._make_simple_config()
         generator = OrgGenerator()
@@ -935,7 +935,7 @@ class TestOrgGeneratorEdgeCases:
 
     def test_empty_departments_raises(self):
         """Config with no departments must raise ValueError."""
-        from pact.build.org.generator import OrgGeneratorConfig
+        from pact_platform.build.org.generator import OrgGeneratorConfig
 
         with pytest.raises(Exception):
             OrgGeneratorConfig(
@@ -949,7 +949,7 @@ class TestOrgGeneratorEdgeCases:
 
     def test_single_agent_team(self):
         """A team with just one role should still get a coordinator and validate."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGenerator,
             OrgGeneratorConfig,
@@ -981,7 +981,7 @@ class TestOrgGeneratorEdgeCases:
 
     def test_multi_department_multi_team(self):
         """Multiple departments each with multiple teams should generate valid org."""
-        from pact.build.org.generator import (
+        from pact_platform.build.org.generator import (
             DepartmentSpec,
             OrgGenerator,
             OrgGeneratorConfig,
@@ -1022,7 +1022,7 @@ class TestOrgGeneratorEdgeCases:
 
     def test_maximum_tightening_factor(self):
         """Tightening factor of nearly zero should still produce valid org."""
-        from pact.build.org.envelope_deriver import EnvelopeDeriver
+        from pact_platform.build.org.envelope_deriver import EnvelopeDeriver
 
         org_envelope = _make_envelope(
             "org-env",
@@ -1072,7 +1072,7 @@ class TestOrgGenerateCLI:
 
     def test_org_generate_command_exists(self):
         """The `org generate` CLI command must be registered."""
-        from pact.build.cli import org
+        from pact_platform.build.cli import org
 
         # Get the list of command names on the org group
         command_names = list(org.commands.keys()) if hasattr(org, "commands") else []
@@ -1082,7 +1082,7 @@ class TestOrgGenerateCLI:
 
     def test_org_generate_produces_yaml_output(self, tmp_path):
         """`org generate --input <file> --output <file>` produces a YAML file."""
-        from pact.build.cli import main
+        from pact_platform.build.cli import main
 
         input_path = self._make_sample_yaml(tmp_path)
         output_path = str(tmp_path / "generated_org.yaml")
@@ -1105,7 +1105,7 @@ class TestOrgGenerateCLI:
 
     def test_org_generate_validate_only(self, tmp_path):
         """`org generate --input <file> --validate-only` validates but does not output."""
-        from pact.build.cli import main
+        from pact_platform.build.cli import main
 
         input_path = self._make_sample_yaml(tmp_path)
 
@@ -1115,7 +1115,7 @@ class TestOrgGenerateCLI:
 
     def test_org_generate_invalid_input(self, tmp_path):
         """`org generate` with invalid input should exit with error."""
-        from pact.build.cli import main
+        from pact_platform.build.cli import main
 
         bad_yaml = tmp_path / "bad.yaml"
         bad_yaml.write_text("not: valid: org: config: [")
@@ -1126,7 +1126,7 @@ class TestOrgGenerateCLI:
 
     def test_org_generate_nonexistent_input(self):
         """`org generate` with non-existent file should exit with error."""
-        from pact.build.cli import main
+        from pact_platform.build.cli import main
 
         runner = CliRunner()
         result = runner.invoke(main, ["org", "generate", "--input", "/nonexistent/path.yaml"])

@@ -27,7 +27,7 @@ from uuid import uuid4
 # ---------------------------------------------------------------------------
 # PACT imports
 # ---------------------------------------------------------------------------
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -38,17 +38,17 @@ from pact.build.config.schema import (
     VerificationLevel,
     WorkspaceConfig,
 )
-from pact.trust.audit.anchor import AuditAnchor, AuditChain
-from pact.use.execution.approval import ApprovalQueue, UrgencyLevel
-from pact.use.execution.registry import AgentRegistry
-from pact.trust.store.cost_tracking import ApiCostRecord, CostTracker
-from pact.trust.store.posture_history import (
+from pact_platform.trust.audit.anchor import AuditAnchor, AuditChain
+from pact_platform.use.execution.approval import ApprovalQueue, UrgencyLevel
+from pact_platform.use.execution.registry import AgentRegistry
+from pact_platform.trust.store.cost_tracking import ApiCostRecord, CostTracker
+from pact_platform.trust.store.posture_history import (
     PostureChangeRecord,
     PostureChangeTrigger,
     PostureHistoryStore,
 )
-from pact.build.workspace.bridge import BridgeManager, BridgePermission
-from pact.build.workspace.models import (
+from pact_platform.build.workspace.bridge import BridgeManager, BridgePermission
+from pact_platform.build.workspace.models import (
     Workspace,
     WorkspacePhase,
     WorkspaceRegistry,
@@ -56,7 +56,7 @@ from pact.build.workspace.models import (
 )
 
 if TYPE_CHECKING:
-    from pact.trust.shadow_enforcer import ShadowEnforcer
+    from pact_platform.trust.shadow_enforcer import ShadowEnforcer
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -95,7 +95,7 @@ TEAMS = {
 }
 
 AGENTS = [
-    # dm-team (canonical agents from pact.build.verticals.dm_team)
+    # dm-team (canonical agents from pact_platform.build.verticals.dm_team)
     {
         "agent_id": "dm-team-lead",
         "name": "DM Team Lead",
@@ -295,7 +295,7 @@ AGENTS = [
 def _build_envelopes() -> dict[str, ConstraintEnvelopeConfig]:
     """Build constraint envelopes keyed by agent_id."""
     return {
-        # --- dm-team (canonical envelopes from pact.build.verticals.dm_team) ---
+        # --- dm-team (canonical envelopes from pact_platform.build.verticals.dm_team) ---
         "dm-team-lead": ConstraintEnvelopeConfig(
             id="env-dm-team-lead",
             description="DM Team Lead: broadest authority within DM, $0 spend, internal-only",
@@ -1767,9 +1767,9 @@ def seed_shadow_evaluations() -> ShadowEnforcer:
     Returns:
         A fully populated ShadowEnforcer instance.
     """
-    from pact.trust.constraint.envelope import ConstraintEnvelope
-    from pact.trust.constraint.gradient import GradientEngine
-    from pact.trust.shadow_enforcer import ShadowEnforcer
+    from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+    from pact_platform.trust.constraint.gradient import GradientEngine
+    from pact_platform.trust.shadow_enforcer import ShadowEnforcer
 
     # Build a permissive envelope for seeding — most actions pass cleanly
     envelope_config = ConstraintEnvelopeConfig(
@@ -1804,7 +1804,7 @@ def seed_shadow_evaluations() -> ShadowEnforcer:
     envelope = ConstraintEnvelope(config=envelope_config)
 
     # Use a gradient engine that defaults to AUTO_APPROVED (most actions pass)
-    from pact.build.config.schema import GradientRuleConfig, VerificationGradientConfig
+    from pact_platform.build.config.schema import GradientRuleConfig, VerificationGradientConfig
 
     gradient_config = VerificationGradientConfig(
         rules=[
@@ -2083,7 +2083,7 @@ def seed_dm_runner_tasks():
     Returns:
         The DMTeamRunner instance with completed tasks and calibration data.
     """
-    from pact.build.verticals.dm_runner import DMTeamRunner
+    from pact_platform.build.verticals.dm_runner import DMTeamRunner
 
     runner = DMTeamRunner()
 

@@ -13,15 +13,15 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
-import pact.use.api.server as server_module
-from pact.build.config.env import EnvConfig
-from pact.build.config.schema import VerificationLevel
-from pact.trust.audit.anchor import AuditChain
-from pact.trust.store.cost_tracking import CostTracker
-from pact.use.api.endpoints import PactAPI
-from pact.use.api.server import create_app
-from pact.use.execution.approval import ApprovalQueue
-from pact.use.execution.registry import AgentRegistry
+import pact_platform.use.api.server as server_module
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.build.config.schema import VerificationLevel
+from pact_platform.trust.audit.anchor import AuditChain
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.use.api.endpoints import PactAPI
+from pact_platform.use.api.server import create_app
+from pact_platform.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.registry import AgentRegistry
 
 
 @pytest.fixture(autouse=True)

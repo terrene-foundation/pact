@@ -1,207 +1,126 @@
-# PACT
+# PACT Platform
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2198%20passed-green.svg)]()
 
-**Governance framework for running organizations with AI agents under constrained trust.**
+**Human judgment surface for governed AI operations.**
 
-PACT is the Terrene Foundation's reference implementation of Principled Architecture for Constrained Trust -- an open-source framework for organizations that want AI agents operating within defined boundaries: who can do what, how much they can spend, and what information they can access.
+PACT Platform is a Layer 3 application built on kailash-pact governance primitives and kaizen-agents autonomous execution. It provides the org definition, approval UX, work management, dashboard, and deployment that turn governance rules into an operational system.
 
-> **What it is NOT**: A generic agent orchestrator. PACT is _governed orchestration_ -- every agent action passes through a governance pipeline that checks permissions, budgets, and information access before execution.
-
----
-
-## 5-Line Quickstart
-
-```python
-from pact.governance.yaml_loader import load_org_yaml
-from pact.governance.engine import GovernanceEngine
-
-loaded = load_org_yaml("my-org.yaml")
-engine = GovernanceEngine(loaded.org_definition)
-verdict = engine.verify_action("D1-R1-T1-R1", "write", {"cost": 500})
-print(f"{verdict.level}: {verdict.reason}")
-```
+> **Not a generic agent orchestrator.** Every agent action passes through a governance pipeline -- D/T/R accountability, operating envelopes, knowledge clearance, and verification gradient -- before execution.
 
 ---
 
-## What PACT Provides
-
-### D/T/R Organizational Grammar
-
-Define organizations as Departments, Teams, and Roles with positional addresses:
-
-```
-D1-R1                    President
-D1-R1-D1-R1              Provost
-D1-R1-D1-R1-D1-R1        Dean of Engineering
-D1-R1-D1-R1-D1-R1-T1-R1  CS Chair
-```
-
-Every D or T has exactly one R (head) -- guaranteeing single accountability at every level.
-
-### Five-Dimension Operating Envelopes
-
-Every role operates within a constraint envelope:
-
-| Dimension     | What It Controls                     | Example                        |
-| ------------- | ------------------------------------ | ------------------------------ |
-| Financial     | Spending limits, approval thresholds | max_spend_usd: 10000           |
-| Operational   | Allowed/blocked actions              | allowed_actions: [read, write] |
-| Temporal      | Active hours, blackout periods       | 09:00-17:00 UTC                |
-| Data Access   | Read/write paths                     | read_paths: [/data/public]     |
-| Communication | Channel restrictions                 | internal_only: true            |
-
-Envelopes compose through **monotonic tightening** -- a child role's envelope can only be equal to or more restrictive than its parent's.
-
-### Knowledge Clearance Independent of Authority
-
-Clearance is orthogonal to seniority. A junior IRB Director can hold SECRET clearance with the "human-subjects" compartment while the Dean of Engineering holds only CONFIDENTIAL:
-
-```yaml
-clearances:
-  - role: r-irb-director
-    level: secret
-    compartments: [human-subjects]
-  - role: r-dean-eng
-    level: confidential
-```
-
-### Verification Gradient
-
-Every action gets classified:
-
-- **AUTO_APPROVED** -- within all constraints, proceed
-- **FLAGGED** -- near a boundary, proceed with warning
-- **HELD** -- exceeds soft limit, queued for human approval
-- **BLOCKED** -- violates hard constraint, denied
-
-### Cross-Functional Bridges and Knowledge Share Policies
-
-Controlled exceptions to information barriers:
-
-- **Bridges** connect two roles across boundaries (Standing, Scoped, Ad-Hoc)
-- **KSPs** grant one-way unit-level data access
-
----
-
-## Installation
+## Quick Start
 
 ```bash
-pip install pact
+pip install pact-platform[all]
+pact quickstart --example university
 ```
 
-For development:
+This loads the university demo org, registers 3 agents, seeds sample data, and starts the API server at `http://localhost:8000`.
+
+### What you'll see:
+
+- **Dashboard** at `http://localhost:3000` -- objectives, requests, approvals, cost tracking
+- **1 HELD action** in the approval queue (researcher needs CONFIDENTIAL clearance)
+- **$0.10 total cost** across 3 demo agent runs
+- **API** at `http://localhost:8000/docs` -- 42+ endpoints
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│  L3: pact-platform (this package)                   │
+│  ┌────────┐ ┌────────┐ ┌─────┐ ┌──────────────┐    │
+│  │ Models │ │ API    │ │ CLI │ │ Integrations │    │
+│  │ (11)   │ │ (42+)  │ │     │ │ Slack/Teams  │    │
+│  └────────┘ └────────┘ └─────┘ └──────────────┘    │
+│  ┌─────────────────────────────────────────────┐    │
+│  │ Engine: Envelope Adapter, Governed Delegate, │    │
+│  │ Approval Bridge, Supervisor Orchestrator     │    │
+│  └─────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────┤
+│  L2: kaizen-agents (GovernedSupervisor)             │
+├─────────────────────────────────────────────────────┤
+│  L1: kailash-pact (GovernanceEngine, D/T/R grammar) │
+│  L1: kailash[trust] (EATP SDK, trust chains)        │
+│  L1: kailash-dataflow (auto-generated CRUD nodes)   │
+├─────────────────────────────────────────────────────┤
+│  L0: Kailash Core SDK (workflow runtime, 140+ nodes) │
+└─────────────────────────────────────────────────────┘
+```
+
+## Key Concepts
+
+| Concept                   | What it means                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| **D/T/R Grammar**         | Department → Team → Role. Every address resolves to exactly one governance envelope.      |
+| **Operating Envelope**    | Five constraint dimensions: Financial, Operational, Temporal, Data Access, Communication. |
+| **Knowledge Clearance**   | Five levels: PUBLIC → RESTRICTED → CONFIDENTIAL → SECRET → TOP_SECRET.                    |
+| **Verification Gradient** | Four zones: AUTO_APPROVED → FLAGGED → HELD → BLOCKED.                                     |
+| **GovernedSupervisor**    | Autonomous agent execution within governance constraints.                                 |
+
+## CLI Reference
 
 ```bash
-git clone https://github.com/terrene-foundation/pact.git
-cd pact
-pip install -e ".[dev]"
+pact quickstart --example university   # Demo with seeded data
+pact org create my-org.yaml            # Load org from YAML
+pact org list                          # List compiled orgs
+pact role assign D1-T1-R1 agent-001    # Assign agent to role
+pact clearance grant D1-T1-R1 CONFIDENTIAL  # Grant clearance
+pact bridge create D1-R1 D2-R1         # Cross-functional bridge
+pact envelope show D1-T1-R1            # Show effective envelope
+pact agent register agent-001 D1-T1-R1 # Register agent
+pact audit export --format json        # Export audit trail
 ```
 
----
+## API Endpoints
 
-## Define Your Organization in YAML
+| Group      | Prefix                     | Endpoints                                             |
+| ---------- | -------------------------- | ----------------------------------------------------- |
+| Objectives | `/api/v1/objectives`       | create, list, detail, update, cancel, requests, cost  |
+| Requests   | `/api/v1/requests`         | submit, list, detail, cancel, sessions, artifacts     |
+| Sessions   | `/api/v1/sessions`         | list, detail, pause, resume                           |
+| Decisions  | `/api/v1/decisions`        | list, detail, approve, reject, stats                  |
+| Pools      | `/api/v1/pools`            | create, list, detail, add/remove members, capacity    |
+| Reviews    | `/api/v1/reviews`          | list, detail, add finding, finalize                   |
+| Metrics    | `/api/v1/platform/metrics` | cost, throughput, governance, budget                  |
+| Governance | `/api/v1/`                 | teams, agents, envelopes, trust-chains, bridges, etc. |
 
-```yaml
-org_id: "my-org"
-name: "My Organization"
-
-departments:
-  - id: d-executive
-    name: Executive
-  - id: d-operations
-    name: Operations
-
-roles:
-  - id: r-ceo
-    name: CEO
-    heads: d-executive
-  - id: r-ops-lead
-    name: Operations Lead
-    reports_to: r-ceo
-    heads: d-operations
-
-envelopes:
-  - target: r-ops-lead
-    defined_by: r-ceo
-    financial:
-      max_spend_usd: 25000
-    operational:
-      allowed_actions: [read, write, approve]
-```
-
-Validate with the CLI:
+## Docker Deployment
 
 ```bash
-python -m pact.governance.cli validate my-org.yaml
+docker compose up
 ```
 
----
+Services:
 
-## The Quartet
-
-PACT implements four open specifications published by the Terrene Foundation:
-
-| Standard | Full Name                                      | Type         | License   |
-| -------- | ---------------------------------------------- | ------------ | --------- |
-| **CARE** | Collaborative Autonomous Reflective Enterprise | Philosophy   | CC BY 4.0 |
-| **PACT** | Principled Architecture for Constrained Trust  | Architecture | CC BY 4.0 |
-| **EATP** | Enterprise Agent Trust Protocol                | Protocol     | CC BY 4.0 |
-| **CO**   | Cognitive Orchestration                        | Methodology  | CC BY 4.0 |
-
----
-
-## Built On
-
-| Framework            | Purpose                | Install                        |
-| -------------------- | ---------------------- | ------------------------------ |
-| **Kailash Core**     | Workflow orchestration | `pip install kailash`          |
-| **Kailash DataFlow** | Database operations    | `pip install kailash-dataflow` |
-| **Kailash Nexus**    | API deployment         | `pip install kailash-nexus`    |
-| **Kailash Kaizen**   | AI agents              | `pip install kailash-kaizen`   |
-| **EATP SDK**         | Trust chains           | `pip install eatp`             |
-
----
-
-## Documentation
-
-- [Getting Started](docs/getting-started.md) -- What PACT is and when to use it
-- [Quickstart](docs/quickstart.md) -- From zero to running governance in 10 minutes
-- [Architecture](docs/architecture.md) -- Engine internals, addressing, envelopes, clearance
-- [Vertical Guide](docs/vertical-guide.md) -- Build your own domain on PACT
-- [YAML Schema](docs/yaml-schema.md) -- Complete YAML format reference
-- [Cookbook](docs/cookbook.md) -- Recipes for common tasks
-- [REST API](docs/api.md) -- HTTP endpoints with curl examples
-
----
+- **api** — FastAPI server (port 8000)
+- **web** — Next.js dashboard (port 3000)
+- **mobile** — Flutter web (port 8080)
 
 ## Development
 
 ```bash
-pip install -e ".[dev]"
-pytest
-ruff check .
+git clone https://github.com/terrene-foundation/pact.git
+cd pact
+pip install -e ".[all,dev]"
+pytest  # 2198 tests
 ```
-
-Run the university demo:
-
-```bash
-python -m pact.examples.university.demo
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
-
----
 
 ## License
 
-Copyright 2026 Terrene Foundation
+Apache 2.0 — Terrene Foundation (Singapore CLG). Fully independent, irrevocably open.
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+## The Quartet
 
-PACT is Foundation-owned, Apache 2.0 licensed, and irrevocably open. The Foundation has no structural relationship with any commercial entity. Anyone can build commercial implementations on top of the Foundation's open standards and SDKs.
-
-**Specifications** (CARE, PACT, EATP, CO): CC BY 4.0
-**Code** (PACT, Kailash SDK, EATP SDK): Apache 2.0
+| Standard | Purpose                                              | License   |
+| -------- | ---------------------------------------------------- | --------- |
+| **CARE** | Governance philosophy (Dual Plane Model)             | CC BY 4.0 |
+| **PACT** | Architecture (D/T/R, envelopes, clearance, gradient) | CC BY 4.0 |
+| **EATP** | Protocol (trust chains, delegation, verification)    | CC BY 4.0 |
+| **CO**   | Methodology (human-AI collaboration)                 | CC BY 4.0 |

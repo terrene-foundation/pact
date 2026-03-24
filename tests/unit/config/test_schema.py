@@ -5,7 +5,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     FinancialConstraintConfig,

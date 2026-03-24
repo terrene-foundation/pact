@@ -11,14 +11,14 @@ Covers RT-15, RT-16, RT-17, RT-24, RT-27, RT-28, RT-35 findings:
 
 from datetime import UTC, datetime
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
     FinancialConstraintConfig,
     TemporalConstraintConfig,
 )
-from pact.trust.constraint.envelope import (
+from pact_platform.trust.constraint.envelope import (
     ConstraintEnvelope,
     EvaluationResult,
 )

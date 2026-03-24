@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
     DataAccessConstraintConfig,
@@ -31,14 +31,14 @@ from pact.build.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.audit.anchor import AuditAnchor, AuditChain
-from pact.trust.constraint.envelope import ConstraintEnvelope
-from pact.trust.constraint.gradient import GradientEngine
-from pact.trust.shadow_enforcer import ShadowEnforcer
-from pact.trust.store.cost_tracking import CostTracker
-from pact.use.api.endpoints import PactAPI
-from pact.use.execution.approval import ApprovalQueue
-from pact.use.execution.registry import AgentRegistry
+from pact_platform.trust.audit.anchor import AuditAnchor, AuditChain
+from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.trust.constraint.gradient import GradientEngine
+from pact_platform.trust.shadow_enforcer import ShadowEnforcer
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.use.api.endpoints import PactAPI
+from pact_platform.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.registry import AgentRegistry
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -346,7 +346,7 @@ class TestVerificationStatsEnumKeys:
         """_build_platform_api logs a warning about missing seed data."""
         import logging
 
-        from pact.use.api.server import _build_platform_api
+        from pact_platform.use.api.server import _build_platform_api
 
         with caplog.at_level(logging.WARNING):
             api = _build_platform_api()
@@ -566,9 +566,9 @@ class TestUpgradeEvidenceHTTPEndpoint:
         """Create a FastAPI test client with seeded data, auth disabled."""
         from fastapi.testclient import TestClient
 
-        import pact.use.api.server as server_module
-        from pact.build.config.env import EnvConfig
-        from pact.use.api.server import create_app
+        import pact_platform.use.api.server as server_module
+        from pact_platform.build.config.env import EnvConfig
+        from pact_platform.use.api.server import create_app
 
         # Disable auth for unit testing
         dev_config = EnvConfig(pact_dev_mode=True, pact_api_token="")

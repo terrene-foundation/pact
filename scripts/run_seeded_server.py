@@ -33,7 +33,7 @@ def main() -> None:
         sys.exit(1)
 
     # Build PactAPI from seeded components
-    from pact.use.api.endpoints import PactAPI
+    from pact_platform.use.api.endpoints import PactAPI
 
     platform_api = PactAPI(
         registry=components["registry"],
@@ -49,7 +49,7 @@ def main() -> None:
     )
 
     # Create the app with the seeded PactAPI
-    from pact.use.api.server import create_app
+    from pact_platform.use.api.server import create_app
 
     os.environ.setdefault("CARE_DEV_MODE", "true")
     os.environ.setdefault("CARE_API_HOST", "0.0.0.0")

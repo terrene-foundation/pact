@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pact.build.workspace.bridge import (
+from pact_platform.build.workspace.bridge import (
     Bridge,
     BridgeManager,
     BridgePermission,
@@ -1224,7 +1224,7 @@ class TestRT13SecurityHardening:
 
     def test_bridge_count_limit(self):
         """RT13-002: Cannot exceed MAX_BRIDGES_PER_TEAM non-terminal bridges."""
-        from pact.build.workspace.bridge import _MAX_BRIDGES_PER_TEAM
+        from pact_platform.build.workspace.bridge import _MAX_BRIDGES_PER_TEAM
 
         manager = BridgeManager()
         # Create bridges up to the limit (with unique target teams)
@@ -1260,7 +1260,7 @@ class TestRT13SecurityHardening:
 
     def test_access_log_cap(self):
         """RT13-008: Access log does not grow beyond _MAX_ACCESS_LOG_ENTRIES."""
-        from pact.build.workspace.bridge import _MAX_ACCESS_LOG_ENTRIES
+        from pact_platform.build.workspace.bridge import _MAX_ACCESS_LOG_ENTRIES
 
         bridge = Bridge(
             bridge_type=BridgeType.STANDING,

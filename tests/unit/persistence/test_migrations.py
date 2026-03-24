@@ -15,14 +15,14 @@ Validates that:
 
 import pytest
 
-from pact.trust.store.migrations import (
+from pact_platform.trust.store.migrations import (
     Migration,
     MigrationError,
     current_version,
     get_pending_migrations,
     migrate,
 )
-from pact.trust.store.sqlite_store import SQLiteTrustStore
+from pact_platform.trust.store.sqlite_store import SQLiteTrustStore
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -214,7 +214,7 @@ class TestMigrationErrors:
         )
         with pytest.raises(MigrationError):
             # We test by directly applying a bad migration
-            from pact.trust.store.migrations import _apply_migration
+            from pact_platform.trust.store.migrations import _apply_migration
 
             _apply_migration(sqlite_store, bad_migration)
 
@@ -226,7 +226,7 @@ class TestMigrationErrors:
             sql_statements=["INVALID SQL GARBAGE"],
         )
         try:
-            from pact.trust.store.migrations import _apply_migration
+            from pact_platform.trust.store.migrations import _apply_migration
 
             _apply_migration(sqlite_store, bad_migration)
             pytest.fail("Should have raised MigrationError")

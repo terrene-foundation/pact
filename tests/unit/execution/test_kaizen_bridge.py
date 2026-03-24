@@ -17,22 +17,22 @@ import threading
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     VerificationGradientConfig,
     VerificationLevel,
 )
-from pact.trust.audit.anchor import AuditChain
-from pact.trust.constraint.gradient import GradientEngine
-from pact.trust.store.store import MemoryStore
-from pact.use.execution.approval import ApprovalQueue
-from pact.use.execution.kaizen_bridge import KaizenBridge
-from pact.use.execution.lifecycle import TaskLifecycle, TaskLifecycleState
-from pact.use.execution.llm_backend import (
+from pact_platform.trust.audit.anchor import AuditChain
+from pact_platform.trust.constraint.gradient import GradientEngine
+from pact_platform.trust.store.store import MemoryStore
+from pact_platform.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.kaizen_bridge import KaizenBridge
+from pact_platform.use.execution.lifecycle import TaskLifecycle, TaskLifecycleState
+from pact_platform.use.execution.llm_backend import (
     BackendRouter,
     StubBackend,
 )
-from pact.use.execution.registry import AgentRegistry
-from pact.use.execution.runtime import (
+from pact_platform.use.execution.registry import AgentRegistry
+from pact_platform.use.execution.runtime import (
     ExecutionRuntime,
     Task,
 )

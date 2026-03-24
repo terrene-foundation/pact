@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pact.use.execution.registry import AgentRecord, AgentRegistry, AgentStatus
+from pact_platform.use.execution.registry import AgentRecord, AgentRegistry, AgentStatus
 
 
 class TestAgentStatus:

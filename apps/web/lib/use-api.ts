@@ -21,8 +21,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { ApiResponse, PlatformEvent } from "../types/pact";
 import type { WebSocketState } from "./api";
 import {
-  CareApiClient,
-  CareWebSocketClient,
+  PactApiClient,
+  PactWebSocketClient,
   ApiError,
   NetworkError,
 } from "./api";
@@ -90,12 +90,12 @@ async function resolveTokenAsync(): Promise<string | undefined> {
 }
 
 /** Shared API client instance. */
-let sharedClient: CareApiClient | null = null;
+let sharedClient: PactApiClient | null = null;
 
 /** Get the shared API client instance. */
-export function getApiClient(): CareApiClient {
+export function getApiClient(): PactApiClient {
   if (!sharedClient) {
-    sharedClient = new CareApiClient({
+    sharedClient = new PactApiClient({
       baseUrl: DEFAULT_BASE_URL,
       token: resolveToken(),
     });
@@ -107,10 +107,10 @@ export function getApiClient(): CareApiClient {
  * Get the shared API client with a fresh async token.
  * Preferred for Firebase auth where tokens may need refresh.
  */
-export async function getApiClientAsync(): Promise<CareApiClient> {
+export async function getApiClientAsync(): Promise<PactApiClient> {
   if (!sharedClient) {
     const token = await resolveTokenAsync();
-    sharedClient = new CareApiClient({
+    sharedClient = new PactApiClient({
       baseUrl: DEFAULT_BASE_URL,
       token,
     });
@@ -142,7 +142,7 @@ export interface UseApiState<T> {
  * @param deps - Dependency array to re-fetch when values change.
  */
 export function useApi<T>(
-  fetcher: (client: CareApiClient) => Promise<ApiResponse<T>>,
+  fetcher: (client: PactApiClient) => Promise<ApiResponse<T>>,
   deps: ReadonlyArray<unknown> = [],
 ): UseApiState<T> {
   const [data, setData] = useState<T | null>(null);
@@ -251,7 +251,7 @@ export function useWebSocket(
   const [connectionState, setConnectionState] =
     useState<WebSocketState>("disconnected");
   const [lastEvent, setLastEvent] = useState<PlatformEvent | null>(null);
-  const clientRef = useRef<CareWebSocketClient | null>(null);
+  const clientRef = useRef<PactWebSocketClient | null>(null);
   const onEventRef = useRef(onEvent);
 
   // Keep the callback ref current without triggering reconnects
@@ -261,7 +261,7 @@ export function useWebSocket(
     const wsUrl = deriveWsUrl(DEFAULT_BASE_URL);
     const token = resolveToken();
 
-    const client = new CareWebSocketClient({
+    const client = new PactWebSocketClient({
       url: wsUrl,
       token,
     });

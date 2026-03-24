@@ -15,7 +15,7 @@ from pathlib import Path
 # Project root — .env.example lives here
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _ENV_EXAMPLE = _PROJECT_ROOT / ".env.example"
-_ENV_PY = _PROJECT_ROOT / "src" / "pact" / "build" / "config" / "env.py"
+_ENV_PY = _PROJECT_ROOT / "src" / "pact_platform" / "build" / "config" / "env.py"
 
 
 def _parse_env_example_keys() -> set[str]:

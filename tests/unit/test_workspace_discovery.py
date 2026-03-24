@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pact.build.workspace.discovery import (
+from pact_platform.build.workspace.discovery import (
     WorkspaceDiscovery,
     WorkspaceManifest,
 )

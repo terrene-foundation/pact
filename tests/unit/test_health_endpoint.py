@@ -12,8 +12,8 @@ import httpx
 import pytest
 
 import pact
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import create_app
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import create_app
 
 
 @pytest.fixture()
@@ -25,7 +25,7 @@ def dev_config() -> EnvConfig:
 @pytest.fixture()
 def app(dev_config: EnvConfig):
     """Create a FastAPI app with dev config for health check testing."""
-    import pact.use.api.server as server_module
+    import pact_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None
@@ -82,7 +82,9 @@ class TestHealthEndpoint:
         """Version in health response must match pact.__version__."""
         resp = await client.get("/health")
         data = resp.json()
-        assert data["version"] == "0.1.0"
+        from pact import __version__
+
+        assert data["version"] == __version__
 
     @pytest.mark.asyncio
     async def test_health_components_include_database(self, client: httpx.AsyncClient):

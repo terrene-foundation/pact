@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from pact.build.workspace.knowledge_policy import (
+from pact_platform.build.workspace.knowledge_policy import (
     KnowledgePolicy,
     KnowledgePolicyEnforcer,
     PolicyDecision,

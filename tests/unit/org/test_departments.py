@@ -11,7 +11,7 @@ TDD: These tests are written FIRST, before the implementation.
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     AgentConfig,
     CommunicationConstraintConfig,
     ConstraintEnvelopeConfig,
@@ -23,7 +23,7 @@ from pact.build.config.schema import (
     TemporalConstraintConfig,
     WorkspaceConfig,
 )
-from pact.build.org.builder import (
+from pact_platform.build.org.builder import (
     OrgBuilder,
     OrgDefinition,
 )
@@ -828,7 +828,7 @@ class TestBackwardCompatibilityNoDepartments:
 
     def test_from_config_preserves_departments(self):
         """from_config() should still work (no departments in PactConfig)."""
-        from pact.build.config.schema import GenesisConfig, PactConfig
+        from pact_platform.build.config.schema import GenesisConfig, PactConfig
 
         platform = PactConfig(
             name="Round Trip",
@@ -864,7 +864,7 @@ class TestTemplateDepartmentField:
 
     def test_team_template_has_department_field(self):
         """TeamTemplate must have an optional department field."""
-        from pact.build.templates.registry import TeamTemplate
+        from pact_platform.build.templates.registry import TeamTemplate
 
         tpl = TeamTemplate(
             name="test-template",
@@ -878,7 +878,7 @@ class TestTemplateDepartmentField:
 
     def test_team_template_department_defaults_to_none(self):
         """TeamTemplate department field defaults to None."""
-        from pact.build.templates.registry import TeamTemplate
+        from pact_platform.build.templates.registry import TeamTemplate
 
         tpl = TeamTemplate(
             name="test-template",
@@ -890,7 +890,7 @@ class TestTemplateDepartmentField:
 
     def test_existing_templates_still_work(self):
         """Existing built-in templates (media, governance, etc.) should still load."""
-        from pact.build.templates.registry import TemplateRegistry
+        from pact_platform.build.templates.registry import TemplateRegistry
 
         registry = TemplateRegistry()
         templates = registry.list()

@@ -13,15 +13,15 @@ Validates that:
 
 import pytest
 
-from pact.build.config.schema import (
+from pact_platform.build.config.schema import (
     AgentConfig,
     ConstraintEnvelopeConfig,
     TeamConfig,
     WorkspaceConfig,
 )
-from pact.build.org.builder import OrgBuilder, OrgDefinition
-from pact.trust.store.sqlite_store import SQLiteTrustStore
-from pact.trust.store.store import FilesystemStore, MemoryStore
+from pact_platform.build.org.builder import OrgBuilder, OrgDefinition
+from pact_platform.trust.store.sqlite_store import SQLiteTrustStore
+from pact_platform.trust.store.store import FilesystemStore, MemoryStore
 
 
 def _make_org() -> OrgDefinition:

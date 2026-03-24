@@ -4,7 +4,7 @@
 
 import pytest
 
-from pact.trust.store.versioning import (
+from pact_platform.trust.store.versioning import (
     VersionTracker,
 )
 

@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pact.use.execution.approval import ApprovalQueue, PendingAction, UrgencyLevel
+from pact_platform.use.execution.approval import ApprovalQueue, PendingAction, UrgencyLevel
 
 
 class TestPendingAction:

@@ -70,14 +70,14 @@ export class NetworkError extends Error {
  *
  * Usage:
  * ```ts
- * const client = new CareApiClient({
+ * const client = new PactApiClient({
  *   baseUrl: "http://localhost:8000",
  *   token: "my-api-token",
  * });
  * const chains = await client.listTrustChains();
  * ```
  */
-export class CareApiClient {
+export class PactApiClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private token: string | undefined;
@@ -85,7 +85,7 @@ export class CareApiClient {
   constructor(config: ApiClientConfig) {
     if (!config.baseUrl) {
       throw new Error(
-        "CareApiClient requires a non-empty baseUrl. " +
+        "PactApiClient requires a non-empty baseUrl. " +
           "Provide the PACT API URL (e.g., 'http://localhost:8000').",
       );
     }
@@ -639,7 +639,7 @@ export interface WebSocketClientConfig {
  *
  * Usage:
  * ```ts
- * const ws = new CareWebSocketClient({
+ * const ws = new PactWebSocketClient({
  *   url: "ws://localhost:8000/ws",
  *   token: "my-token",
  * });
@@ -649,7 +649,7 @@ export interface WebSocketClientConfig {
  * // later: ws.disconnect();
  * ```
  */
-export class CareWebSocketClient {
+export class PactWebSocketClient {
   private ws: WebSocket | null = null;
   private state: WebSocketState = "disconnected";
   private reconnectAttempts = 0;

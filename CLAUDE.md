@@ -63,26 +63,51 @@ Every implementation decision must align with the CARE, PACT, EATP, and CO speci
 
 ## Architecture Overview
 
-### Product Stack
+### Three-Layer Stack
 
-| Layer         | Foundation (Open)                     |
-| ------------- | ------------------------------------- |
-| Specs         | CARE, PACT, EATP, CO, CDI (CC BY 4.0) |
-| SDKs          | Kailash Python, EATP SDK (Apache 2.0) |
-| **Framework** | **PACT** (this repo, Apache 2.0)      |
-| **Verticals** | Astra (finance), Arbor (HRIS)         |
+| Layer  | Package                     | What                                                             | Version |
+| ------ | --------------------------- | ---------------------------------------------------------------- | ------- |
+| **L3** | `pact-platform` (this repo) | Org builder, approval UX, work management, dashboard, deployment | 0.3.0   |
+| **L2** | `kaizen-agents`             | GovernedSupervisor, progressive disclosure, autonomous execution | 0.1.0   |
+| **L1** | `kailash-pact`              | GovernanceEngine, D/T/R grammar, envelopes, clearance, gradient  | 0.3.0   |
+| **L1** | `kailash[trust]`            | EATP SDK, trust chains, signing, postures, enforcement           | 2.0.0+  |
+| **L1** | `kailash-dataflow`          | Auto-generated CRUD nodes (11 per model)                         | 1.2.0   |
+| **L0** | `kailash`                   | Core SDK, workflow runtime, 140+ nodes                           | 2.0.0+  |
 
-### PACT Framework Components
+### Platform Components (v0.3.0)
 
-| Component             | What                                                                             | Status                                                      |
-| --------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| D/T/R Grammar Engine  | Accountability grammar validation, skeleton enforcement, positional addressing   | Existing org builder, needs grammar formalization           |
-| Envelope Composition  | Three-layer (Role/Task/Effective) recursive delegation with monotonic tightening | Existing envelopes, needs three-layer decomposition         |
-| Knowledge Clearance   | Five-level classification independent of authority, compartments, `can_access()` | Existing confidentiality levels, needs clearance governance |
-| Verification Gradient | Four-zone calibrated intervention per-dimension per-role                         | Fully implemented                                           |
-| Trust Store           | EATP-backed persistence, audit anchors, delegation records                       | Fully implemented                                           |
-| API Layer             | FastAPI server, WebSocket events, dashboard endpoints                            | Fully implemented                                           |
-| Example Vertical      | Simple domain (university/open-source) proving the framework                     | Needs creation                                              |
+| Component              | Location                         | What                                                                                                                            |
+| ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| DataFlow Models (11)   | `pact_platform/models/`          | AgenticObjective, Request, WorkSession, Artifact, Decision, ReviewDecision, Finding, Pool, PoolMembership, Run, ExecutionMetric |
+| API Routers (7)        | `pact_platform/use/api/routers/` | objectives, requests, sessions, decisions, pools, reviews, metrics (42+ endpoints)                                              |
+| Services (5)           | `pact_platform/use/services/`    | RequestRouter, ApprovalQueue, CompletionWorkflow, CostTracking, NotificationDispatch                                            |
+| Engine (6)             | `pact_platform/engine/`          | EnvelopeAdapter, GovernedDelegate, ApprovalBridge, EventBridge, SupervisorOrchestrator, AutoSeed                                |
+| Integrations (6)       | `pact_platform/integrations/`    | NotificationAdapter, Slack/Discord/Teams webhooks, LLMProviderManager                                                           |
+| CLI (10 commands)      | `pact_platform/cli.py`           | quickstart, org, role, clearance, bridge, envelope, agent, audit, validate, status                                              |
+| Web Dashboard (4 new)  | `apps/web/app/`                  | objectives, requests, pools, org-builder pages                                                                                  |
+| Mobile Screens (3 new) | `apps/mobile/lib/features/`      | objectives, requests, pools screens                                                                                             |
+| Existing Frontend      | `apps/web/`, `apps/mobile/`      | approvals, agents, bridges, trust-chains, envelopes, cost, audit, shadow, verification                                          |
+
+### Import Patterns
+
+```python
+# Governance (from kailash-pact — L1)
+from pact.governance import GovernanceEngine, GovernanceVerdict
+from pact.governance import compile_org, load_org_yaml
+
+# Config types (from this repo — L3)
+from pact_platform.build.config.schema import OrgDefinition, AgentConfig, ConstraintEnvelopeConfig
+
+# Work management models (from this repo — L3)
+from pact_platform.models import db, validate_finite
+
+# Engine wiring (from this repo — L3)
+from pact_platform.engine import SupervisorOrchestrator, PlatformEnvelopeAdapter
+
+# Trust layer (kailash[trust] — L1)
+from kailash.trust import TrustOperations, generate_keypair
+from kailash.trust.chain import VerificationLevel, VerificationResult
+```
 
 ## Workspace Commands
 
@@ -120,7 +145,7 @@ Every implementation decision must align with the CARE, PACT, EATP, and CO speci
 | Terrene naming & terminology      | `rules/terrene-naming.md`    | Global                                              |
 | Documentation & version accuracy  | `rules/documentation.md`     | `README.md`, `docs/**`, `CHANGELOG.md`              |
 | Constitution consistency          | `rules/constitution.md`      | Scoped                                              |
-| Boundary test (domain vocabulary) | `rules/boundary-test.md`     | `src/pact/**` (excluding `examples/`)               |
+| Boundary test (domain vocabulary) | `rules/boundary-test.md`     | `src/pact_platform/**` (excluding `examples/`)      |
 | Auto-generated workflow instincts | `rules/learned-instincts.md` | Global                                              |
 
 ## Agents

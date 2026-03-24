@@ -21,15 +21,15 @@ import pytest_asyncio
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from pact.build.config.env import EnvConfig
-from pact.build.workspace.bridge import BridgeManager
-from pact.build.workspace.models import WorkspaceRegistry
-from pact.trust.store.cost_tracking import CostTracker
-from pact.trust.store.posture_history import PostureHistoryStore
-from pact.use.api.endpoints import PactAPI
-from pact.use.api.server import create_app
-from pact.use.execution.approval import ApprovalQueue
-from pact.use.execution.registry import AgentRegistry
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.build.workspace.bridge import BridgeManager
+from pact_platform.build.workspace.models import WorkspaceRegistry
+from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.trust.store.posture_history import PostureHistoryStore
+from pact_platform.use.api.endpoints import PactAPI
+from pact_platform.use.api.server import create_app
+from pact_platform.use.execution.approval import ApprovalQueue
+from pact_platform.use.execution.registry import AgentRegistry
 from scripts.seed_demo import (
     build_audit_chain,
     convert_verification_stats_to_enum_keys,
@@ -141,7 +141,7 @@ async def client(platform_api: PactAPI, dev_env_config: EnvConfig) -> AsyncGener
     Uses httpx.AsyncClient with ASGITransport to test FastAPI endpoints
     without running a real server.
     """
-    import pact.use.api.server as server_module
+    import pact_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None
@@ -161,7 +161,7 @@ async def auth_client(platform_api: PactAPI, auth_env_config: EnvConfig) -> Asyn
     Uses httpx.AsyncClient with ASGITransport. Requests must include
     a valid Bearer token to access protected endpoints.
     """
-    import pact.use.api.server as server_module
+    import pact_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None

@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from pact.use.execution.session import (
+from pact_platform.use.execution.session import (
     PactSession,
     SessionCheckpoint,
     SessionManager,

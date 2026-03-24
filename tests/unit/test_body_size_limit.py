@@ -12,9 +12,9 @@ from __future__ import annotations
 import httpx
 import pytest
 
-import pact.use.api.server as server_module
-from pact.build.config.env import EnvConfig
-from pact.use.api.server import create_app
+import pact_platform.use.api.server as server_module
+from pact_platform.build.config.env import EnvConfig
+from pact_platform.use.api.server import create_app
 
 
 @pytest.fixture(autouse=True)
