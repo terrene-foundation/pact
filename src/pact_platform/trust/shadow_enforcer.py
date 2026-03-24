@@ -2,10 +2,10 @@
 # Licensed under the Apache License, Version 2.0
 """ShadowEnforcer — parallel trust evaluation that observes without enforcing.
 
-Runs verification gradient evaluation alongside normal agent operations,
-collecting metrics that provide empirical evidence for trust posture upgrades.
-The ShadowEnforcer NEVER blocks, holds, or modifies actions — it only records
-what WOULD have happened under the current constraint configuration.
+Runs governance verification alongside normal agent operations, collecting
+metrics that provide empirical evidence for trust posture upgrades. The
+ShadowEnforcer NEVER blocks, holds, or modifies actions — it only records
+what WOULD have happened under the current governance configuration.
 """
 
 from __future__ import annotations
@@ -14,19 +14,19 @@ import logging
 import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from pact_platform.trust._compat import (
     UPGRADE_REQUIREMENTS,
     PostureEvidence,
-    TrustPosture,
     TrustPostureLevel,
     VerificationLevel,
 )
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope, EvaluationResult
-from pact_platform.trust.constraint.gradient import GradientEngine
+
+if TYPE_CHECKING:
+    from pact.governance.engine import GovernanceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -101,36 +101,38 @@ class ShadowReport(BaseModel):
     recommendation: str  # human-readable recommendation
 
 
+# Map governance verdict level strings to VerificationLevel enum
+_LEVEL_MAP: dict[str, VerificationLevel] = {
+    "auto_approved": VerificationLevel.AUTO_APPROVED,
+    "flagged": VerificationLevel.FLAGGED,
+    "held": VerificationLevel.HELD,
+    "blocked": VerificationLevel.BLOCKED,
+}
+
+
 class ShadowEnforcer:
     """Parallel trust evaluation that observes without enforcing.
 
     Collects metrics to provide empirical evidence for trust posture upgrades.
-    The ShadowEnforcer evaluates every action through the constraint envelope
-    and verification gradient, recording what WOULD happen, but never actually
-    blocking or modifying any action.
-
-    RT2-07: Now mirrors the full middleware pipeline including halt state,
-    posture-based escalation, and never-delegated action checks.
+    Evaluates every action through the GovernanceEngine, recording what WOULD
+    happen, but never actually blocking or modifying any action.
     """
 
     def __init__(
         self,
-        gradient_engine: GradientEngine,
-        envelope: ConstraintEnvelope,
+        governance_engine: GovernanceEngine,
+        role_address: str,
         *,
         halted_check: Callable[[], bool] | None = None,
         maxlen: int = 10_000,
     ) -> None:
-        self.gradient = gradient_engine
-        self.envelope = envelope
+        self._engine = governance_engine
+        self._role_address = role_address
         self._results: list[ShadowResult] = []
         self._metrics: dict[str, ShadowMetrics] = {}  # agent_id -> metrics
         self._maxlen: int = maxlen
         self._lock = threading.Lock()
-        # RT2-07: Optional callable that returns bool for halt state
         self._halted_check = halted_check
-        # RT2-07: Posture helper for never-delegated checks
-        self._posture_helper = TrustPosture(agent_id="__shadow_helper__")
 
     def evaluate(
         self,
@@ -142,15 +144,6 @@ class ShadowEnforcer:
     ) -> ShadowResult:
         """Run shadow evaluation -- does NOT block or modify the action.
 
-        RT2-07/RT3-01: Now mirrors the full middleware pipeline:
-        1. Emergency halt check
-        2. PSEUDO_AGENT posture block
-        3. Envelope expiry check (RT3-01)
-        4. Envelope evaluation
-        5. Gradient classification
-        6. Never-delegated force to HELD
-        7. SUPERVISED posture escalation
-
         Fail-safe: On ANY internal exception, returns a safe ShadowResult with
         would_be_blocked=False, would_be_auto_approved=True. The ShadowEnforcer
         must NEVER crash the caller.
@@ -158,9 +151,8 @@ class ShadowEnforcer:
         Args:
             action: The action string to evaluate.
             agent_id: The agent performing the action.
-            agent_posture: RT2-07: Agent's trust posture level for escalation.
-            **kwargs: Forwarded to ConstraintEnvelope.evaluate_action
-                (e.g. spend_amount, current_action_count, data_paths, is_external).
+            agent_posture: Agent's trust posture level for escalation.
+            **kwargs: Additional context forwarded to verify_action.
 
         Returns:
             ShadowResult describing what WOULD have happened.
@@ -198,7 +190,7 @@ class ShadowEnforcer:
         """Core evaluation logic, separated for fail-safe wrapping."""
         now = datetime.now(UTC)
 
-        # RT2-07: Check halt state — if halted, everything would be blocked
+        # Check halt state — if halted, everything would be blocked
         if self._halted_check is not None and callable(self._halted_check):
             if self._halted_check():
                 result = ShadowResult(
@@ -215,7 +207,7 @@ class ShadowEnforcer:
                 self._record_result(agent_id, result)
                 return result
 
-        # RT2-07: PSEUDO_AGENT posture blocks everything
+        # PSEUDO_AGENT posture blocks everything
         if agent_posture == TrustPostureLevel.PSEUDO_AGENT:
             result = ShadowResult(
                 action=action,
@@ -231,50 +223,27 @@ class ShadowEnforcer:
             self._record_result(agent_id, result)
             return result
 
-        # RT3-01: Check envelope expiry for accurate shadow metrics
-        if self.envelope.is_expired:
-            result = ShadowResult(
-                action=action,
-                agent_id=agent_id,
-                would_be_blocked=True,
-                would_be_held=False,
-                would_be_flagged=False,
-                would_be_auto_approved=False,
-                verification_level=VerificationLevel.BLOCKED,
-                dimension_results={"expiry": "blocked"},
-                timestamp=now,
-            )
-            self._record_result(agent_id, result)
-            return result
+        # Use GovernanceEngine for the decision
+        context: dict[str, Any] = {"agent_id": agent_id}
+        if agent_posture is not None:
+            context["agent_posture"] = agent_posture.value
+        context.update(kwargs)
 
-        # Step 1: Evaluate through the constraint envelope
-        envelope_eval = self.envelope.evaluate_action(action, agent_id, **kwargs)
-
-        # Step 2: Classify through the gradient engine (with envelope evaluation)
-        gradient_result = self.gradient.classify(
+        verdict = self._engine.verify_action(
+            self._role_address,
             action,
-            agent_id,
-            envelope_evaluation=envelope_eval,
+            context=context,
         )
 
-        # Step 3: Build dimension results from envelope evaluation
+        level = _LEVEL_MAP.get(verdict.level, VerificationLevel.BLOCKED)
+
+        # Extract dimension details from verdict audit_details if available
         dimension_results: dict[str, str] = {}
-        for dim_eval in envelope_eval.dimensions:
-            if dim_eval.result != EvaluationResult.ALLOWED:
-                dimension_results[dim_eval.dimension] = dim_eval.result.value
-
-        # Step 4: Determine level with pipeline overrides
-        level = gradient_result.level
-
-        # RT2-07: Force HELD for never-delegated actions (mirrors RT-03)
-        is_never_delegated = self._posture_helper.is_action_always_held(action)
-        if is_never_delegated and level != VerificationLevel.BLOCKED:
-            level = VerificationLevel.HELD
-
-        # RT2-07: SUPERVISED posture escalation (mirrors RT-09)
-        if agent_posture == TrustPostureLevel.SUPERVISED:
-            if level in (VerificationLevel.AUTO_APPROVED, VerificationLevel.FLAGGED):
-                level = VerificationLevel.HELD
+        if hasattr(verdict, "audit_details") and isinstance(verdict.audit_details, dict):
+            dims = verdict.audit_details.get("dimensions", {})
+            for dim_name, dim_val in dims.items():
+                if isinstance(dim_val, str) and dim_val != "allowed":
+                    dimension_results[dim_name] = dim_val
 
         result = ShadowResult(
             action=action,
@@ -288,9 +257,7 @@ class ShadowEnforcer:
             timestamp=now,
         )
 
-        # Step 5 & 6: Record result and update metrics (thread-safe)
         self._record_result(agent_id, result)
-
         return result
 
     def _record_result(self, agent_id: str, result: ShadowResult) -> None:
@@ -344,7 +311,6 @@ class ShadowEnforcer:
         now = datetime.now(UTC)
         window_start = now - timedelta(days=days)
 
-        # Thread-safe snapshot of results
         with self._lock:
             windowed_results = [
                 r for r in self._results if r.agent_id == agent_id and r.timestamp >= window_start
@@ -364,7 +330,7 @@ class ShadowEnforcer:
         Raises:
             KeyError: If no evaluations have been recorded for this agent.
         """
-        metrics = self.get_metrics(agent_id)  # Raises KeyError if unknown
+        metrics = self.get_metrics(agent_id)
 
         evaluation_period_days = max(
             1,
@@ -372,21 +338,16 @@ class ShadowEnforcer:
         )
 
         total = metrics.total_evaluations
-
-        # Compute rates
         pass_rate = metrics.pass_rate
         block_rate = metrics.block_rate
         hold_rate = metrics.held_count / total if total > 0 else 0.0
         flag_rate = metrics.flagged_count / total if total > 0 else 0.0
 
-        # Compute dimension trigger rates
         dimension_breakdown: dict[str, float] = {}
         if total > 0:
             for dim, count in metrics.dimension_trigger_counts.items():
                 dimension_breakdown[dim] = count / total
 
-        # Check upgrade eligibility against SHARED_PLANNING requirements
-        # (the first upgrade level, which is the most relevant for initial assessment)
         upgrade_blockers = self._check_upgrade_blockers(metrics)
         upgrade_eligible = len(upgrade_blockers) == 0
 
@@ -411,10 +372,6 @@ class ShadowEnforcer:
     def to_posture_evidence(self, agent_id: str) -> PostureEvidence:
         """Convert shadow metrics into PostureEvidence for upgrade evaluation.
 
-        Maps shadow enforcement metrics to the PostureEvidence model that
-        TrustPosture.can_upgrade() expects. This is the bridge between
-        shadow observation and trust posture decisions.
-
         Args:
             agent_id: The agent to convert metrics for.
 
@@ -424,7 +381,7 @@ class ShadowEnforcer:
         Raises:
             KeyError: If no evaluations have been recorded for this agent.
         """
-        metrics = self.get_metrics(agent_id)  # Raises KeyError if unknown
+        metrics = self.get_metrics(agent_id)
 
         days_at_posture = max(
             0,
@@ -436,7 +393,7 @@ class ShadowEnforcer:
             total_operations=metrics.total_evaluations,
             days_at_current_posture=days_at_posture,
             shadow_enforcer_pass_rate=metrics.pass_rate,
-            incidents=0,  # shadow blocks are informational, not real incidents
+            incidents=0,
             shadow_blocked_count=metrics.blocked_count,
         )
 
@@ -452,13 +409,11 @@ class ShadowEnforcer:
 
         metrics = self._metrics[agent_id]
 
-        # Snapshot previous pass_rate before mutation (only meaningful after first eval)
         if not is_first:
             metrics.previous_pass_rate = metrics.pass_rate
 
         metrics.total_evaluations += 1
 
-        # Update verification level counts
         if result.would_be_auto_approved:
             metrics.auto_approved_count += 1
         elif result.would_be_flagged:
@@ -468,38 +423,23 @@ class ShadowEnforcer:
         elif result.would_be_blocked:
             metrics.blocked_count += 1
 
-        # Update dimension trigger counts
         for dimension in result.dimension_results:
             metrics.dimension_trigger_counts[dimension] = (
                 metrics.dimension_trigger_counts.get(dimension, 0) + 1
             )
 
-        # Expand the window
         if result.timestamp < metrics.window_start:
             metrics.window_start = result.timestamp
         if result.timestamp > metrics.window_end:
             metrics.window_end = result.timestamp
 
-        # On the first evaluation, initialize previous_pass_rate to current
-        # so change_rate starts at 0.0 (no meaningful delta yet)
         if is_first:
             metrics.previous_pass_rate = metrics.pass_rate
 
     def _trim_if_needed(self) -> None:
-        """Trim oldest 10% of results when _results exceeds maxlen.
-
-        Must be called while holding self._lock.
-        """
+        """Trim oldest 10% of results when _results exceeds maxlen."""
         if len(self._results) > self._maxlen:
             trim_count = max(1, len(self._results) // 10)
-            agent_ids_in_trimmed = {r.agent_id for r in self._results[:trim_count]}
-            logger.warning(
-                "ShadowEnforcer trimming %d oldest results (maxlen=%d, current=%d, agents=%s)",
-                trim_count,
-                self._maxlen,
-                len(self._results),
-                ", ".join(sorted(agent_ids_in_trimmed)),
-            )
             self._results = self._results[trim_count:]
 
     def _compute_metrics_from_results(
@@ -539,7 +479,6 @@ class ShadowEnforcer:
         """Check metrics against the lowest upgrade requirements and return blockers."""
         blockers: list[str] = []
 
-        # Use SHARED_PLANNING as the baseline target (first upgrade from SUPERVISED)
         reqs = UPGRADE_REQUIREMENTS.get(TrustPostureLevel.SHARED_PLANNING)
         if reqs is None:
             blockers.append("No upgrade requirements defined for SHARED_PLANNING")

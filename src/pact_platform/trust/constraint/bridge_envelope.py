@@ -33,9 +33,54 @@ from pact_platform.build.config.schema import (
     TemporalConstraintConfig,
 )
 from pact_platform.build.workspace.bridge import BridgePermission
-from pact_platform.trust.constraint.envelope import _is_time_window_tighter, _paths_covered_by
 
 logger = logging.getLogger(__name__)
+
+
+def _is_time_window_tighter(
+    child_start: str, child_end: str, parent_start: str, parent_end: str
+) -> bool:
+    """Check if child time window is a subset of parent time window."""
+
+    def _to_min(t: str) -> int:
+        h, m = t.split(":")
+        return int(h) * 60 + int(m)
+
+    cs, ce, ps, pe = (
+        _to_min(child_start),
+        _to_min(child_end),
+        _to_min(parent_start),
+        _to_min(parent_end),
+    )
+    parent_overnight = pe <= ps
+    child_overnight = ce <= cs
+
+    if not parent_overnight and child_overnight:
+        return False
+    if not parent_overnight and not child_overnight:
+        return cs >= ps and ce <= pe
+    if parent_overnight and child_overnight:
+        return cs >= ps and ce <= pe
+    if parent_overnight and not child_overnight:
+        return (cs >= ps) or (ce <= pe)
+    return False
+
+
+def _path_covered(child: str, parent: str) -> bool:
+    """Check if a single child path is covered by a parent path."""
+    if child == parent:
+        return True
+    parent_prefix = parent.rstrip("*")
+    child_prefix = child.rstrip("*")
+    return child_prefix.startswith(parent_prefix)
+
+
+def _paths_covered_by(child_paths: list[str], parent_paths: list[str]) -> bool:
+    """Check that every child path is covered by at least one parent path."""
+    for cp in child_paths:
+        if not any(_path_covered(cp, pp) for pp in parent_paths):
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------

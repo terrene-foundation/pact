@@ -21,19 +21,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from pact_platform.build.config.schema import (
-    CommunicationConstraintConfig,
-    ConstraintEnvelopeConfig,
-    DataAccessConstraintConfig,
-    FinancialConstraintConfig,
-    GradientRuleConfig,
-    OperationalConstraintConfig,
-    TemporalConstraintConfig,
-    VerificationGradientConfig,
     VerificationLevel,
 )
 from pact_platform.trust.audit.anchor import AuditAnchor, AuditChain
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
-from pact_platform.trust.constraint.gradient import GradientEngine
 from pact_platform.trust.shadow_enforcer import ShadowEnforcer
 from pact_platform.trust.store.cost_tracking import CostTracker
 from pact_platform.use.api.endpoints import PactAPI
@@ -88,53 +78,40 @@ def cost_tracker() -> CostTracker:
     return CostTracker()
 
 
+class _MockVerdict:
+    """Minimal governance verdict for test mock."""
+
+    def __init__(self, level: str, reason: str = "") -> None:
+        self.level = level
+        self.reason = reason
+
+
+class _MockGovernanceEngine:
+    """Mock GovernanceEngine for shadow enforcer tests.
+
+    Replicates the gradient rules that the old GradientEngine provided:
+    - emergency_* -> blocked
+    - approve_* -> held
+    - flag_* -> flagged
+    - default -> auto_approved
+    """
+
+    def verify_action(self, role_address: str, action: str, context=None) -> _MockVerdict:
+        if action.startswith("emergency_"):
+            return _MockVerdict("blocked", "blocked by pattern")
+        if action.startswith("approve_"):
+            return _MockVerdict("held", "held by pattern")
+        if action.startswith("flag_"):
+            return _MockVerdict("flagged", "flagged by pattern")
+        return _MockVerdict("auto_approved", "default auto-approved")
+
+
 @pytest.fixture()
 def shadow_enforcer() -> ShadowEnforcer:
     """ShadowEnforcer with evaluations for test agents."""
-    envelope_config = ConstraintEnvelopeConfig(
-        id="test-shadow-envelope",
-        description="Test shadow envelope",
-        financial=FinancialConstraintConfig(
-            max_spend_usd=10000.0,
-            api_cost_budget_usd=5000.0,
-            requires_approval_above_usd=500.0,
-        ),
-        operational=OperationalConstraintConfig(
-            allowed_actions=[],
-            blocked_actions=["emergency_shutdown"],
-            max_actions_per_day=1000,
-        ),
-        temporal=TemporalConstraintConfig(
-            active_hours_start="00:00",
-            active_hours_end="23:59",
-            timezone="UTC",
-        ),
-        data_access=DataAccessConstraintConfig(
-            read_paths=["*"],
-            write_paths=["*"],
-            blocked_data_types=["pii_export"],
-        ),
-        communication=CommunicationConstraintConfig(
-            internal_only=False,
-            allowed_channels=["*"],
-            external_requires_approval=False,
-        ),
-    )
-    envelope = ConstraintEnvelope(config=envelope_config)
-
-    gradient_config = VerificationGradientConfig(
-        rules=[
-            GradientRuleConfig(pattern="emergency_*", level=VerificationLevel.BLOCKED),
-            GradientRuleConfig(pattern="approve_*", level=VerificationLevel.HELD),
-            GradientRuleConfig(pattern="flag_*", level=VerificationLevel.FLAGGED),
-        ],
-        default_level=VerificationLevel.AUTO_APPROVED,
-    )
-    gradient_engine = GradientEngine(config=gradient_config)
-
     enforcer = ShadowEnforcer(
-        gradient_engine=gradient_engine,
-        envelope=envelope,
+        governance_engine=_MockGovernanceEngine(),
+        role_address="D1-R1",
     )
 
     # Add evaluations for agent-alpha (mostly passing)

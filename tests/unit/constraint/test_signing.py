@@ -13,13 +13,11 @@ from pact_platform.build.config.schema import (
     FinancialConstraintConfig,
     OperationalConstraintConfig,
 )
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
 from pact_platform.trust.constraint.signing import EnvelopeVersionHistory, SignedEnvelope
 
 
-def _make_envelope(**kwargs) -> ConstraintEnvelope:
-    config = ConstraintEnvelopeConfig(id="test-env", **kwargs)
-    return ConstraintEnvelope(config=config)
+def _make_envelope(**kwargs) -> ConstraintEnvelopeConfig:
+    return ConstraintEnvelopeConfig(id="test-env", **kwargs)
 
 
 def _generate_keypair() -> tuple[bytes, bytes]:
@@ -64,16 +62,13 @@ class TestSignAndVerify:
         import pytest
 
         with pytest.raises(Exception):
-            signed.envelope.config.financial.max_spend_usd = 999999.0
+            signed.envelope.financial.max_spend_usd = 999999.0
 
         # Construct a tampered envelope via model_copy to verify signature still catches it
-        tampered_financial = signed.envelope.config.financial.model_copy(
+        tampered_financial = signed.envelope.financial.model_copy(
             update={"max_spend_usd": 999999.0}
         )
-        tampered_config = signed.envelope.config.model_copy(
-            update={"financial": tampered_financial}
-        )
-        tampered_envelope = signed.envelope.model_copy(update={"config": tampered_config})
+        tampered_envelope = signed.envelope.model_copy(update={"financial": tampered_financial})
         tampered_signed = signed.model_copy(update={"envelope": tampered_envelope})
 
         assert not tampered_signed.verify_signature(public_key)
@@ -139,14 +134,13 @@ class TestSignAndVerify:
 
         # RT5-04: Direct mutation is blocked by frozen models
         with pytest.raises(Exception):
-            signed.envelope.config.operational.allowed_actions = ["read", "delete"]
+            signed.envelope.operational.allowed_actions = ["read", "delete"]
 
         # Construct tampered envelope via model_copy to verify signature detects it
-        tampered_op = signed.envelope.config.operational.model_copy(
+        tampered_op = signed.envelope.operational.model_copy(
             update={"allowed_actions": ["read", "delete"]}
         )
-        tampered_config = signed.envelope.config.model_copy(update={"operational": tampered_op})
-        tampered_envelope = signed.envelope.model_copy(update={"config": tampered_config})
+        tampered_envelope = signed.envelope.model_copy(update={"operational": tampered_op})
         tampered_signed = signed.model_copy(update={"envelope": tampered_envelope})
         assert not tampered_signed.verify_signature(public_key)
 
@@ -299,9 +293,9 @@ class TestVersionHistory:
 
         stored = history.get_current()
         assert stored is not None
-        assert stored.verify_signature(public_key), (
-            "Re-signed envelope after add_version should have a valid signature"
-        )
+        assert stored.verify_signature(
+            public_key
+        ), "Re-signed envelope after add_version should have a valid signature"
 
     def test_all_versions_have_valid_signatures(self):
         """All versions in history should have valid signatures after re-signing."""
@@ -316,9 +310,9 @@ class TestVersionHistory:
             history.add_version(signed, private_key=private_key, public_key=public_key)
 
         for v in history.versions:
-            assert v.verify_signature(public_key), (
-                f"Version {v.version} should have a valid signature"
-            )
+            assert v.verify_signature(
+                public_key
+            ), f"Version {v.version} should have a valid signature"
 
     def test_add_version_does_not_mutate_original(self):
         """add_version should not modify the original SignedEnvelope object."""

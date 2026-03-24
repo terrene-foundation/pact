@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     from pact_platform.build.workspace.bridge import BridgeManager
     from pact_platform.build.workspace.models import WorkspaceRegistry
     from pact_platform.trust.audit.anchor import AuditChain
-    from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+    from pact_platform.build.config.schema import ConstraintEnvelopeConfig
     from pact_platform.trust.store.posture_history import PostureHistoryStore
 
     # ShadowEnforcer was in a deleted module. Used only as an optional
@@ -232,7 +232,7 @@ class PactAPI:
         cost_tracker: CostTracker for spend reporting.
         workspace_registry: Optional WorkspaceRegistry for workspace queries (M18).
         bridge_manager: Optional BridgeManager for bridge queries (M18).
-        envelope_registry: Optional dict mapping envelope IDs to ConstraintEnvelope (M18).
+        envelope_registry: Optional dict mapping envelope IDs to ConstraintEnvelopeConfig (M18).
         verification_stats: Optional dict mapping VerificationLevel to counts (M18).
         posture_store: Optional PostureHistoryStore for posture history queries (M18).
         shadow_enforcer: Optional ShadowEnforcer for shadow evaluation metrics (M13).
@@ -249,7 +249,7 @@ class PactAPI:
         cost_tracker: CostTracker,
         workspace_registry: WorkspaceRegistry | None = None,
         bridge_manager: BridgeManager | None = None,
-        envelope_registry: dict[str, ConstraintEnvelope] | None = None,
+        envelope_registry: dict[str, ConstraintEnvelopeConfig] | None = None,
         verification_stats: dict[VerificationLevel, int] | None = None,
         posture_store: PostureHistoryStore | None = None,
         shadow_enforcer: ShadowEnforcer | None = None,
@@ -621,7 +621,7 @@ class PactAPI:
                 error=f"Envelope '{envelope_id}' not found in envelope registry",
             )
 
-        config = envelope.config
+        config = envelope
         return ApiResponse(
             status="ok",
             data={

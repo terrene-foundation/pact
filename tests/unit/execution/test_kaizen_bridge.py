@@ -18,11 +18,9 @@ import threading
 import pytest
 
 from pact_platform.build.config.schema import (
-    VerificationGradientConfig,
     VerificationLevel,
 )
 from pact_platform.trust.audit.anchor import AuditChain
-from pact_platform.trust.constraint.gradient import GradientEngine
 from pact_platform.trust.store.store import MemoryStore
 from pact_platform.use.execution.approval import ApprovalQueue
 from pact_platform.use.execution.kaizen_bridge import KaizenBridge
@@ -54,15 +52,6 @@ def backend_router(stub_backend):
     router = BackendRouter()
     router.register_backend(stub_backend)
     return router
-
-
-@pytest.fixture
-def gradient():
-    """GradientEngine with a permissive config (default AUTO_APPROVED)."""
-    config = VerificationGradientConfig(
-        default_level=VerificationLevel.AUTO_APPROVED,
-    )
-    return GradientEngine(config)
 
 
 @pytest.fixture
@@ -110,11 +99,10 @@ def trust_store():
 
 
 @pytest.fixture
-def runtime(registry, gradient, audit_chain, approval_queue):
+def runtime(registry, audit_chain, approval_queue):
     """ExecutionRuntime wired up for bridge testing."""
     return ExecutionRuntime(
         registry=registry,
-        gradient=gradient,
         audit_chain=audit_chain,
         approval_queue=approval_queue,
     )
@@ -181,15 +169,19 @@ class TestKaizenBridgeExecution:
 
 
 class TestKaizenBridgeConstraintRouting:
-    """Test constraint middleware routing based on verification level."""
+    """Test governance-based routing (BLOCKED/HELD/AUTO_APPROVED)."""
 
     def test_blocked_action_rejected(self, runtime, backend_router, trust_store):
-        """BLOCKED verification level should reject the task without calling LLM."""
-        # Create gradient that blocks everything
-        config = VerificationGradientConfig(
-            default_level=VerificationLevel.BLOCKED,
-        )
-        gradient = GradientEngine(config)
+        """Governance-blocked action should reject the task without calling LLM."""
+        from unittest.mock import MagicMock
+
+        # Create a mock governance engine that blocks all actions
+        mock_engine = MagicMock()
+        mock_verdict = MagicMock()
+        mock_verdict.level = "blocked"
+        mock_verdict.reason = "blocked by governance"
+        mock_engine.verify_action.return_value = mock_verdict
+
         audit_chain = AuditChain(chain_id="blocked-chain")
         registry = AgentRegistry()
         registry.register(
@@ -200,9 +192,10 @@ class TestKaizenBridgeConstraintRouting:
 
         blocked_runtime = ExecutionRuntime(
             registry=registry,
-            gradient=gradient,
             audit_chain=audit_chain,
+            governance_engine=mock_engine,
         )
+        blocked_runtime.set_agent_role_address("agent-1", "D1-R1")
 
         bridge = KaizenBridge(
             runtime=blocked_runtime,
@@ -219,11 +212,7 @@ class TestKaizenBridgeConstraintRouting:
         assert len(stub.call_history) == 0
 
     def test_held_action_queued(self, backend_router, trust_store):
-        """HELD verification level should queue the task for approval."""
-        config = VerificationGradientConfig(
-            default_level=VerificationLevel.HELD,
-        )
-        gradient = GradientEngine(config)
+        """HELD verification (via NEVER_DELEGATED_ACTIONS) queues the task."""
         audit_chain = AuditChain(chain_id="held-chain")
         registry = AgentRegistry()
         registry.register(
@@ -235,7 +224,6 @@ class TestKaizenBridgeConstraintRouting:
 
         held_runtime = ExecutionRuntime(
             registry=registry,
-            gradient=gradient,
             audit_chain=audit_chain,
             approval_queue=approval_queue,
         )
@@ -246,20 +234,17 @@ class TestKaizenBridgeConstraintRouting:
             trust_store=trust_store,
         )
 
-        task = Task(action="send email externally", agent_id="agent-1")
+        # "financial_decisions" is in NEVER_DELEGATED_ACTIONS => forces HELD
+        task = Task(action="financial_decisions", agent_id="agent-1")
         result = bridge.execute_task(task)
 
         assert result.error is not None or result.metadata.get("held") is True
         # The action should be in the approval queue
         assert approval_queue.queue_depth > 0
 
-    def test_flagged_action_executes(self, backend_router, trust_store):
-        """FLAGGED verification level should still execute (log + highlight)."""
-        config = VerificationGradientConfig(
-            default_level=VerificationLevel.FLAGGED,
-        )
-        gradient = GradientEngine(config)
-        audit_chain = AuditChain(chain_id="flagged-chain")
+    def test_auto_approved_action_executes(self, backend_router, trust_store):
+        """AUTO_APPROVED action should execute and return output."""
+        audit_chain = AuditChain(chain_id="auto-chain")
         registry = AgentRegistry()
         registry.register(
             agent_id="agent-1",
@@ -267,14 +252,13 @@ class TestKaizenBridgeConstraintRouting:
             role="tester",
         )
 
-        flagged_runtime = ExecutionRuntime(
+        auto_runtime = ExecutionRuntime(
             registry=registry,
-            gradient=gradient,
             audit_chain=audit_chain,
         )
 
         bridge = KaizenBridge(
-            runtime=flagged_runtime,
+            runtime=auto_runtime,
             backend_router=backend_router,
             trust_store=trust_store,
         )

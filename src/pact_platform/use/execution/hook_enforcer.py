@@ -1,14 +1,14 @@
 # Copyright 2026 Terrene Foundation
 # Licensed under the Apache License, Version 2.0
-"""COC hook enforcer — bridges COC hook validation with EATP verification.
+"""COC hook enforcer — bridges COC hook validation with PACT governance.
 
-The hook enforcer wraps the verification gradient engine and constraint envelope
-to produce hook verdicts (ALLOW/BLOCK/HOLD) from EATP verification levels
-(AUTO_APPROVED/FLAGGED/HELD/BLOCKED).
+The hook enforcer wraps the GovernanceEngine to produce hook verdicts
+(ALLOW/BLOCK/HOLD) from governance verdict levels
+(auto_approved/flagged/held/blocked).
 
-Fail-safe principle: if the verification system is unavailable (no gradient engine
-or no envelope configured), the enforcer defaults to BLOCK. This ensures that
-misconfiguration never silently permits actions.
+Fail-safe principle: if the governance engine is unavailable (no engine
+or no role_address configured), the enforcer defaults to BLOCK. This
+ensures that misconfiguration never silently permits actions.
 """
 
 from __future__ import annotations
@@ -17,14 +17,14 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from pact_platform.build.config.schema import TrustPostureLevel, VerificationLevel
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
-from pact_platform.trust.constraint.gradient import GradientEngine, VerificationThoroughness
-from pact_platform.trust._compat import TrustPosture
+from pact_platform.build.config.schema import TrustPostureLevel
+
+if TYPE_CHECKING:
+    from pact.governance.engine import GovernanceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -42,49 +42,46 @@ class HookResult(BaseModel):
 
     verdict: HookVerdict
     reason: str = ""
-    verification_level: str = ""  # which gradient level triggered
+    verification_level: str = ""  # which governance level triggered
     agent_id: str = ""
     action: str = ""
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-# Mapping from EATP verification levels to hook verdicts
-_LEVEL_TO_VERDICT: dict[VerificationLevel, HookVerdict] = {
-    VerificationLevel.AUTO_APPROVED: HookVerdict.ALLOW,
-    VerificationLevel.FLAGGED: HookVerdict.ALLOW,  # allowed but logged
-    VerificationLevel.HELD: HookVerdict.HOLD,
-    VerificationLevel.BLOCKED: HookVerdict.BLOCK,
+# Mapping from governance verdict levels (strings) to hook verdicts
+_LEVEL_TO_VERDICT: dict[str, HookVerdict] = {
+    "auto_approved": HookVerdict.ALLOW,
+    "flagged": HookVerdict.ALLOW,  # allowed but logged
+    "held": HookVerdict.HOLD,
+    "blocked": HookVerdict.BLOCK,
 }
 
 
 class HookEnforcer:
-    """Wraps hook validation with EATP verification.
+    """Wraps hook validation with PACT governance verification.
 
-    Maps verification gradient levels to hook verdicts:
-    - AUTO_APPROVED -> ALLOW
-    - FLAGGED -> ALLOW (but logged for review)
-    - HELD -> HOLD (queued for human approval)
-    - BLOCKED -> BLOCK (rejected outright)
+    Maps governance verdict levels to hook verdicts:
+    - auto_approved -> ALLOW
+    - flagged -> ALLOW (but logged for review)
+    - held -> HOLD (queued for human approval)
+    - blocked -> BLOCK (rejected outright)
 
-    Fail-safe: if the gradient engine or envelope is not configured,
+    Fail-safe: if the governance engine or role_address is not configured,
     all actions are BLOCKED. This is a deliberate safety measure --
     misconfiguration must never silently permit actions.
     """
 
     def __init__(
         self,
-        gradient_engine: GradientEngine | None = None,
-        envelope: ConstraintEnvelope | None = None,
+        governance_engine: GovernanceEngine | None = None,
+        role_address: str | None = None,
         *,
         halted_check: Callable[[], bool] | None = None,
     ) -> None:
-        self._gradient = gradient_engine
-        self._envelope = envelope
+        self._engine = governance_engine
+        self._role_address = role_address
         self._results: list[HookResult] = []
-        # RT2-08: Optional callable that returns bool for halt state
         self._halted_check = halted_check
-        # RT2-08: Posture helper for never-delegated checks
-        self._posture_helper = TrustPosture(agent_id="__hook_helper__")
 
     def enforce(
         self,
@@ -95,67 +92,51 @@ class HookEnforcer:
         agent_posture: TrustPostureLevel | None = None,
         **kwargs: Any,
     ) -> HookResult:
-        """Enforce hook through EATP verification.
-
-        RT2-08: Now mirrors the full middleware pipeline including halt state,
-        posture-based escalation, and never-delegated action checks.
+        """Enforce hook through PACT governance verification.
 
         Args:
             agent_id: The agent attempting the action.
             action: The action being attempted.
             resource: Optional resource identifier for context.
-            agent_posture: RT2-08: Agent's trust posture level for escalation.
-            **kwargs: Forwarded to ConstraintEnvelope.evaluate_action
-                (e.g. spend_amount, current_action_count, data_paths, is_external).
+            agent_posture: Agent's trust posture level for escalation.
+            **kwargs: Additional context forwarded to verify_action.
 
         Returns:
             HookResult with the enforcement verdict.
         """
-        # RT2-08: Emergency halt check
+        # Emergency halt check
         if self._halted_check is not None and callable(self._halted_check):
             if self._halted_check():
                 result = HookResult(
                     verdict=HookVerdict.BLOCK,
                     reason="Fail-safe BLOCK: emergency halt is active",
-                    verification_level=VerificationLevel.BLOCKED.value,
+                    verification_level="blocked",
                     agent_id=agent_id,
                     action=action,
                 )
                 self._results.append(result)
                 return result
 
-        # RT2-08: PSEUDO_AGENT posture blocks everything
+        # PSEUDO_AGENT posture blocks everything
         if agent_posture == TrustPostureLevel.PSEUDO_AGENT:
             result = HookResult(
                 verdict=HookVerdict.BLOCK,
                 reason="Agent at PSEUDO_AGENT posture has no action authority",
-                verification_level=VerificationLevel.BLOCKED.value,
+                verification_level="blocked",
                 agent_id=agent_id,
                 action=action,
             )
             self._results.append(result)
             return result
 
-        # RT3-01: Check envelope expiry (pipeline parity with middleware RT-08)
-        if self._envelope is not None and self._envelope.is_expired:
-            result = HookResult(
-                verdict=HookVerdict.BLOCK,
-                reason="Constraint envelope has expired",
-                verification_level=VerificationLevel.BLOCKED.value,
-                agent_id=agent_id,
-                action=action,
-            )
-            self._results.append(result)
-            return result
-
-        # Fail-safe: if verification system is not configured, BLOCK
-        if self._gradient is None or self._envelope is None:
+        # Fail-safe: if governance system is not configured, BLOCK
+        if self._engine is None or self._role_address is None:
             missing = []
-            if self._gradient is None:
-                missing.append("gradient_engine")
-            if self._envelope is None:
-                missing.append("envelope")
-            reason = f"Fail-safe BLOCK: verification not configured (missing: {', '.join(missing)})"
+            if self._engine is None:
+                missing.append("governance_engine")
+            if self._role_address is None:
+                missing.append("role_address")
+            reason = f"Fail-safe BLOCK: governance not configured (missing: {', '.join(missing)})"
             logger.warning(
                 "Hook enforcer fail-safe triggered: agent_id=%s, action=%s, missing=%s",
                 agent_id,
@@ -172,50 +153,35 @@ class HookEnforcer:
             self._results.append(result)
             return result
 
-        # RT3-10: Forward kwargs to envelope evaluation (spend_amount, etc.)
-        envelope_evaluation = self._envelope.evaluate_action(
-            action=action,
-            agent_id=agent_id,
-            **kwargs,
+        # Use GovernanceEngine for the decision
+        context: dict[str, Any] = {"agent_id": agent_id}
+        if resource:
+            context["resource"] = resource
+        if agent_posture is not None:
+            context["agent_posture"] = agent_posture.value
+        context.update(kwargs)
+
+        verdict = self._engine.verify_action(
+            self._role_address,
+            action,
+            context=context,
         )
 
-        # Classify through the gradient engine
-        verification = self._gradient.classify(
-            action=action,
-            agent_id=agent_id,
-            thoroughness=VerificationThoroughness.STANDARD,
-            envelope_evaluation=envelope_evaluation,
-        )
+        # Map governance verdict level to hook verdict
+        hook_verdict = _LEVEL_TO_VERDICT.get(verdict.level, HookVerdict.BLOCK)
 
-        # Apply pipeline overrides before mapping to verdict
-        level = verification.level
-
-        # RT2-08: Force HELD for never-delegated actions (mirrors RT-03)
-        is_never_delegated = self._posture_helper.is_action_always_held(action)
-        if is_never_delegated and level != VerificationLevel.BLOCKED:
-            level = VerificationLevel.HELD
-
-        # RT2-08: SUPERVISED posture escalation (mirrors RT-09)
-        if agent_posture == TrustPostureLevel.SUPERVISED:
-            if level in (VerificationLevel.AUTO_APPROVED, VerificationLevel.FLAGGED):
-                level = VerificationLevel.HELD
-
-        # Map verification level to hook verdict
-        verdict = _LEVEL_TO_VERDICT[level]
-        reason = verification.reason
-
-        if level == VerificationLevel.FLAGGED:
+        if verdict.level == "flagged":
             logger.info(
                 "Hook enforcer FLAGGED (allowed but logged): agent_id=%s, action=%s, reason=%s",
                 agent_id,
                 action,
-                reason,
+                verdict.reason,
             )
 
         result = HookResult(
-            verdict=verdict,
-            reason=reason,
-            verification_level=level.value,
+            verdict=hook_verdict,
+            reason=verdict.reason,
+            verification_level=verdict.level,
             agent_id=agent_id,
             action=action,
         )

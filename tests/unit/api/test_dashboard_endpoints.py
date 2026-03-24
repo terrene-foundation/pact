@@ -33,7 +33,6 @@ from pact_platform.build.workspace.models import (
     WorkspacePhase,
     WorkspaceRegistry,
 )
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
 from pact_platform.trust.store.cost_tracking import CostTracker
 from pact_platform.use.api.endpoints import (
     PactAPI,
@@ -180,8 +179,6 @@ def envelope_registry():
             external_requires_approval=True,
         ),
     )
-    env1 = ConstraintEnvelope(config=config1)
-
     config2 = ConstraintEnvelopeConfig(
         id="env-lead",
         description="Team lead envelope",
@@ -203,9 +200,8 @@ def envelope_registry():
             external_requires_approval=False,
         ),
     )
-    env2 = ConstraintEnvelope(config=config2)
 
-    return {"env-writer": env1, "env-lead": env2}
+    return {"env-writer": config1, "env-lead": config2}
 
 
 @pytest.fixture()

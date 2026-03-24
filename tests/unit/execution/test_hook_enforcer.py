@@ -2,38 +2,51 @@
 # Licensed under the Apache License, Version 2.0
 """Tests for COC hook enforcer (Task 404)."""
 
+import fnmatch
+
 from pact_platform.build.config.schema import (
-    ConstraintEnvelopeConfig,
-    GradientRuleConfig,
-    VerificationGradientConfig,
     VerificationLevel,
 )
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
-from pact_platform.trust.constraint.gradient import GradientEngine
 from pact_platform.use.execution.hook_enforcer import HookEnforcer, HookResult, HookVerdict
 
 
-def _make_gradient_engine(
+class _MockVerdict:
+    """Minimal governance verdict for test mock."""
+
+    def __init__(self, level: str, reason: str = "") -> None:
+        self.level = level
+        self.reason = reason
+
+
+class _MockGovernanceEngine:
+    """Mock GovernanceEngine for hook enforcer tests.
+
+    Accepts a list of (pattern, level) pairs and a default_level.
+    Matches action against patterns using fnmatch.
+    """
+
+    def __init__(
+        self,
+        rules: list[tuple[str, VerificationLevel]] | None = None,
+        default_level: VerificationLevel = VerificationLevel.HELD,
+    ) -> None:
+        self._rules = rules or []
+        self._default_level = default_level
+
+    def verify_action(self, role_address: str, action: str, context=None) -> _MockVerdict:
+        for pattern, level in self._rules:
+            if fnmatch.fnmatch(action, pattern):
+                return _MockVerdict(level.value.lower(), f"matched pattern {pattern!r}")
+        return _MockVerdict(self._default_level.value.lower(), "default level")
+
+
+def _make_enforcer(
     rules: list[tuple[str, VerificationLevel]] | None = None,
     default_level: VerificationLevel = VerificationLevel.HELD,
-) -> GradientEngine:
-    """Helper to create a GradientEngine with given rules."""
-    gradient_rules = []
-    if rules:
-        for pattern, level in rules:
-            gradient_rules.append(GradientRuleConfig(pattern=pattern, level=level))
-    config = VerificationGradientConfig(rules=gradient_rules, default_level=default_level)
-    return GradientEngine(config)
-
-
-def _make_envelope() -> ConstraintEnvelope:
-    """Helper to create a basic constraint envelope."""
-    return ConstraintEnvelope(
-        config=ConstraintEnvelopeConfig(
-            id="test-envelope",
-            description="Test envelope for hook enforcer tests",
-        )
-    )
+) -> HookEnforcer:
+    """Helper to create a HookEnforcer with a mock governance engine."""
+    engine = _MockGovernanceEngine(rules=rules, default_level=default_level)
+    return HookEnforcer(governance_engine=engine, role_address="D1-R1")
 
 
 class TestHookVerdict:
@@ -76,78 +89,69 @@ class TestHookEnforcer:
 
     def test_auto_approved_maps_to_allow(self):
         """AUTO_APPROVED verification level should produce ALLOW verdict."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("read_*", VerificationLevel.AUTO_APPROVED)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         result = enforcer.enforce(agent_id="agent-1", action="read_file")
         assert result.verdict == HookVerdict.ALLOW
-        assert result.verification_level == "AUTO_APPROVED"
+        assert result.verification_level == "auto_approved"
         assert result.agent_id == "agent-1"
         assert result.action == "read_file"
 
     def test_flagged_maps_to_allow_but_logged(self):
         """FLAGGED verification level should produce ALLOW verdict but be logged."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("write_*", VerificationLevel.FLAGGED)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         result = enforcer.enforce(agent_id="agent-1", action="write_config")
         assert result.verdict == HookVerdict.ALLOW
-        assert result.verification_level == "FLAGGED"
+        assert result.verification_level == "flagged"
         # Should still be logged in enforcement log
         assert len(enforcer.enforcement_log) == 1
 
     def test_held_maps_to_hold(self):
         """HELD verification level should produce HOLD verdict."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("deploy_*", VerificationLevel.HELD)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         result = enforcer.enforce(agent_id="agent-1", action="deploy_production")
         assert result.verdict == HookVerdict.HOLD
-        assert result.verification_level == "HELD"
+        assert result.verification_level == "held"
 
     def test_blocked_maps_to_block(self):
         """BLOCKED verification level should produce BLOCK verdict."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("delete_*", VerificationLevel.BLOCKED)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         result = enforcer.enforce(agent_id="agent-1", action="delete_database")
         assert result.verdict == HookVerdict.BLOCK
-        assert result.verification_level == "BLOCKED"
+        assert result.verification_level == "blocked"
 
-    def test_no_gradient_engine_blocks_failsafe(self):
-        """Missing gradient engine should produce BLOCK (fail-safe)."""
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=None, envelope=envelope)
+    def test_no_governance_engine_blocks_failsafe(self):
+        """Missing governance engine should produce BLOCK (fail-safe)."""
+        enforcer = HookEnforcer(governance_engine=None, role_address="D1-R1")
 
         result = enforcer.enforce(agent_id="agent-1", action="any_action")
         assert result.verdict == HookVerdict.BLOCK
         assert "fail-safe" in result.reason.lower() or "not configured" in result.reason.lower()
 
-    def test_no_envelope_blocks_failsafe(self):
-        """Missing envelope should produce BLOCK (fail-safe)."""
-        engine = _make_gradient_engine(
+    def test_no_role_address_blocks_failsafe(self):
+        """Missing role_address should produce BLOCK (fail-safe)."""
+        engine = _MockGovernanceEngine(
             rules=[("read_*", VerificationLevel.AUTO_APPROVED)],
         )
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=None)
+        enforcer = HookEnforcer(governance_engine=engine, role_address=None)
 
         result = enforcer.enforce(agent_id="agent-1", action="read_file")
         assert result.verdict == HookVerdict.BLOCK
         assert "fail-safe" in result.reason.lower() or "not configured" in result.reason.lower()
 
-    def test_no_gradient_and_no_envelope_blocks_failsafe(self):
-        """Missing both gradient engine and envelope should produce BLOCK (fail-safe)."""
+    def test_no_governance_and_no_role_blocks_failsafe(self):
+        """Missing both governance engine and role_address should produce BLOCK (fail-safe)."""
         enforcer = HookEnforcer()
 
         result = enforcer.enforce(agent_id="agent-1", action="any_action")
@@ -155,15 +159,13 @@ class TestHookEnforcer:
 
     def test_enforcement_log_tracks_all_results(self):
         """All enforcement results should be tracked in the log."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[
                 ("read_*", VerificationLevel.AUTO_APPROVED),
                 ("write_*", VerificationLevel.FLAGGED),
                 ("delete_*", VerificationLevel.BLOCKED),
             ],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         enforcer.enforce(agent_id="agent-1", action="read_file")
         enforcer.enforce(agent_id="agent-1", action="write_config")
@@ -176,7 +178,7 @@ class TestHookEnforcer:
 
     def test_stats_report_correct_counts(self):
         """Stats should accurately count verdicts."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[
                 ("read_*", VerificationLevel.AUTO_APPROVED),
                 ("write_*", VerificationLevel.FLAGGED),
@@ -184,8 +186,6 @@ class TestHookEnforcer:
                 ("delete_*", VerificationLevel.BLOCKED),
             ],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         enforcer.enforce(agent_id="agent-1", action="read_file")
         enforcer.enforce(agent_id="agent-1", action="read_config")
@@ -209,37 +209,31 @@ class TestHookEnforcer:
         assert stats["block"] == 0
 
     def test_default_level_used_when_no_rule_matches(self):
-        """When no gradient rule matches, the default level is used."""
-        engine = _make_gradient_engine(
+        """When no governance rule matches, the default level is used."""
+        enforcer = _make_enforcer(
             rules=[("read_*", VerificationLevel.AUTO_APPROVED)],
             default_level=VerificationLevel.HELD,
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         # "unknown_action" matches no rule, so default HELD -> HOLD
         result = enforcer.enforce(agent_id="agent-1", action="unknown_action")
         assert result.verdict == HookVerdict.HOLD
-        assert result.verification_level == "HELD"
+        assert result.verification_level == "held"
 
     def test_enforcement_includes_timestamp(self):
         """Each HookResult should have a timestamp."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("read_*", VerificationLevel.AUTO_APPROVED)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         result = enforcer.enforce(agent_id="agent-1", action="read_file")
         assert result.timestamp is not None
 
     def test_enforcement_with_resource_kwarg(self):
         """Enforce should accept a resource keyword argument."""
-        engine = _make_gradient_engine(
+        enforcer = _make_enforcer(
             rules=[("read_*", VerificationLevel.AUTO_APPROVED)],
         )
-        envelope = _make_envelope()
-        enforcer = HookEnforcer(gradient_engine=engine, envelope=envelope)
 
         # Should not raise
         result = enforcer.enforce(

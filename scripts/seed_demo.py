@@ -1767,87 +1767,57 @@ def seed_shadow_evaluations() -> ShadowEnforcer:
     Returns:
         A fully populated ShadowEnforcer instance.
     """
-    from pact_platform.trust.constraint.envelope import ConstraintEnvelope
-    from pact_platform.trust.constraint.gradient import GradientEngine
+    import fnmatch
+    from dataclasses import dataclass
+
     from pact_platform.trust.shadow_enforcer import ShadowEnforcer
 
-    # Build a permissive envelope for seeding — most actions pass cleanly
-    envelope_config = ConstraintEnvelopeConfig(
-        id="shadow-seed-envelope",
-        description="Seed envelope for ShadowEnforcer demo data",
-        financial=FinancialConstraintConfig(
-            max_spend_usd=10000.0,
-            api_cost_budget_usd=5000.0,
-            requires_approval_above_usd=500.0,
-        ),
-        operational=OperationalConstraintConfig(
-            allowed_actions=[],  # empty = no whitelist filtering
-            blocked_actions=["emergency_shutdown", "delete_all_data", "modify_constraints"],
-            max_actions_per_day=1000,
-        ),
-        temporal=TemporalConstraintConfig(
-            active_hours_start="00:00",
-            active_hours_end="23:59",
-            timezone="UTC",
-        ),
-        data_access=DataAccessConstraintConfig(
-            read_paths=["*"],
-            write_paths=["*"],
-            blocked_data_types=["pii_export"],
-        ),
-        communication=CommunicationConstraintConfig(
-            internal_only=False,
-            allowed_channels=["*"],
-            external_requires_approval=False,
-        ),
-    )
-    envelope = ConstraintEnvelope(config=envelope_config)
+    # Seed governance rules: pattern → level
+    _RULES: list[tuple[str, str]] = [
+        ("emergency_*", "blocked"),
+        ("delete_*", "blocked"),
+        ("modify_constraints", "blocked"),
+        ("publish_*", "held"),
+        ("send_*", "held"),
+        ("approve_*", "held"),
+        ("flag_*", "flagged"),
+        ("escalate_*", "flagged"),
+    ]
 
-    # Use a gradient engine that defaults to AUTO_APPROVED (most actions pass)
-    from pact_platform.build.config.schema import GradientRuleConfig, VerificationGradientConfig
+    @dataclass(frozen=True)
+    class _SeedVerdict:
+        level: str
+        reason: str
+        role_address: str
+        action: str
+        audit_details: dict
 
-    gradient_config = VerificationGradientConfig(
-        rules=[
-            GradientRuleConfig(
-                pattern="emergency_*",
-                level=VerificationLevel.BLOCKED,
-            ),
-            GradientRuleConfig(
-                pattern="delete_*",
-                level=VerificationLevel.BLOCKED,
-            ),
-            GradientRuleConfig(
-                pattern="modify_constraints",
-                level=VerificationLevel.BLOCKED,
-            ),
-            GradientRuleConfig(
-                pattern="publish_*",
-                level=VerificationLevel.HELD,
-            ),
-            GradientRuleConfig(
-                pattern="send_*",
-                level=VerificationLevel.HELD,
-            ),
-            GradientRuleConfig(
-                pattern="approve_*",
-                level=VerificationLevel.HELD,
-            ),
-            GradientRuleConfig(
-                pattern="flag_*",
-                level=VerificationLevel.FLAGGED,
-            ),
-            GradientRuleConfig(
-                pattern="escalate_*",
-                level=VerificationLevel.FLAGGED,
-            ),
-        ],
-        default_level=VerificationLevel.AUTO_APPROVED,
-    )
-    gradient_engine = GradientEngine(config=gradient_config)
+    class _SeedGovernanceEngine:
+        """Minimal mock governance engine for seeding shadow data."""
+
+        def verify_action(
+            self, role_address: str, action: str, context: dict | None = None
+        ) -> _SeedVerdict:
+            for pattern, level in _RULES:
+                if fnmatch.fnmatch(action, pattern):
+                    return _SeedVerdict(
+                        level=level,
+                        reason=f"Matched rule: {pattern}",
+                        role_address=role_address,
+                        action=action,
+                        audit_details={},
+                    )
+            return _SeedVerdict(
+                level="auto_approved",
+                reason="No matching rule; using default level",
+                role_address=role_address,
+                action=action,
+                audit_details={},
+            )
 
     shadow_enforcer = ShadowEnforcer(
-        gradient_engine=gradient_engine,
-        envelope=envelope,
+        governance_engine=_SeedGovernanceEngine(),  # type: ignore[arg-type]
+        role_address="D1-R1",
     )
 
     # Synthetic actions with varying verification outcomes

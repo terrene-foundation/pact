@@ -36,7 +36,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from pact_platform.build.config.schema import VerificationLevel
+from pact_platform.build.config.schema import ConstraintEnvelopeConfig, VerificationLevel
 from pact_platform.examples.foundation.dm_prompts import get_system_prompt
 from pact_platform.examples.foundation.dm_team import (
     DM_ANALYTICS_ENVELOPE,
@@ -47,9 +47,7 @@ from pact_platform.examples.foundation.dm_team import (
     DM_VERIFICATION_GRADIENT,
     get_dm_team_config,
 )
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
-from pact_platform.trust.constraint.gradient import GradientEngine
-from pact_platform.trust.shadow_enforcer import ShadowEnforcer  # restored with corrected imports
+from pact_platform.trust.shadow_enforcer import ShadowEnforcer
 from pact_platform.trust.shadow_enforcer_live import (
     ShadowEnforcerLive,
 )  # restored with corrected imports
@@ -206,6 +204,38 @@ _CALIBRATION_ACTIONS: list[dict[str, str]] = [
 ]
 
 
+class _GovernanceVerdict:
+    """Minimal verdict object for demo governance engine."""
+
+    def __init__(self, level: str) -> None:
+        self.level = level
+        self.audit_details: dict = {}
+
+
+class _DemoGovernanceEngine:
+    """Minimal GovernanceEngine for demo/example use.
+
+    Applies DM_VERIFICATION_GRADIENT rules to classify actions without
+    requiring a full pact.governance.GovernanceEngine instance.
+    """
+
+    def __init__(self, gradient: object) -> None:
+        self._gradient = gradient
+
+    def verify_action(
+        self,
+        role_address: str,
+        action: str,
+        context: dict | None = None,
+    ) -> _GovernanceVerdict:
+        import fnmatch
+
+        for rule in self._gradient.rules:
+            if fnmatch.fnmatch(action, rule.pattern):
+                return _GovernanceVerdict(rule.level.value.lower())
+        return _GovernanceVerdict(self._gradient.default_level.value.lower())
+
+
 class DMTeamRunner:
     """Orchestrator for the Digital Media team execution pipeline.
 
@@ -239,7 +269,7 @@ class DMTeamRunner:
             )
             self._agent_configs[agent.id] = agent
 
-        # Constraint envelopes (agent_id -> ConstraintEnvelope)
+        # Constraint envelope configs (agent_id -> ConstraintEnvelopeConfig)
         _envelope_config_map = {
             "dm-team-lead": DM_LEAD_ENVELOPE,
             "dm-content-creator": DM_CONTENT_ENVELOPE,
@@ -247,13 +277,7 @@ class DMTeamRunner:
             "dm-community-manager": DM_COMMUNITY_ENVELOPE,
             "dm-seo-specialist": DM_SEO_ENVELOPE,
         }
-        self._envelopes: dict[str, ConstraintEnvelope] = {
-            agent_id: ConstraintEnvelope(config=env_config)
-            for agent_id, env_config in _envelope_config_map.items()
-        }
-
-        # Gradient engine
-        self._gradient = GradientEngine(config=DM_VERIFICATION_GRADIENT)
+        self._envelope_configs: dict[str, ConstraintEnvelopeConfig] = dict(_envelope_config_map)
 
         # Approval queue
         self._approval_queue = ApprovalQueue()
@@ -272,12 +296,13 @@ class DMTeamRunner:
         self._agent_budgets: dict[str, float] = {}
 
         # Shadow enforcer (per-agent, for calibration)
+        _mock_engine = _DemoGovernanceEngine(DM_VERIFICATION_GRADIENT)
         self._shadow_enforcers: dict[str, ShadowEnforcer] = {
             agent_id: ShadowEnforcer(
-                gradient_engine=self._gradient,
-                envelope=envelope,
+                governance_engine=_mock_engine,
+                role_address="D1-R1",
             )
-            for agent_id, envelope in self._envelopes.items()
+            for agent_id in self._envelope_configs
         }
 
         # Live shadow enforcer (M24: agreement/divergence tracking)
@@ -291,7 +316,7 @@ class DMTeamRunner:
                 "tasks_held": 0,
                 "tasks_blocked": 0,
             }
-            for agent_id in self._envelopes
+            for agent_id in self._envelope_configs
         }
 
         # Task results store (task_id -> TaskResult)
@@ -309,12 +334,7 @@ class DMTeamRunner:
     @property
     def registered_agents(self) -> list[str]:
         """List of registered agent IDs."""
-        return list(self._envelopes.keys())
-
-    @property
-    def gradient_engine(self) -> GradientEngine:
-        """The verification gradient engine."""
-        return self._gradient
+        return list(self._envelope_configs.keys())
 
     @property
     def approval_queue(self) -> ApprovalQueue:
@@ -322,9 +342,9 @@ class DMTeamRunner:
         return self._approval_queue
 
     @property
-    def envelopes(self) -> dict[str, ConstraintEnvelope]:
-        """Constraint envelopes indexed by agent ID."""
-        return dict(self._envelopes)
+    def envelopes(self) -> dict[str, ConstraintEnvelopeConfig]:
+        """Constraint envelope configs indexed by agent ID."""
+        return dict(self._envelope_configs)
 
     @property
     def shadow_enforcer_live(self) -> ShadowEnforcerLive:
@@ -403,11 +423,11 @@ class DMTeamRunner:
 
         # Determine target agent
         if target_agent is not None:
-            if target_agent not in self._envelopes:
+            if target_agent not in self._envelope_configs:
                 return TaskResult(
                     error=(
                         f"Agent '{target_agent}' is not registered in the DM team. "
-                        f"Available agents: {list(self._envelopes.keys())}"
+                        f"Available agents: {list(self._envelope_configs.keys())}"
                     ),
                     metadata={"error_type": "not_found"},
                 )
@@ -426,20 +446,13 @@ class DMTeamRunner:
             action=action,
         )
 
-        # Evaluate through constraint envelope
-        fixed_time = datetime(2026, 3, 14, 12, 0, 0, tzinfo=UTC)
-        envelope = self._envelopes[agent_id]
-        envelope_eval = envelope.evaluate_action(action, agent_id, current_time=fixed_time)
-
-        # Classify through gradient engine
+        # Classify through shadow enforcer (uses DM gradient rules)
         lifecycle.transition_to(TaskLifecycleState.VERIFYING)
-        grad_result = self._gradient.classify(action, agent_id, envelope_evaluation=envelope_eval)
-        verification_level = grad_result.level
+        shadow_classify = self._shadow_enforcers[agent_id].evaluate(action, agent_id)
+        verification_level = shadow_classify.verification_level
 
-        # Shadow evaluation (for comparison)
-        shadow_result = self._shadow_enforcers[agent_id].evaluate(
-            action, agent_id, current_time=fixed_time
-        )
+        # shadow_classify is reused as shadow_result for live comparison
+        shadow_result = shadow_classify
 
         # Build metadata
         metadata: dict = {
@@ -739,10 +752,10 @@ class DMTeamRunner:
                 "A budget limit is required for cost control."
             )
 
-        if agent_id not in self._envelopes:
+        if agent_id not in self._envelope_configs:
             raise ValueError(
                 f"Agent '{agent_id}' is not registered in the DM team. "
-                f"Available agents: {list(self._envelopes.keys())}"
+                f"Available agents: {list(self._envelope_configs.keys())}"
             )
 
         # Validate provider

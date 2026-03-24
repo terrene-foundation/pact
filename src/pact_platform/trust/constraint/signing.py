@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from pydantic import BaseModel, Field
 
-from pact_platform.trust.constraint.envelope import ConstraintEnvelope
+from pact_platform.build.config.schema import ConstraintEnvelopeConfig
 from pact_platform.trust._compat import canonical_serialize
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 _DEFAULT_EXPIRY_DAYS = 90
 
 
-def _serialize_for_signing(envelope: ConstraintEnvelope, signer_id: str, version: int) -> bytes:
+def _serialize_for_signing(
+    envelope: ConstraintEnvelopeConfig, signer_id: str, version: int
+) -> bytes:
     """Create a canonical byte representation of the signable content.
 
     Covers the full constraint envelope config (all five dimensions),
@@ -44,7 +46,7 @@ def _serialize_for_signing(envelope: ConstraintEnvelope, signer_id: str, version
     M15/1504: Migrated from json.dumps(sort_keys=True) to JCS canonical_serialize.
     """
     # Serialize the full config (all five dimensions + id + description)
-    config_data = json.loads(envelope.config.model_dump_json())
+    config_data = json.loads(envelope.model_dump_json())
     # Include metadata that must also be protected
     signable = {
         "config": config_data,
@@ -62,7 +64,7 @@ class SignedEnvelope(BaseModel):
     read their signed envelopes but cannot modify them without detection.
     """
 
-    envelope: ConstraintEnvelope
+    envelope: ConstraintEnvelopeConfig
     signature: str = Field(description="Hex-encoded Ed25519 signature")
     signer_id: str = Field(description="Identifier of who signed this envelope")
     signed_at: datetime = Field(description="When the envelope was signed")
@@ -107,7 +109,7 @@ class SignedEnvelope(BaseModel):
     @classmethod
     def sign_envelope(
         cls,
-        envelope: ConstraintEnvelope,
+        envelope: ConstraintEnvelopeConfig,
         signer_id: str,
         private_key: bytes,
     ) -> SignedEnvelope:

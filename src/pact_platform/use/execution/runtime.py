@@ -1,29 +1,28 @@
 # Copyright 2026 Terrene Foundation
 # Licensed under the Apache License, Version 2.0
-"""Agent execution runtime — task processing with verification pipeline.
+"""Agent execution runtime — task processing with governance verification pipeline.
 
 Provides the execution loop that takes a task, selects an agent, runs it
-through the verification pipeline (verify -> execute -> audit), and records
-the result.
+through the governance verification pipeline (verify -> execute -> audit), and
+records the result.
 
 The runtime integrates:
 - Task queue: submit tasks for agent execution
 - Agent selection: match tasks to capable agents via AgentRegistry
-- Verification: GradientEngine classifies each action
+- Verification: GovernanceEngine.verify_action() classifies each action
 - Approval: HELD actions enter the ApprovalQueue
 - Audit: Every execution produces an AuditAnchor
 - Lifecycle: Track task status from submission to completion
 - Trust store: Optional persistence for audit anchors, posture changes
 - Revocation: Optional revocation checks during agent assignment
 - Posture: Optional trust posture enforcement (PSEUDO_AGENT blocked)
-- Middleware: Optional unified verification via VerificationMiddleware
 - Thread safety: All task queue mutations are lock-protected (RT4-M9)
 
 Usage:
     runtime = ExecutionRuntime(
         registry=registry,
-        gradient=gradient_engine,
         audit_chain=audit_chain,
+        governance_engine=engine,
     )
     task_id = runtime.submit("summarize docs/report.md", agent_id="writer-1")
     runtime.process_next()
@@ -31,7 +30,6 @@ Usage:
     # Hydrate from a TrustStore (RT4-C2):
     runtime = ExecutionRuntime.from_store(
         trust_store=store,
-        gradient_config=gradient_config,
         audit_chain=audit_chain,
     )
 """
@@ -50,26 +48,15 @@ from pydantic import BaseModel, Field
 
 from pact_platform.build.config.schema import TrustPostureLevel, VerificationLevel
 from pact_platform.trust.audit.anchor import AuditChain
-from pact_platform.trust.constraint.envelope import (
-    ConstraintEnvelope,
-    EnvelopeEvaluation,
-    EvaluationResult,
-    select_active_envelope,
-)
-from pact_platform.trust.constraint.gradient import GradientEngine, VerificationResult
-from pact_platform.trust.constraint.verification_level import VerificationThoroughness
 from pact_platform.trust._compat import NEVER_DELEGATED_ACTIONS
 from pact_platform.use.execution.approval import ApprovalQueue
 from pact_platform.use.execution.approver_auth import AuthenticatedApprovalQueue
 from pact_platform.use.execution.registry import AgentRecord, AgentRegistry, AgentStatus
 
 if TYPE_CHECKING:
-    from pact_platform.build.config.schema import VerificationGradientConfig
     from pact_platform.build.workspace.bridge import BridgeManager
     from pact.governance.engine import GovernanceEngine
     from pact_platform.trust._compat import TrustPosture
-    from pact_platform.trust.constraint.enforcer import ConstraintEnforcer
-    from pact_platform.trust.constraint.middleware import VerificationMiddleware
     from pact_platform.trust.store.store import TrustStore
 
 # Type aliases for deleted modules whose types appear only in optional parameters.
@@ -124,25 +111,23 @@ class Task(BaseModel):
 
 
 class ExecutionRuntime:
-    """Task processing runtime with verification pipeline.
+    """Task processing runtime with governance verification pipeline.
 
     Each task goes through:
     1. Submit -> enters the task queue
     2. Assign -> matched to a capable agent (or uses specified agent)
-    3. Verify -> GradientEngine classifies the action
+    3. Verify -> GovernanceEngine.verify_action() classifies the action
     4. Execute -> if AUTO_APPROVED or FLAGGED, execute immediately
     5. Hold -> if HELD, enter ApprovalQueue for human decision
     6. Block -> if BLOCKED, reject outright
     7. Audit -> record result in the AuditChain
 
-    RT4 enhancements:
+    Supported features:
     - RT4-M9: Thread-safe task queue via threading.Lock
     - RT4-C2: from_store() class method for store-to-runtime hydration
-    - RT4-H1: Constraint envelope evaluation wired into gradient classify
     - RT4-H2: Audit anchors persisted to TrustStore
     - RT4-H3: Revocation checks in _assign_agent
     - RT4-H4: Trust posture enforcement (PSEUDO_AGENT blocked)
-    - RT4-H9: Unified verification via optional middleware
     - RT4-M1: HELD task resumption via resume_held()
     - RT4-M2: AuthenticatedApprovalQueue type support
     - RT4-M5: Cascade revocation sync to AgentRegistry
@@ -154,7 +139,6 @@ class ExecutionRuntime:
     def __init__(
         self,
         registry: AgentRegistry,
-        gradient: GradientEngine,
         audit_chain: AuditChain,
         approval_queue: ApprovalQueue | AuthenticatedApprovalQueue | None = None,
         *,
@@ -163,8 +147,6 @@ class ExecutionRuntime:
         trust_store: TrustStore | None = None,
         revocation_manager: RevocationManager | None = None,
         posture_manager: dict[str, TrustPosture] | None = None,
-        verification_middleware: VerificationMiddleware | None = None,
-        constraint_enforcer: ConstraintEnforcer | None = None,
         bridge_manager: BridgeManager | None = None,
         bridge_trust_manager: BridgeTrustManager | None = None,
         governance_engine: GovernanceEngine | None = None,
@@ -173,7 +155,6 @@ class ExecutionRuntime:
 
         Args:
             registry: Agent registry for agent lookup and selection.
-            gradient: Verification gradient engine for action classification.
             audit_chain: Audit chain for recording execution history.
             approval_queue: Optional approval queue for HELD actions (RT4-M2:
                 accepts both ApprovalQueue and AuthenticatedApprovalQueue).
@@ -186,25 +167,17 @@ class ExecutionRuntime:
                 revocation status during assignment (RT4-H3).
             posture_manager: Optional mapping of agent_id -> TrustPosture for
                 enforcing posture checks (RT4-H4). PSEUDO_AGENT is blocked.
-            verification_middleware: Optional VerificationMiddleware for unified
-                verification alongside the gradient engine (RT4-H9).
-            constraint_enforcer: Optional ConstraintEnforcer for mandatory
-                constraint checking before task execution (M16-01). If provided,
-                actions are checked via the enforcer before gradient classification.
-                BLOCKED results reject the task immediately.
             bridge_manager: Optional BridgeManager for Cross-Functional Bridge
                 lookups (M33-3301). When present, cross-team tasks are verified
                 through the bridge trust pipeline.
             bridge_trust_manager: Optional BridgeTrustManager for bridge
                 delegation lookups (M33-3301).
             governance_engine: Optional GovernanceEngine for PACT governance
-                integration (TODO-7022). When provided, verify_action() is used
-                for pre-execution checks instead of standalone gradient/envelope
-                evaluation. Agents receive GovernanceContext (frozen), not the
-                engine itself.
+                integration. When provided, verify_action() is used for
+                pre-execution checks. Agents receive GovernanceContext (frozen),
+                not the engine itself.
         """
         self._registry = registry
-        self._gradient = gradient
         self._audit_chain = audit_chain
         self._approval_queue: ApprovalQueue | AuthenticatedApprovalQueue = (
             approval_queue if approval_queue is not None else ApprovalQueue()
@@ -218,16 +191,12 @@ class ExecutionRuntime:
         self._revocation_manager: RevocationManager | None = revocation_manager
         # RT4-H4: Posture integration
         self._posture_manager: dict[str, TrustPosture] | None = posture_manager
-        # RT4-H9: Middleware integration
-        self._verification_middleware: VerificationMiddleware | None = verification_middleware
-        # M16-01: Constraint enforcer integration
-        self._constraint_enforcer: ConstraintEnforcer | None = constraint_enforcer
         # M33-3301: Bridge integration for cross-team verification
         self._bridge_manager: BridgeManager | None = bridge_manager
         self._bridge_trust_manager: BridgeTrustManager | None = bridge_trust_manager
-        # TODO-7022: PACT GovernanceEngine integration
+        # PACT GovernanceEngine integration
         self._governance_engine: GovernanceEngine | None = governance_engine
-        # TODO-7022: Agent ID -> D/T/R role address mapping for governance lookups
+        # Agent ID -> D/T/R role address mapping for governance lookups
         self._agent_role_addresses: dict[str, str] = {}
 
         # RT4-M9: Thread-safe task queue
@@ -247,7 +216,6 @@ class ExecutionRuntime:
     def from_store(
         cls,
         trust_store: TrustStore,
-        gradient_config: VerificationGradientConfig,
         audit_chain: AuditChain,
         *,
         approval_queue: ApprovalQueue | AuthenticatedApprovalQueue | None = None,
@@ -255,32 +223,28 @@ class ExecutionRuntime:
         signer_id: str | None = None,
         revocation_manager: RevocationManager | None = None,
         posture_manager: dict[str, TrustPosture] | None = None,
-        verification_middleware: VerificationMiddleware | None = None,
-        constraint_enforcer: ConstraintEnforcer | None = None,
+        governance_engine: GovernanceEngine | None = None,
     ) -> ExecutionRuntime:
         """Create a runtime hydrated from a TrustStore (RT4-C2).
 
         Reads genesis records, delegation records, and envelope data from the
-        store to populate the AgentRegistry and GradientEngine. This bridges
-        the persistence layer to the execution layer.
+        store to populate the AgentRegistry. This bridges the persistence layer
+        to the execution layer.
 
         Args:
             trust_store: The TrustStore containing trust objects.
-            gradient_config: Configuration for the verification gradient.
             audit_chain: Audit chain for recording execution history.
             approval_queue: Optional approval queue.
             signing_key: Optional signing key for audit anchors.
             signer_id: Signer ID for audit anchors.
             revocation_manager: Optional revocation manager.
             posture_manager: Optional posture manager.
-            verification_middleware: Optional verification middleware.
-            constraint_enforcer: Optional constraint enforcer.
+            governance_engine: Optional GovernanceEngine for PACT governance.
 
         Returns:
             A fully initialized ExecutionRuntime with agents hydrated from the store.
         """
         registry = AgentRegistry()
-        gradient = GradientEngine(gradient_config)
 
         # Hydrate agents from delegation records in the store.
         # Each delegation record represents an agent that was delegated trust.
@@ -338,7 +302,6 @@ class ExecutionRuntime:
 
         return cls(
             registry=registry,
-            gradient=gradient,
             audit_chain=audit_chain,
             approval_queue=approval_queue,
             signing_key=signing_key,
@@ -346,8 +309,7 @@ class ExecutionRuntime:
             trust_store=trust_store,
             revocation_manager=revocation_manager,
             posture_manager=posture_manager,
-            verification_middleware=verification_middleware,
-            constraint_enforcer=constraint_enforcer,
+            governance_engine=governance_engine,
         )
 
     @property
@@ -615,140 +577,19 @@ class ExecutionRuntime:
                 # We set a flag on the task metadata to signal this.
                 task.metadata["_governance_verified"] = True
 
-        # M16-01: Constraint enforcer check before gradient classification.
-        # If the enforcer is provided, check constraints first. BLOCKED results
-        # reject the task immediately without proceeding to gradient classification.
-        # Skip if governance already verified this task.
-        if self._constraint_enforcer is not None and not task.metadata.get("_governance_verified"):
-            enforcer_result = self._constraint_enforcer.check(
-                action=task.action,
-                agent_id=agent.agent_id,
-            )
-            from pact_platform.trust.constraint.middleware import ActionOutcome
-
-            if enforcer_result.outcome == ActionOutcome.REJECTED:
-                with self._lock:
-                    task.status = TaskStatus.BLOCKED
-                    task.verification_level = enforcer_result.verification_level
-                    task.result = TaskResult(
-                        error=f"Constraint enforcer blocked: {enforcer_result.details}"
-                    )
-                    task.completed_at = datetime.now(UTC)
-                self._record_audit(task, enforcer_result.verification_level)
-                return task
-            elif enforcer_result.outcome == ActionOutcome.QUEUED:
-                with self._lock:
-                    task.status = TaskStatus.HELD
-                    task.verification_level = enforcer_result.verification_level
-                self._approval_queue.submit(
-                    agent_id=agent.agent_id,
-                    action=task.action,
-                    reason=enforcer_result.details or "Held by constraint enforcer",
-                    team_id=task.team_id,
-                )
-                self._record_audit(task, enforcer_result.verification_level)
-                return task
-
-        # RT5-01: Look up constraint envelope from store and evaluate.
-        # Skip if governance engine already verified this task (TODO-7022).
-        envelope_evaluation: EnvelopeEvaluation | None = None
-        if self._trust_store is not None and not task.metadata.get("_governance_verified"):
-            envelopes = self._trust_store.list_envelopes(agent_id=agent.agent_id)
-            if envelopes:
-                # RT7-06/RT8-03: Select most recent non-expired envelope.
-                # If all envelopes are expired, skip evaluation entirely —
-                # the gradient will handle unconstrained agents per policy.
-                envelope_data = select_active_envelope(envelopes)
-                if envelope_data is None:
-                    logger.info(
-                        "All envelopes expired for agent '%s'; skipping envelope evaluation",
-                        agent.agent_id,
-                    )
-                else:
-                    try:
-                        from pact_platform.build.config.schema import ConstraintEnvelopeConfig
-
-                        config_data = envelope_data.get("config", envelope_data)
-                        if "id" not in config_data:
-                            config_data["id"] = envelope_data.get(
-                                "envelope_id", envelope_data.get("id", "unknown")
-                            )
-                        envelope_config = ConstraintEnvelopeConfig(**config_data)
-                        envelope = ConstraintEnvelope(config=envelope_config)
-                        # RT6-06: Pass action context from task metadata to envelope
-                        # evaluation so financial limits, data access paths, and
-                        # communication constraints are properly checked.
-                        eval_kwargs: dict[str, Any] = {
-                            "action": task.action,
-                            "agent_id": agent.agent_id,
-                        }
-                        if task.metadata.get("spend_amount") is not None:
-                            eval_kwargs["spend_amount"] = float(task.metadata["spend_amount"])
-                        if task.metadata.get("cumulative_spend") is not None:
-                            eval_kwargs["cumulative_spend"] = float(
-                                task.metadata["cumulative_spend"]
-                            )
-                        if task.metadata.get("current_action_count") is not None:
-                            eval_kwargs["current_action_count"] = int(
-                                task.metadata["current_action_count"]
-                            )
-                        # RT7-13: Type-validate data_paths (must be list[str])
-                        dp = task.metadata.get("data_paths")
-                        if (
-                            dp is not None
-                            and isinstance(dp, list)
-                            and all(isinstance(p, str) for p in dp)
-                        ):
-                            eval_kwargs["data_paths"] = dp
-                        # RT7-13: Type-validate access_type (must be "read" or "write")
-                        at = task.metadata.get("access_type")
-                        if at is not None and str(at) in ("read", "write"):
-                            eval_kwargs["access_type"] = str(at)
-                        if task.metadata.get("is_external") is not None:
-                            eval_kwargs["is_external"] = bool(task.metadata["is_external"])
-
-                        envelope_evaluation = envelope.evaluate_action(**eval_kwargs)
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to evaluate constraint envelope for agent '%s': %s",
-                            agent.agent_id,
-                            exc,
-                        )
-
-        # Step 2: Verify through gradient.
-        # Skip if governance engine already verified this task (TODO-7022).
-        # Initialize verification to a default so it is always bound for Pyright.
-        # When governance verified the task, this default is unused because
-        # task.verification_level is already AUTO_APPROVED or FLAGGED (set by
-        # _run_governance_verification), so the BLOCKED/HELD branches below
-        # that reference verification.reason are never reached.
-        verification = VerificationResult(
-            action=task.action,
-            agent_id=agent.agent_id,
-            level=task.verification_level or VerificationLevel.AUTO_APPROVED,
-            thoroughness=VerificationThoroughness.STANDARD,
-            reason="Governance-verified; standalone gradient skipped",
-        )
+        # Step 2: Act on verification result set by GovernanceEngine path above,
+        # or default to AUTO_APPROVED if governance engine is not configured.
+        # For non-governed agents, check NEVER_DELEGATED_ACTIONS and SUPERVISED posture.
         if not task.metadata.get("_governance_verified"):
-            verification = self._gradient.classify(
-                action=task.action,
-                agent_id=agent.agent_id,
-                envelope_evaluation=envelope_evaluation,
-            )
-            task.verification_level = verification.level
+            # No governance engine for this agent: default AUTO_APPROVED
+            if task.verification_level is None:
+                task.verification_level = VerificationLevel.AUTO_APPROVED
 
             # RT5-06: Force HELD for NEVER_DELEGATED_ACTIONS (unless already BLOCKED)
             if (
                 task.action in NEVER_DELEGATED_ACTIONS
-                and verification.level != VerificationLevel.BLOCKED
+                and task.verification_level != VerificationLevel.BLOCKED
             ):
-                verification = verification.model_copy(
-                    update={
-                        "level": VerificationLevel.HELD,
-                        "reason": verification.reason
-                        or f"Action '{task.action}' is a never-delegated action requiring human approval",
-                    }
-                )
                 task.verification_level = VerificationLevel.HELD
                 logger.info(
                     "NEVER_DELEGATED_ACTIONS: escalated '%s' to HELD for task '%s'",
@@ -756,8 +597,7 @@ class ExecutionRuntime:
                     task.task_id,
                 )
 
-            # RT5-07: SUPERVISED posture escalation — escalate AUTO_APPROVED and
-            # FLAGGED to HELD for SUPERVISED agents (mirrors middleware behavior)
+            # RT5-07: SUPERVISED posture escalation
             if self._posture_manager is not None:
                 posture = self._posture_manager.get(agent.agent_id)
                 if (
@@ -766,13 +606,6 @@ class ExecutionRuntime:
                     and task.verification_level
                     in (VerificationLevel.AUTO_APPROVED, VerificationLevel.FLAGGED)
                 ):
-                    verification = verification.model_copy(
-                        update={
-                            "level": VerificationLevel.HELD,
-                            "reason": verification.reason
-                            or "SUPERVISED agent: escalated to HELD for human approval",
-                        }
-                    )
                     task.verification_level = VerificationLevel.HELD
                     logger.info(
                         "SUPERVISED escalation: escalated '%s' to HELD for agent '%s'",
@@ -780,52 +613,12 @@ class ExecutionRuntime:
                         agent.agent_id,
                     )
 
-        # RT4-H9 + RT5-23: Optionally also run through verification middleware.
-        # Skip if governance engine already verified this task (TODO-7022).
-        if self._verification_middleware is not None and not task.metadata.get(
-            "_governance_verified"
-        ):
-            try:
-                mw_result = self._verification_middleware.process_action(
-                    agent_id=agent.agent_id,
-                    action=task.action,
-                )
-                # If middleware returns a more restrictive level, use it
-                _level_severity = {
-                    VerificationLevel.AUTO_APPROVED: 0,
-                    VerificationLevel.FLAGGED: 1,
-                    VerificationLevel.HELD: 2,
-                    VerificationLevel.BLOCKED: 3,
-                }
-                mw_severity = _level_severity.get(mw_result.verification_level, 0)
-                current_level = task.verification_level or VerificationLevel.AUTO_APPROVED
-                gradient_severity = _level_severity.get(current_level, 0)
-                if mw_severity > gradient_severity:
-                    # RT5-23: Use middleware level directly without redundant
-                    # re-classification. Preserve the middleware's reason.
-                    task.verification_level = mw_result.verification_level
-                    verification = verification.model_copy(
-                        update={
-                            "level": mw_result.verification_level,
-                            "reason": mw_result.details or verification.reason,
-                        }
-                    )
-            except Exception as exc:
-                logger.warning(
-                    "Verification middleware error for task '%s': %s (falling back to gradient)",
-                    task.task_id,
-                    exc,
-                )
-
         # Step 3: Act on verification result.
-        # Capture verification_level in a local for Pyright type narrowing:
-        # task.verification_level is VerificationLevel | None but after the
-        # equality check Pyright cannot narrow mutable attributes.
         final_level = task.verification_level or VerificationLevel.AUTO_APPROVED
         if final_level == VerificationLevel.BLOCKED:
             with self._lock:
                 task.status = TaskStatus.BLOCKED
-                task.result = TaskResult(error=f"Action blocked: {verification.reason}")
+                task.result = TaskResult(error="Action blocked by governance")
                 task.completed_at = datetime.now(UTC)
             self._record_audit(task, final_level)
             return task
@@ -836,7 +629,7 @@ class ExecutionRuntime:
             self._approval_queue.submit(
                 agent_id=agent.agent_id,
                 action=task.action,
-                reason=verification.reason or "Held by verification gradient",
+                reason="Held for human approval",
                 team_id=task.team_id,
             )
             self._record_audit(task, final_level)
@@ -920,17 +713,6 @@ class ExecutionRuntime:
         all happen under a single lock acquisition to prevent TOCTOU races
         where two concurrent resume_held() calls both pass the HELD check.
 
-        RT6-02: Before executing an approved HELD task, the constraint envelope
-        is re-evaluated because constraints may have tightened, expired, or
-        budgets may have been exhausted since the task was originally held.
-
-        RT7-03: TrustStore I/O (list_envelopes) is pre-fetched OUTSIDE the lock
-        to avoid blocking other runtime operations during slow store reads.
-        The envelope evaluation itself (pure computation) runs inside the lock.
-
-        RT7-10: If envelope re-evaluation throws an exception, the task is set
-        to FAILED (fail-closed). Previously it silently continued (fail-open).
-
         Args:
             task_id: The task to resume.
             decision: Either "approved" (execute the task) or "rejected"
@@ -946,13 +728,9 @@ class ExecutionRuntime:
                 f"Invalid resume decision '{decision}': must be 'approved' or 'rejected'"
             )
 
-        # RT7-03: Pre-fetch envelope data from trust store OUTSIDE the lock.
-        # list_envelopes() is the expensive I/O call. We read the data before
-        # acquiring the lock so other runtime operations (submit, process_next,
-        # get_task) are not blocked during store reads.
-        # We need the agent_id to query envelopes, so do a quick lock-protected
-        # lookup first just to get the agent_id and validate the task exists.
-        prefetched_envelopes: list[dict] | None = None
+        # RT6-01: Hold lock for status check -> pre-checks -> transition.
+        # This prevents two concurrent resume_held() calls from both seeing
+        # HELD and proceeding.
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:
@@ -960,46 +738,6 @@ class ExecutionRuntime:
             if task.status != TaskStatus.HELD:
                 return None
             agent_id = task.assigned_agent_id
-
-        # Pre-fetch envelope data outside the lock (RT7-03).
-        # This is the slow I/O that previously blocked all other operations.
-        if decision == "approved" and self._trust_store is not None and agent_id:
-            try:
-                prefetched_envelopes = self._trust_store.list_envelopes(agent_id=agent_id)
-            except Exception as exc:
-                # RT7-10: Fail-closed on pre-fetch I/O error.
-                logger.error(
-                    "Envelope pre-fetch failed in resume_held for agent '%s': %s "
-                    "-- failing task (fail-closed)",
-                    agent_id,
-                    exc,
-                )
-                with self._lock:
-                    task.status = TaskStatus.FAILED
-                    task.result = TaskResult(
-                        error=f"Constraint envelope re-evaluation failed: {exc}"
-                    )
-                    task.completed_at = datetime.now(UTC)
-                extra = {"approver_id": approver_id} if approver_id else None
-                extra = extra or {}
-                extra["envelope_reeval"] = "failed"
-                self._record_audit(
-                    task,
-                    VerificationLevel.HELD,
-                    extra_metadata=extra,
-                )
-                return task
-
-        # RT6-01: Hold lock for status check -> pre-checks -> transition.
-        # This prevents two concurrent resume_held() calls from both seeing
-        # HELD and proceeding. We re-check HELD status because the task
-        # could have been resumed by another thread between the pre-fetch
-        # and this lock acquisition.
-        with self._lock:
-            # Re-validate: another thread may have resumed it while we were
-            # pre-fetching envelopes.
-            if task.status != TaskStatus.HELD:
-                return None
 
             if decision == "rejected":
                 # Entire rejected path completes under lock -- no execution needed.
@@ -1045,120 +783,18 @@ class ExecutionRuntime:
                         )
                         task.completed_at = datetime.now(UTC)
 
-                # RT6-02: Re-evaluate constraint envelope before executing.
-                # RT7-03: Uses pre-fetched envelope data (no I/O under lock).
-                # RT7-10: Fail-closed on evaluation exception.
-                # RT7-13: Type-validate data_paths and access_type.
-                if (
-                    task.status != TaskStatus.FAILED
-                    and prefetched_envelopes is not None
-                    and prefetched_envelopes
-                ):
-                    # RT7-06/RT8-03: Select most recent non-expired envelope.
-                    # If all envelopes are expired, skip evaluation (same as
-                    # no envelopes) — gradient handles unconstrained agents.
-                    envelope_data = select_active_envelope(prefetched_envelopes)
-                    if envelope_data is None:
-                        logger.info(
-                            "resume_held: all envelopes expired for agent '%s'; "
-                            "skipping envelope re-evaluation",
-                            agent_id,
-                        )
-                    else:
-                        try:
-                            from pact_platform.build.config.schema import ConstraintEnvelopeConfig
-
-                            config_data = envelope_data.get("config", envelope_data)
-                            if "id" not in config_data:
-                                config_data["id"] = envelope_data.get(
-                                    "envelope_id", envelope_data.get("id", "unknown")
-                                )
-                            envelope_config = ConstraintEnvelopeConfig(**config_data)
-                            envelope = ConstraintEnvelope(config=envelope_config)
-
-                            # Pass context from task metadata if available
-                            eval_kwargs: dict[str, Any] = {
-                                "action": task.action,
-                                "agent_id": agent_id,
-                            }
-                            if task.metadata.get("spend_amount") is not None:
-                                eval_kwargs["spend_amount"] = float(task.metadata["spend_amount"])
-                            if task.metadata.get("cumulative_spend") is not None:
-                                eval_kwargs["cumulative_spend"] = float(
-                                    task.metadata["cumulative_spend"]
-                                )
-                            # RT7-02: Include current_action_count
-                            if task.metadata.get("current_action_count") is not None:
-                                eval_kwargs["current_action_count"] = int(
-                                    task.metadata["current_action_count"]
-                                )
-                            # RT7-13: Type-validate data_paths (must be list[str])
-                            dp = task.metadata.get("data_paths")
-                            if (
-                                dp is not None
-                                and isinstance(dp, list)
-                                and all(isinstance(p, str) for p in dp)
-                            ):
-                                eval_kwargs["data_paths"] = dp
-                            # RT7-13: Type-validate access_type (must be "read" or "write")
-                            at = task.metadata.get("access_type")
-                            if at is not None and str(at) in ("read", "write"):
-                                eval_kwargs["access_type"] = str(at)
-                            if task.metadata.get("is_external") is not None:
-                                eval_kwargs["is_external"] = bool(task.metadata["is_external"])
-
-                            envelope_evaluation = envelope.evaluate_action(**eval_kwargs)
-
-                            if envelope_evaluation.overall_result == EvaluationResult.DENIED:
-                                logger.warning(
-                                    "resume_held: envelope re-evaluation DENIED for "
-                                    "task '%s' agent '%s'",
-                                    task.task_id,
-                                    agent_id,
-                                )
-                                task.status = TaskStatus.FAILED
-                                task.result = TaskResult(
-                                    error=(
-                                        "Constraint envelope re-evaluation denied: "
-                                        "envelope may have expired or constraints "
-                                        "tightened since task was held"
-                                    )
-                                )
-                                task.completed_at = datetime.now(UTC)
-                        except Exception as exc:
-                            # RT7-10: Fail-closed. On exception, set task to FAILED
-                            # rather than allowing it to proceed (fail-open).
-                            logger.error(
-                                "Envelope re-evaluation failed in resume_held for agent '%s': %s "
-                                "-- failing task (fail-closed)",
-                                agent_id,
-                                exc,
-                            )
-                            task.status = TaskStatus.FAILED
-                            task.result = TaskResult(
-                                error=f"Constraint envelope re-evaluation failed: {exc}"
-                            )
-                            task.completed_at = datetime.now(UTC)
-
                 # If not failed by pre-checks, mark EXECUTING under lock
                 if task.status != TaskStatus.FAILED:
                     task.status = TaskStatus.EXECUTING
 
         # --- Lock released ---
         # If the task was set to FAILED inside the lock (rejected, revoked,
-        # posture blocked, or envelope denied/failed), record audit and return.
+        # or posture blocked), record audit and return.
         if task.status == TaskStatus.FAILED:
-            extra = {"approver_id": approver_id} if approver_id else None
-            if task.result and "envelope re-evaluation" in (task.result.error or ""):
-                extra = extra or {}
-                extra["envelope_reeval"] = "denied"
-            if task.result and "re-evaluation failed" in (task.result.error or "").lower():
-                extra = extra or {}
-                extra["envelope_reeval"] = "failed"
             self._record_audit(
                 task,
                 VerificationLevel.HELD,
-                extra_metadata=extra,
+                extra_metadata={"approver_id": approver_id} if approver_id else None,
             )
             return task
 
