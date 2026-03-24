@@ -43,33 +43,42 @@ __all__ = [
 # DataFlow initialization
 # ---------------------------------------------------------------------------
 
+
 # Default to an absolute path so the DataFlow SQLite adapter resolves correctly.
 # The adapter interprets sqlite:///relative.db as /relative.db (root), not CWD.
-# Four slashes (sqlite:////abs/path) produce a proper absolute path.
-# In Docker the WORKDIR is /app; outside Docker the caller must set DATABASE_URL.
-if os.path.isdir("/app"):
-    _DEFAULT_DB = "sqlite:////app/pact_platform.db"
-else:
-    # Rust-backed DataFlow requires absolute paths for SQLite
-    _DEFAULT_DB = f"sqlite:///{os.path.abspath('pact_platform.db')}"
-DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_DB)
+def _resolve_database_url() -> str:
+    """Resolve DATABASE_URL from environment with absolute path default."""
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
+    if os.path.isdir("/app"):
+        return "sqlite:////app/pact_platform.db"
+    return f"sqlite:///{os.path.abspath('pact_platform.db')}"
 
-try:
-    db = DataFlow(
-        database_url=DATABASE_URL,
-        config=DataFlowConfig(
-            database_url=DATABASE_URL,
-            auto_migrate=True,
-        ),
-    )
-except TypeError:
-    # Fallback for older DataFlow versions without config parameter
-    db = DataFlow(
-        database_url=DATABASE_URL,
-        auto_migrate=True,
-        pool_recycle=3600,
-        cache_enabled=False,
-    )
+
+def _create_dataflow() -> DataFlow:
+    """Create DataFlow instance."""
+    url = _resolve_database_url()
+    return DataFlow(database_url=url)
+
+
+class _LazyDataFlow:
+    """Lazy proxy for DataFlow — defers connection until first use."""
+
+    def __init__(self) -> None:
+        self._instance: DataFlow | None = None
+
+    def _get(self) -> DataFlow:
+        if self._instance is None:
+            self._instance = _create_dataflow()
+        return self._instance
+
+    def __getattr__(self, name: str):
+        return getattr(self._get(), name)
+
+
+db = _LazyDataFlow()  # type: ignore[assignment]
+DATABASE_URL = ""  # Resolved at connection time via _resolve_database_url()
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +183,7 @@ class AgenticObjective:
     budget_usd: float = 0.0  # NaN-guarded at application layer
     deadline: Optional[str] = None  # ISO 8601
     parent_objective_id: Optional[str] = None
-    metadata: dict = {}
+    metadata: str = "{}"
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -193,10 +202,10 @@ class AgenticRequest:
     status: str = "pending"  # pending, assigned, in_progress, review, completed, failed, cancelled
     priority: str = "normal"
     sequence_order: int = 0
-    depends_on: dict = {}  # {"request_ids": [...]}
+    depends_on: str = "{}"  # {"request_ids": [...]}
     envelope_id: Optional[str] = None
     deadline: Optional[str] = None
-    metadata: dict = {}
+    metadata: str = "{}"
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -217,7 +226,7 @@ class AgenticWorkSession:
     provider: str = ""
     model_name: str = ""
     tool_calls: int = 0
-    verification_verdicts: dict = {}  # {"verdicts": [...]}
+    verification_verdicts: str = "{}"  # {"verdicts": [...]}
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -254,7 +263,7 @@ class AgenticDecision:
     status: str = "pending"  # pending, approved, rejected, expired
     reason_held: str = ""
     constraint_dimension: str = ""  # financial, operational, temporal, data_access, communication
-    constraint_details: dict = {}
+    constraint_details: str = "{}"
     urgency: str = "normal"  # low, normal, high, critical
     decided_by: Optional[str] = None
     decided_at: Optional[str] = None
@@ -325,7 +334,7 @@ class AgenticPoolMembership:
     pool_id: str
     member_address: str
     member_type: str = "agent"  # agent, human
-    capabilities: dict = {}  # {"skills": [...]}
+    capabilities: str = "{}"  # {"skills": [...]}
     max_concurrent: int = 3
     active_count: int = 0
     status: str = "active"  # active, paused, removed
@@ -352,7 +361,7 @@ class Run:
     cost_usd: float = 0.0  # NaN-guarded
     verification_level: str = "auto_approved"
     error_message: str = ""
-    metadata: dict = {}
+    metadata: str = "{}"
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -371,6 +380,6 @@ class ExecutionMetric:
     unit: str = ""
     period_start: Optional[str] = None
     period_end: Optional[str] = None
-    dimensions: dict = {}
+    dimensions: str = "{}"
     created_at: datetime = None
     updated_at: datetime = None
