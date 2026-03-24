@@ -576,12 +576,29 @@ class ExecutionRuntime:
                 # standalone verification paths since governance already checked.
                 # We set a flag on the task metadata to signal this.
                 task.metadata["_governance_verified"] = True
+            else:
+                # Fail-closed: governance engine is configured but agent has no
+                # role address mapping. Block rather than silently permitting.
+                logger.warning(
+                    "Governance engine configured but no role_address for agent '%s' "
+                    "— fail-closed BLOCKED",
+                    agent.agent_id,
+                )
+                with self._lock:
+                    task.status = TaskStatus.BLOCKED
+                    task.verification_level = VerificationLevel.BLOCKED
+                    task.result = TaskResult(
+                        error="Agent has no governance role address — cannot verify action"
+                    )
+                    task.completed_at = datetime.now(UTC)
+                self._record_audit(task, VerificationLevel.BLOCKED)
+                return task
 
         # Step 2: Act on verification result set by GovernanceEngine path above,
         # or default to AUTO_APPROVED if governance engine is not configured.
         # For non-governed agents, check NEVER_DELEGATED_ACTIONS and SUPERVISED posture.
         if not task.metadata.get("_governance_verified"):
-            # No governance engine for this agent: default AUTO_APPROVED
+            # No governance engine configured: default AUTO_APPROVED
             if task.verification_level is None:
                 task.verification_level = VerificationLevel.AUTO_APPROVED
 

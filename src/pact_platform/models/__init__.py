@@ -15,7 +15,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from dataflow import DataFlow
+from dataflow import DataFlow, DataFlowConfig
 
 __all__ = [
     "db",
@@ -43,13 +43,33 @@ __all__ = [
 # DataFlow initialization
 # ---------------------------------------------------------------------------
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///pact_platform.db")
+# Default to an absolute path so the DataFlow SQLite adapter resolves correctly.
+# The adapter interprets sqlite:///relative.db as /relative.db (root), not CWD.
+# Four slashes (sqlite:////abs/path) produce a proper absolute path.
+# In Docker the WORKDIR is /app; outside Docker the caller must set DATABASE_URL.
+if os.path.isdir("/app"):
+    _DEFAULT_DB = "sqlite:////app/pact_platform.db"
+else:
+    # Rust-backed DataFlow requires absolute paths for SQLite
+    _DEFAULT_DB = f"sqlite:///{os.path.abspath('pact_platform.db')}"
+DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_DB)
 
-db = DataFlow(
-    database_url=DATABASE_URL,
-    auto_migrate=True,
-    pool_recycle=3600,
-)
+try:
+    db = DataFlow(
+        database_url=DATABASE_URL,
+        config=DataFlowConfig(
+            database_url=DATABASE_URL,
+            auto_migrate=True,
+        ),
+    )
+except TypeError:
+    # Fallback for older DataFlow versions without config parameter
+    db = DataFlow(
+        database_url=DATABASE_URL,
+        auto_migrate=True,
+        pool_recycle=3600,
+        cache_enabled=False,
+    )
 
 
 # ---------------------------------------------------------------------------
