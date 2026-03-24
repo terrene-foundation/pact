@@ -79,3 +79,11 @@ apps/mobile/.dart_tool/
 dist/
 *.egg-info/
 .hypothesis/
+
+# SQLite test databases
+*.db
+*.db-wal
+*.db-shm
+
+# Test results (generated at runtime)
+**/.test-results

@@ -569,5 +569,6 @@ def test_config_auto_extraction():
 
 ## References
 
-- **Examples**: All agents in `kaizen/examples/`
+- **Source**: `kaizen/core/config.py`
+- **Examples**: All agents in `examples/`
 - **Specialist**: `.claude/agents/frameworks/kaizen-specialist.md` lines 249-267

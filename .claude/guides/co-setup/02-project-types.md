@@ -59,7 +59,7 @@ Strategic, legal, or governance knowledge work. The AI researches, drafts, revie
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Commands  | `/arxiv`, `/publish`, `/governance-layer`, `/co-domain`                                                                                                |
 | Agents    | Standards: `constitution-expert`, `governance-layer-expert`, `care-implementation-expert`, `co-domain-expert`                                          |
-| Agents    | Architecture: `pact-architect`                                                                                                                |
+| Agents    | Architecture: `care-platform-architect`                                                                                                                |
 | Agents    | Publications: `publication-expert`                                                                                                                     |
 | Skills    | Standards reference (26-eatp, 27-care, 28-coc, co-reference)                                                                                           |
 | Skills    | Governance (29-constitution, 30-arxiv, 31-publication, 32-governance-layer, 33-care-implementation, 34-co-domain)                                      |

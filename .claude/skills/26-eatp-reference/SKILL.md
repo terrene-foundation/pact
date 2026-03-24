@@ -149,12 +149,18 @@ Operations: ESTABLISH → DELEGATE → VERIFY → AUDIT
 
 ## SDK Implementation Reference
 
-This repo contains the standalone EATP SDK (`eatp/`). For SDK-specific knowledge, see these companion files:
+This repo contains the EATP SDK (`kailash/trust/`). For SDK-specific knowledge, see these companion files:
 
-- **[eatp-sdk-quickstart.md](eatp-sdk-quickstart.md)** — Getting started with `pip install eatp`, 4-operation lifecycle, store selection
+- **[eatp-sdk-quickstart.md](eatp-sdk-quickstart.md)** — Getting started with `pip install kailash[trust]`, 4-operation lifecycle, store selection
 - **[eatp-sdk-api-reference.md](eatp-sdk-api-reference.md)** — Complete API surface: all exports, module reference, type signatures
 - **[eatp-sdk-patterns.md](eatp-sdk-patterns.md)** — Implementation patterns, critical gotchas, security findings, architecture patterns
 - **[eatp-sdk-reasoning-traces.md](eatp-sdk-reasoning-traces.md)** — Reasoning trace extension: lifecycle, confidentiality, knowledge bridge integration
+- **[eatp-budget-tracking.md](eatp-budget-tracking.md)** — BudgetTracker API, SQLiteBudgetStore, reserve/record lifecycle, threshold callbacks, integer microdollars
+- **[eatp-posture-stores.md](eatp-posture-stores.md)** — PostureStore protocol, SQLitePostureStore, PostureEvidence, PostureEvaluationResult, posture persistence
+- **[eatp-security-patterns.md](eatp-security-patterns.md)** — EATP security patterns from red team: lock ordering, integer arithmetic, symlink rejection, fail-closed
+- **[eatp-store-backends.md](eatp-store-backends.md)** — Step-by-step guide for adding new TrustPlaneStore backends with 6-requirement security contract
+- **[eatp-trust-plane-security.md](eatp-trust-plane-security.md)** — 11 hardened security patterns validated through 14 rounds of red teaming (TrustPlane-specific)
+- **[eatp-trust-plane-enterprise.md](eatp-trust-plane-enterprise.md)** — RBAC, OIDC, SIEM, Dashboard, Archive, Shadow mode, Cloud KMS reference
 
 ## For Detailed Information
 

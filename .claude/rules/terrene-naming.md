@@ -24,15 +24,13 @@ The Foundation is a fully independent entity. There is NO structural relationshi
 4. **Anyone can build commercial products on Foundation standards** — that is the intended model
 5. **No contributor has exclusive rights, special access, or structural advantage**
 6. **Never describe any commercial entity as having a "partnership" or "relationship" with the Foundation** — contributors operate under a uniform contributor framework
-7. **The Founder contributes as an individual** — their commercial activities are separate from their Foundation role
-8. **The Founder's conflict of interest is managed by constitutional mechanisms** — disclosure requirements, transaction caps, recusal protocols
 
 See `rules/independence.md` for the full no-commercial-coupling policy.
 
 ### License Accuracy
 
-- Specifications (CARE, PACT, EATP, CO, CDI): **CC BY 4.0** (NOT CC-BY-SA — ShareAlike would prevent proprietary implementations)
-- Open source code (Kailash Python, EATP SDK, CO Toolkit, PACT reference implementation): **Apache 2.0**
+- Specifications (CARE, EATP, CO, CDI): **CC BY 4.0** (NOT CC-BY-SA — ShareAlike would prevent proprietary implementations)
+- Open source code (Kailash Python, EATP SDK, CO Toolkit, CARE Platform, Praxis): **Apache 2.0**
 - BSL 1.1 is **NOT** open source — use "source-available" or "open-core"
 
 ### Canonical Terminology
@@ -40,69 +38,5 @@ See `rules/independence.md` for the full no-commercial-coupling policy.
 - CARE planes: **Trust Plane** + **Execution Plane** (NOT operational/governance plane)
 - Constraint dimensions: **Financial, Operational, Temporal, Data Access, Communication** (these exact five names — no synonyms, no reordering)
 - CO = Cognitive Orchestration (domain-agnostic base methodology)
-- COC = Cognitive Orchestration for Codegen (CO applied to software development — the "C" already means "for Codegen")
-- PACT = Principled Architecture for Constrained Trust (organizational architecture standard — D/T/R grammar, operating envelopes, knowledge clearance, verification gradient)
-- The Quartet: CARE (philosophy) + PACT (architecture) + EATP (protocol) + CO (methodology)
-
-### PACT Terminology
-
-**Standard vs Implementation:**
-
-- "PACT specification" = the PACT standard itself (CC BY 4.0) — the architectural patterns and requirements
-- "PACT" (this repo) = the Foundation's reference implementation of the PACT specification (Apache 2.0) — code, configuration, constraint templates
-- Never conflate the two: the specification defines what; the implementation delivers how
-
-**PACT-specific terms:**
-
-- **D/T/R Grammar** — Department/Team/Role accountability grammar with core invariant: every D or T must be immediately followed by exactly one R
-- **Positional Address** — globally unique D/T/R path encoding both containment and accountability (e.g., `D1-R1-D1-R1-T1-R1`)
-- **Operating Envelope** — three layers: Role Envelope (standing), Task Envelope (ephemeral), Effective Envelope (computed intersection)
-- **Monotonic Tightening** — child envelopes can only be equal to or more restrictive than parent envelopes
-- **Knowledge Clearance** — five levels (OFFICIAL, SENSITIVE, CONFIDENTIAL, SECRET, TOP_SECRET) independent of authority/seniority
-
-**Verification gradient levels** (exact names, uppercase):
-
-- **AUTO_APPROVED** — action falls within all constraint dimensions
-- **FLAGGED** — action is near a boundary
-- **HELD** — action exceeds a soft limit, queued for human approval
-- **BLOCKED** — action violates a hard constraint
-
-**Trust postures** (exact names, uppercase):
-
-- **PSEUDO_AGENT** — minimal autonomy, maximum oversight
-- **SUPERVISED** — agent executes under close human supervision
-- **SHARED_PLANNING** — human and agent plan together, agent executes
-- **CONTINUOUS_INSIGHT** — agent operates autonomously, human monitors
-- **DELEGATED** — full delegation within constraint envelope
-
-**Cross-Functional Bridges** (exact names):
-
-- Bridge types: **Standing**, **Scoped**, **Ad-Hoc** (these exact names)
-- Use "Cross-Functional Bridge" — NOT "cross-team bridge" or "inter-team connector"
-
-**Workspace terminology:**
-
-- Use "workspace-as-knowledge-base" — NOT "knowledge workspace" or "knowledge base workspace"
-
-### EATP Operations Terminology
-
-**Four operations** (uppercase, used as verbs or nouns):
-
-- **ESTABLISH** — create a trust root (Genesis Record)
-- **DELEGATE** — extend trust to another entity (Delegation Record)
-- **VERIFY** — check trust chain validity
-- **AUDIT** — review trust lineage for compliance
-
-**Five Trust Lineage Chain elements** (exact names):
-
-- **Genesis Record** — trust origin, signed by the establishing authority
-- **Delegation Record** — trust extension from one entity to another
-- **Constraint Envelope** — five-dimensional boundary for agent actions
-- **Capability Attestation** — declaration of what an agent can do
-- **Audit Anchor** — cryptographic proof of trust state at a point in time
-
-**ShadowEnforcer** — one word, PascalCase (NOT "shadow enforcer", "Shadow Enforcer", or "shadow mode")
-
-### CO as Methodology
-
-The Foundation publishes CO as an open methodology under CC BY 4.0. The Foundation does NOT sell methodology consulting. Publishing open methodologies is consistent with the Foundation mandate.
+- COC = Cognitive Orchestration for Codegen (CO applied to software development)
+- CO sits in the trinity: CARE (philosophy) + EATP (protocol) + CO (methodology)

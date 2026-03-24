@@ -1,8 +1,8 @@
-# Enterprise Agent Trust Protocol (EATP) -- Kaizen Integration
+# Enterprise Agent Trust Protocol (EATP) — Kaizen Integration
 
 **Cryptographically verifiable trust chains for AI agents**, enabling enterprise-grade accountability, authorization, and secure multi-agent communication.
 
-> **Architecture Note**: As of v0.1.0, EATP is a standalone SDK (`pip install eatp`). Kaizen's `kaizen.trust` module is a **shim layer** that re-exports from the standalone package. Canonical code lives in the `eatp` package. For standalone SDK documentation, see `skills/26-eatp-reference/`.
+> **Architecture Note**: As of v0.1.0, EATP is a standalone SDK (`pip install kailash[trust]`). Kaizen's `kaizen.trust` module is a **shim layer** that re-exports from the standalone package. Canonical code lives in `kailash/trust/`. For standalone SDK documentation, see `skills/26-eatp-reference/`.
 
 ## Overview
 
@@ -18,7 +18,7 @@ EATP provides complete trust infrastructure for AI agents:
 - **RFC 3161 Timestamping** (v1.1.0): Cryptographic timestamping for audit records with TSA integration
 
 **Location**: `kaizen.trust` module (shims to `eatp` package)
-**Canonical Source**: `eatp` package (`pip install eatp`)
+**Canonical Source**: `kailash/trust/`
 
 ## Quick Start
 
@@ -596,32 +596,32 @@ await audit_logger.log(SecurityEvent(
 
 ### Trust Establishment
 
-- Establish trust before first agent action
-- Use specific capability types (ACCESS, EXECUTE, DELEGATE)
-- Set appropriate constraints on capabilities
-- Never skip trust verification in production
+- ✅ Establish trust before first agent action
+- ✅ Use specific capability types (ACCESS, EXECUTE, DELEGATE)
+- ✅ Set appropriate constraints on capabilities
+- ❌ Never skip trust verification in production
 
 ### Delegation
 
-- Use time-limited delegations
-- Apply principle of least privilege
-- Record delegation chain for audit
-- Never delegate more capabilities than needed
+- ✅ Use time-limited delegations
+- ✅ Apply principle of least privilege
+- ✅ Record delegation chain for audit
+- ❌ Never delegate more capabilities than needed
 
 ### Secure Messaging
 
-- Always use SecureChannel for inter-agent communication
-- Enable replay protection
-- Verify message signatures
-- Never send sensitive data without encryption
+- ✅ Always use SecureChannel for inter-agent communication
+- ✅ Enable replay protection
+- ✅ Verify message signatures
+- ❌ Never send sensitive data without encryption
 
 ### Production Deployment
 
-- Use PostgresTrustStore for persistence
-- Enable TrustChainCache for performance
-- Configure credential rotation
-- Enable security audit logging
-- Never disable trust verification in production
+- ✅ Use PostgresTrustStore for persistence
+- ✅ Enable TrustChainCache for performance
+- ✅ Configure credential rotation
+- ✅ Enable security audit logging
+- ❌ Never disable trust verification in production
 
 ## Related Skills
 
@@ -638,7 +638,7 @@ await audit_logger.log(SecurityEvent(
 
 ```bash
 # Run full adversarial security suite
-python -m pytest kaizen/tests/security/ -v --timeout=120
+python -m pytest kailash-kaizen package: tests/security/ -v --timeout=120
 ```
 
 **Categories**: Key extraction resistance (26), delegation manipulation (23), constraint gaming (42), revocation races (10), cross-org boundaries (13), audit integrity (13).
@@ -663,15 +663,15 @@ After EATP SDK extraction, `kaizen.trust` files are thin shims:
 
 ```python
 # kaizen/trust/chain.py
-from eatp.chain import *  # noqa: F401,F403
+from kailash.trust.chain import *  # noqa: F401,F403
 ```
 
 **Import Mapping**:
 | Kaizen Shim Import | Canonical Import |
 |---|---|
-| `from kaizen.trust import TrustOperations` | `from eatp import TrustOperations` |
-| `from kaizen.trust.crypto import generate_keypair` | `from eatp.crypto import generate_keypair` |
-| `from kaizen.trust.authority import OrganizationalAuthority` | `from eatp.authority import OrganizationalAuthority` |
+| `from kaizen.trust import TrustOperations` | `from kailash.trust import TrustOperations` |
+| `from kaizen.trust.crypto import generate_keypair` | `from kailash.trust.signing.crypto import generate_keypair` |
+| `from kaizen.trust.authority import OrganizationalAuthority` | `from kailash.trust.authority import OrganizationalAuthority` |
 
 Kaizen adds `PostgresTrustStore` (DataFlow-backed) which is NOT in the standalone SDK. For lightweight storage, the standalone SDK provides `InMemoryTrustStore` and `FilesystemStore`.
 
@@ -679,9 +679,9 @@ Kaizen adds `PostgresTrustStore` (DataFlow-backed) which is NOT in the standalon
 
 ## Support
 
-- **Canonical Source**: `eatp` package (`pip install eatp`)
-- **Kaizen Shims**: `kaizen.trust` module (`pip install kailash-kaizen`)
-- **EATP Tests**: 1177 standalone tests
-- **Kaizen Trust Tests**: 1623 tests (exercises same code via shims)
-- **Security Tests**: Adversarial security suite
-- **Examples**: Standalone SDK examples, Kaizen integration examples
+- **Canonical Source**: `kailash/trust/` (standalone SDK)
+- **Kaizen Shims**: `kaizen/trust/`
+- **EATP Tests**: `kailash/trust/tests/` (1324 tests)
+- **Kaizen Trust Tests**: `kailash-kaizen package: tests/unit/trust/` (1623 tests, exercises same code via shims)
+- **Security Tests**: `kailash-kaizen package: tests/security/`
+- **Examples**: `kailash/trust/examples/` (standalone), `examples/trust/` (Kaizen integration)

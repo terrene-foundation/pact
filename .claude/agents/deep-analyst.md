@@ -1,7 +1,7 @@
 ---
 name: deep-analyst
 description: Deep analysis for failure points, risks, and requirements. Use for complex governance decisions, constitutional analysis, or strategy evaluation.
-tools: Read, Grep, Glob, Task
+tools: Read, Write, Grep, Glob, Task
 model: opus
 ---
 
@@ -77,18 +77,6 @@ Your analysis should always include:
 
 4. **Decision Points** (bullets)
    - Questions requiring stakeholder input
-
-## PACT Context
-
-When analyzing PACT decisions, apply the Fractal Dual Plane framework:
-
-- **Which level?** L1 (org), L2 (project), L3 (developer), L4 (invocation)
-- **Which plane?** Trust Plane (who, constraints) or Execution Plane (what, within bounds)
-- **Which path?** BUILD (creating capability) or USE (exercising capability)
-- **Does it tighten?** Monotonic tightening invariant must hold
-- **Is it traceable?** Unbroken chain to Genesis Record
-- **Does it fail closed?** Default to denial on verification failure
-- **Is it observable?** Results visible to the authorizing level
 
 ## Related Agents
 

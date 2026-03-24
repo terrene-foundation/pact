@@ -3,14 +3,6 @@ name: implement
 description: "Load phase 03 (implement) for the current workspace. Repeat until all todos complete."
 ---
 
-## What This Phase Does (present to user)
-
-Build the project one task at a time from the approved roadmap. Each run of `/implement` completes one task. The AI writes code, tests it, reviews it for quality and security, then moves to the next task.
-
-## Your Role (communicate to user)
-
-You don't need to look at code. Your role is to answer questions when decisions come up during building — these will always be about what the product should do, not how it's coded. You can check progress anytime with `/ws`.
-
 ## Workspace Resolution
 
 1. If `$ARGUMENTS` specifies a project name or todo, parse accordingly
@@ -25,6 +17,10 @@ You don't need to look at code. Your role is to answer questions when decisions 
 - If `$ARGUMENTS` specifies a specific todo, focus on that one
 - Otherwise, pick the next active todo
 - Reference plans in `workspaces/<project>/02-plans/` for context
+
+## Execution Model
+
+This phase executes under the **autonomous execution model** (see `rules/autonomous-execution.md`). Implementation is fully autonomous — agents execute in parallel, self-validate through TDD, and converge through quality gates. The human observes outcomes but does not sit in the execution loop. Pre-existing failures are fixed, not reported (zero-tolerance). Agent-to-agent delegation (intermediate-reviewer, security-reviewer) is autonomous, not human-gated.
 
 ## Workflow
 
@@ -54,18 +50,51 @@ Always involve tdd-implementer, testing-specialists, value auditor, ai ui ux spe
 
 ### 4. Testing requirements
 
-Ensure you test comprehensively as you implement, with all tests passing at 100%.
+**Test-once protocol**: Tests run ONCE per code change, not once per phase.
 
-- No tests can be skipped (make sure docker is up and running)
-- Do not rewrite tests just to get them passing — ensure it's not infrastructure issues causing errors
-- Always test according to the intent of what we are trying to achieve and against users' expectations
-  - Do not write simple naive technical assertions
-  - Do not have stubs, hardcodes, simulations, naive fallbacks without informative logs
-- If tests involve LLMs and are too slow, check if you are using local LLMs and switch to OpenAI
-- If tests involve LLMs and are failing, check these errors first before skipping or changing logic:
-  - Structured outputs are not coded properly
-  - LLM agentic pipelines are not coded properly
-  - Only after exhausting all input/output and pipeline errors, try with a larger model
+**Before implementing (baseline):**
+
+1. Run the full test suite ONCE to establish baseline: `pytest tests/ -x --tb=short -q`
+2. Record the result: pass count, fail count, commit hash
+3. If there are pre-existing failures, note them — they are NOT your regressions
+
+**During implementation (TDD cycle):**
+
+- tdd-implementer runs tests as part of red-green-refactor — this is the ONE authoritative test run
+- Run only affected tests during development for speed: `pytest tests/unit/path_to_affected/ -x`
+- Run the full suite ONCE when the todo is complete (not after every small change)
+
+**After implementing (regression check):**
+
+1. Run full suite: `pytest tests/ -x --tb=short -q`
+2. Compare against baseline: if any test that passed before now fails, you introduced a regression — STOP and fix
+3. Write `.test-results` artifact in workspace: `workspaces/<project>/.test-results`
+
+**`.test-results` format:**
+
+```
+commit: <git hash>
+timestamp: <ISO 8601>
+baseline_pass: <N>
+baseline_fail: <N>
+final_pass: <N>
+final_fail: <N>
+new_tests: <N>
+regressions: <N> (must be 0)
+command: pytest tests/ -x --tb=short -q
+```
+
+**Bug fixes MUST include regression tests:**
+
+- Every bug fix adds a test to `tests/regression/` marked with `@pytest.mark.regression`
+- The test MUST reproduce the bug (fail before fix, pass after)
+- Regression tests are NEVER deleted — they are permanent guards
+
+**What NOT to do:**
+
+- Do NOT run the full suite multiple times per todo
+- Do NOT let testing-specialist re-run tests that tdd-implementer already ran
+- Do NOT re-run tests just to "verify" — read the results from the last run
 
 ### 5. LLM usage
 
@@ -75,16 +104,7 @@ When writing and testing agents, always utilize the LLM's capabilities instead o
 - Always check `.env` for api keys and model names to use in development
   - Always assume model names in memory are outdated — perform a web check on model names in `.env` before declaring them invalid
 
-### 6. Communicate progress and surface decisions
-
-When reporting to the user:
-
-- **Progress**: State what users can now do, not what files changed. "Users can now reset their password via email" not "Added password reset endpoint and email template"
-- **Decisions needed**: Present choices with impact. "Should password reset links expire after 1 hour or 24 hours? Shorter is more secure but less convenient for users who check email infrequently."
-- **Scope changes**: If implementation reveals something not in the plan, explain what and why: "While building the signup flow, I noticed we don't have a way to handle duplicate emails. Should I add that now (adds ~30 minutes) or save it for later?"
-- **Blockers**: Translate technical blockers into business language. Never present raw error messages.
-
-### 7. Update docs and close todos
+### 6. Update docs and close todos
 
 After completing each todo:
 
@@ -101,42 +121,6 @@ At the end of each implementation cycle, create and update documentation at the 
 - Use as many subdirectories and files as required, naming them sequentially 00-, 01- for easy referencing
 - Focus on capturing the essence and intent — the 'what it is' and 'how to use it' — not status/progress/reports
 
-**Note:** Project agents and skills (`.claude/agents/project/`, `.claude/skills/project/`) are created in phase 05 (`/codify`), not here. However, when implementation changes an API or adds a feature, update the corresponding **existing** skill files, rules, and hooks immediately to prevent drift. Do not defer corrections to `/codify` — that phase is for creating **new** project-specific artifacts, not for fixing stale existing ones.
-
-### 8. Completion evidence
-
-Before closing ANY todo, you MUST provide concrete evidence:
-
-**For code changes:**
-
-- [ ] File path(s) where work is stored
-- [ ] All tests pass (unit, integration, e2e as applicable)
-- [ ] Code review (intermediate-reviewer has reviewed)
-- [ ] Security review (security-reviewer has reviewed)
-- [ ] No regressions introduced
-
-**For documentation changes:**
-
-- [ ] File path(s) where work is stored
-- [ ] Cross-references verified (all links resolve)
-- [ ] Review completed (intermediate-reviewer)
-
-A todo is NOT complete until evidence is provided. "Verified with evidence" means specific file paths, test results, and review attestations — not a general statement.
-
-### 9. Decision log
-
-When the user makes a decision during implementation, capture it:
-
-```yaml
-decision: [What was decided]
-rationale: [Why — the reasoning]
-alternatives_rejected: [What other options were considered]
-date: [When]
-initiative: [Which initiative]
-```
-
-Store decisions in the workspace for `/codify` to capture later.
-
 ## Agent Teams
 
 Deploy these agents as a team for each implementation cycle:
@@ -144,7 +128,7 @@ Deploy these agents as a team for each implementation cycle:
 **Core team (always):**
 
 - **tdd-implementer** — Test-first development, red-green-refactor
-- **testing-specialist** — 3-tier test strategy, NO MOCKING in Tier 2-3
+- **testing-specialist** — 3-tier test strategy, real infrastructure in Tier 2-3
 - **intermediate-reviewer** — Code review after every file change (MANDATORY)
 - **todo-manager** — Track progress, update todo status, verify completion with evidence
 

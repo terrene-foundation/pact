@@ -71,6 +71,20 @@ The user's workflow code is identical at all levels.
 
 | Package                                           | Purpose                                                    |
 | ------------------------------------------------- | ---------------------------------------------------------- |
+| `kailash/db/dialect.py`                       | QueryDialect, PostgresDialect, MySQLDialect, SQLiteDialect |
+| `kailash/db/connection.py`                    | ConnectionManager, \_TransactionProxy                      |
+| `kailash/db/registry.py`                      | resolve_database_url(), resolve_queue_url()                |
+| `kailash/db/migration.py`                     | Schema version check/stamp utilities                       |
+| `kailash/infrastructure/factory.py`           | StoreFactory singleton                                     |
+| `kailash/infrastructure/task_queue.py`        | SQLTaskQueue, SQLTaskMessage                               |
+| `kailash/infrastructure/worker_registry.py`   | SQLWorkerRegistry                                          |
+| `kailash/infrastructure/idempotency.py`       | IdempotentExecutor                                         |
+| `kailash/infrastructure/idempotency_store.py` | DBIdempotencyStore                                         |
+| `kailash/infrastructure/execution_store.py`   | DBExecutionStore, InMemoryExecutionStore                   |
+| `kailash/infrastructure/event_store.py`       | DBEventStoreBackend                                        |
+| `kailash/infrastructure/checkpoint_store.py`  | DBCheckpointStore                                          |
+| `kailash/infrastructure/dlq.py`               | DBDeadLetterQueue                                          |
+| `kailash/infrastructure/queue_factory.py`     | create_task_queue()                                        |
 
 ## Critical Rules
 

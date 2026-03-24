@@ -14,6 +14,14 @@ The Catalog MCP Server exposes Kaizen agent catalog operations as MCP tools over
 
 **Source modules**:
 
+- `kaizen/mcp/catalog_server/server.py` -- `CatalogMCPServer`
+- `kaizen/mcp/catalog_server/registry.py` -- `MemoryRegistry`
+- `kaizen/mcp/catalog_server/__main__.py` -- Entry point
+- `kaizen/mcp/catalog_server/tools/discovery.py` -- Discovery tool handlers
+- `kaizen/mcp/catalog_server/tools/deployment.py` -- Deployment tool handlers
+- `kaizen/mcp/catalog_server/tools/application.py` -- Application tool handlers
+- `kaizen/mcp/catalog_server/tools/governance.py` -- Governance tool handlers
+
 ---
 
 ## Starting the Server

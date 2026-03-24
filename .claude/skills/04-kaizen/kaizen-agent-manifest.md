@@ -9,10 +9,16 @@ The Agent Manifest system provides:
 - **TOML-based declaration**: Describe agents declaratively with `[agent]` and `[governance]` sections
 - **Runtime introspection**: Extract manifest metadata from live `BaseAgent` classes
 - **Local-first deployment**: Persist manifests to `FileRegistry` on disk with atomic writes
-- **Remote deployment**: Optional POST to a PACT API endpoint
+- **Remote deployment**: Optional POST to a CARE Platform API endpoint
 - **A2A interop**: Convert manifests to A2A-compatible Agent Cards
 
 **Source modules**:
+
+- `kaizen/manifest/agent.py` -- `AgentManifest`
+- `kaizen/manifest/governance.py` -- `GovernanceManifest`
+- `kaizen/deploy/client.py` -- `deploy()`, `deploy_local()`
+- `kaizen/deploy/registry.py` -- `FileRegistry` (alias: `LocalRegistry`)
+- `kaizen/deploy/introspect.py` -- `introspect_agent()`
 
 ---
 
@@ -209,9 +215,9 @@ result = deploy(manifest.to_dict())
 result = deploy_local(manifest.to_dict(), registry_dir="/path/to/registry")
 ```
 
-### Remote Deployment (PACT)
+### Remote Deployment (CARE Platform)
 
-POSTs the manifest to a PACT API at `{target_url}/api/v1/agents`.
+POSTs the manifest to a CARE Platform API at `{target_url}/api/v1/agents`.
 
 ```python
 from kaizen.deploy.client import deploy

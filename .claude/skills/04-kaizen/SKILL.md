@@ -1,6 +1,6 @@
 ---
 name: kaizen
-description: "Kailash Kaizen - production-ready AI agent framework with signature-based programming, multi-agent coordination, and enterprise features. Use when asking about 'AI agents', 'agent framework', 'BaseAgent', 'multi-agent systems', 'agent coordination', 'signatures', 'agent signatures', 'RAG agents', 'vision agents', 'audio agents', 'multimodal agents', 'agent prompts', 'prompt optimization', 'chain of thought', 'ReAct pattern', 'Planning agent', 'PEV agent', 'Tree-of-Thoughts', 'pipeline patterns', 'supervisor-worker', 'router pattern', 'ensemble pattern', 'blackboard pattern', 'parallel execution', 'agent-to-agent communication', 'A2A protocol', 'streaming agents', 'agent testing', 'agent memory', 'agentic workflows', 'AgentRegistry', 'OrchestrationRuntime', 'distributed agents', 'agent registry', '100+ agents', 'capability discovery', 'fault tolerance', 'health monitoring', 'trust protocol', 'EATP', 'TrustedAgent', 'trust chains', 'secure messaging', 'enterprise trust', 'credential rotation', 'trust verification', or 'cross-organization agents'."
+description: "Kailash Kaizen - production-ready AI agent framework with signature-based programming, multi-agent coordination, and enterprise features. Use when asking about 'AI agents', 'agent framework', 'BaseAgent', 'multi-agent systems', 'agent coordination', 'signatures', 'agent signatures', 'RAG agents', 'vision agents', 'audio agents', 'multimodal agents', 'agent prompts', 'prompt optimization', 'chain of thought', 'ReAct pattern', 'Planning agent', 'PEV agent', 'Tree-of-Thoughts', 'pipeline patterns', 'supervisor-worker', 'router pattern', 'ensemble pattern', 'blackboard pattern', 'parallel execution', 'agent-to-agent communication', 'A2A protocol', 'streaming agents', 'agent testing', 'agent memory', 'agentic workflows', 'AgentRegistry', 'OrchestrationRuntime', 'distributed agents', 'agent registry', '100+ agents', 'capability discovery', 'fault tolerance', 'health monitoring', 'trust protocol', 'EATP', 'TrustedAgent', 'trust chains', 'secure messaging', 'enterprise trust', 'credential rotation', 'trust verification', 'cross-organization agents', 'agent manifest', 'TOML manifest', 'GovernanceManifest', 'deploy agent', 'FileRegistry', 'introspect agent', 'DAG validation', 'validate_dag', 'schema compatibility', 'cost estimation', 'composition validation', 'catalog server', 'CatalogMCPServer', 'MCP catalog', 'budget tracking', 'BudgetTracker', 'PostureBudgetIntegration', 'posture budget', 'budget threshold', 'L3 autonomy', 'L3 primitives', 'EnvelopeTracker', 'EnvelopeSplitter', 'EnvelopeEnforcer', 'ScopedContext', 'ContextScope', 'ScopeProjection', 'DataClassification', 'MessageRouter', 'MessageChannel', 'DeadLetterStore', 'AgentFactory', 'AgentInstance', 'AgentInstanceRegistry', 'AgentSpec', 'PlanExecutor', 'PlanValidator', 'PlanModification', 'Plan DAG', 'gradient zone', 'agent spawning', 'cascade termination', 'scoped context', 'envelope enforcement', 'plan execution', or 'agent lifecycle'. Also covers L3 integration: 'L3Runtime', 'L3EventBus', 'L3EventType', 'EatpTranslator', 'L3 event system', 'EATP audit events', or 'governance events'. Also covers kaizen-agents governance layer: 'GovernedSupervisor', 'governed agent', 'progressive disclosure', 'governance modules', 'AccountabilityTracker', 'CascadeManager', 'ClearanceEnforcer', 'DerelictionDetector', 'BypassManager', 'VacancyManager', 'kaizen-agents', 'governed multi-agent', 'PACT governance', 'anti-self-modification', 'ReadOnlyView', 'governance security', 'NaN defense', or 'bounded collections'."
 ---
 
 # Kailash Kaizen - AI Agent Framework
@@ -96,31 +96,31 @@ blackboard = Pipeline.blackboard(
 
 ### Comprehensive Guides
 
-For in-depth documentation, see `kaizen/docs/`:
+For in-depth documentation, see `kailash-kaizen package: docs/`:
 
 **Core Guides:**
 
-- **BaseAgent Architecture** - Complete unified agent system guide
-- **Multi-Agent Coordination** - Google A2A protocol, 5 coordination patterns
-- **Signature Programming** - Complete signature system guide
-- **Hooks System Guide** - Event-driven observability framework
-- **Integration Patterns** - DataFlow, Nexus, MCP integration
-- **Meta-Controller Guide** - Intelligent task delegation
-- **Planning System Guide** - Structured workflow orchestration
+- **[BaseAgent Architecture](../../../kailash-kaizen package: docs/guides/baseagent-architecture.md)** - Complete unified agent system guide
+- **[Multi-Agent Coordination](../../../kailash-kaizen package: docs/guides/multi-agent-coordination.md)** - Google A2A protocol, 5 coordination patterns
+- **[Signature Programming](../../../kailash-kaizen package: docs/guides/signature-programming.md)** - Complete signature system guide
+- **[Hooks System Guide](../../../kailash-kaizen package: docs/guides/hooks-system-guide.md)** - Event-driven observability framework
+- **[Integration Patterns](../../../kailash-kaizen package: docs/guides/integration-patterns.md)** - DataFlow, Nexus, MCP integration
+- **[Meta-Controller Guide](../../../kailash-kaizen package: docs/guides/meta-controller-guide.md)** - Intelligent task delegation
+- **[Planning System Guide](../../../kailash-kaizen package: docs/guides/planning-system-guide.md)** - Structured workflow orchestration
 
 **Reference Documentation:**
 
-- **Example Gallery** - 15 production-ready autonomy examples with learning paths
-- **API Reference** - Complete API documentation
-- **Checkpoint API** - State persistence API
-- **Coordination API** - Multi-agent coordination API
-- **Interrupts API** - Graceful shutdown API
-- **Memory API** - 3-tier memory system API
-- **Observability API** - Hooks and monitoring API
-- **Planning Agents API** - Planning/PEV/ToT agents API
-- **Tools API** - Tool calling and approval API
-- **Configuration Guide** - All configuration options
-- **Troubleshooting** - Common issues and solutions
+- **[Example Gallery](../../../examples/autonomy/EXAMPLE_GALLERY.md)** - 15 production-ready autonomy examples with learning paths
+- **[API Reference](../../../kailash-kaizen package: docs/reference/api-reference.md)** - Complete API documentation
+- **[Checkpoint API](../../../kailash-kaizen package: docs/reference/checkpoint-api.md)** - State persistence API
+- **[Coordination API](../../../kailash-kaizen package: docs/reference/coordination-api.md)** - Multi-agent coordination API
+- **[Interrupts API](../../../kailash-kaizen package: docs/reference/interrupts-api.md)** - Graceful shutdown API
+- **[Memory API](../../../kailash-kaizen package: docs/reference/memory-api.md)** - 3-tier memory system API
+- **[Observability API](../../../kailash-kaizen package: docs/reference/observability-api.md)** - Hooks and monitoring API
+- **[Planning Agents API](../../../kailash-kaizen package: docs/reference/planning-agents-api.md)** - Planning/PEV/ToT agents API
+- **[Tools API](../../../kailash-kaizen package: docs/reference/tools-api.md)** - Tool calling and approval API
+- **[Configuration Guide](../../../kailash-kaizen package: docs/reference/configuration.md)** - All configuration options
+- **[Troubleshooting](../../../kailash-kaizen package: docs/reference/troubleshooting.md)** - Common issues and solutions
 
 ### Quick Start (Skills)
 
@@ -196,9 +196,69 @@ For in-depth documentation, see `kaizen/docs/`:
   - A2A HTTP service for cross-organization trust operations
   - Credential rotation, rate limiting, and security audit logging
 
-### v1.0 Developer Guides (NEW)
+### Agent Manifest & Deploy (v1.3)
 
-Located in `kaizen/docs/developers/`:
+- **[kaizen-agent-manifest](kaizen-agent-manifest.md)** - TOML-based agent declaration, governance metadata, and deployment
+  - `AgentManifest` with `[agent]` and `[governance]` TOML sections
+  - `GovernanceManifest` with risk_level, suggested_posture, budget
+  - `introspect_agent()` for runtime metadata extraction (Python API only, NOT MCP)
+  - `deploy()` / `deploy_local()` for local FileRegistry or remote CARE Platform
+  - `FileRegistry` with atomic writes and path traversal prevention
+
+### Composition Validation (v1.3)
+
+- **[kaizen-composition](kaizen-composition.md)** - DAG validation, schema compatibility, cost estimation
+  - `validate_dag()` with iterative DFS cycle detection (max_agents=1000)
+  - `check_schema_compatibility()` with JSON Schema structural subtyping and type widening
+  - `estimate_cost()` with historical data projection and confidence levels
+
+### MCP Catalog Server (v1.3)
+
+- **[kaizen-catalog-server](kaizen-catalog-server.md)** - Standalone MCP server for agent catalog operations
+  - `CatalogMCPServer` with 11 tools: Discovery (4), Deployment (3), Application (2), Governance (2)
+  - Separate from KaizenMCPServer (which handles BaseAgent tools)
+  - Pre-seeds 14 built-in agents on startup
+  - Entry point: `python -m kaizen.mcp.catalog_server`
+
+### Budget Tracking & Posture Integration (v1.3)
+
+- **[kaizen-budget-tracking](kaizen-budget-tracking.md)** - Atomic budget accounting and posture-budget governance
+  - `BudgetTracker` with two-phase reserve/record, threshold callbacks, `on_record()` API
+  - `PostureBudgetIntegration` links budget to posture state machine
+  - Configurable thresholds: warning (80%), downgrade to SUPERVISED (95%), emergency to PSEUDO_AGENT (100%)
+
+### L3 Autonomy Primitives
+
+- **[kaizen-l3-overview](kaizen-l3-overview.md)** - L3 primitives overview (5 subsystems)
+  - EnvelopeTracker/Splitter/Enforcer for continuous budget tracking
+  - ScopedContext for hierarchical context with access control
+  - MessageRouter/Channel for typed inter-agent messaging
+  - AgentFactory/Registry for runtime agent spawning
+  - PlanValidator/Executor for DAG task graph execution
+- **[kaizen-l3-envelope](kaizen-l3-envelope.md)** - Budget tracking, splitting, and non-bypassable enforcement
+  - `EnvelopeTracker` with atomic recording, child allocation, reclamation
+  - `EnvelopeSplitter` for stateless ratio-based budget division
+  - `EnvelopeEnforcer` middleware with gradient zones (AutoApproved/Flagged/Held/Blocked)
+- **[kaizen-l3-context](kaizen-l3-context.md)** - Hierarchical scoped context with projection-based access control
+  - `ContextScope` tree with parent traversal and child merge
+  - `ScopeProjection` glob patterns (allow/deny with deny precedence)
+  - `DataClassification` 5-level clearance filtering
+- **[kaizen-l3-messaging](kaizen-l3-messaging.md)** - Typed inter-agent communication
+  - `MessageRouter` with 8-step validation
+  - 6 typed payloads: Delegation, Status, Clarification, Completion, Escalation, System
+  - `DeadLetterStore` bounded ring buffer for undeliverable messages
+- **[kaizen-l3-factory](kaizen-l3-factory.md)** - Runtime agent spawning with lifecycle tracking
+  - `AgentFactory` with 8-check spawn preconditions
+  - 6-state lifecycle machine (Pending/Running/Waiting/Completed/Failed/Terminated)
+  - Cascade termination (leaves-first)
+- **[kaizen-l3-plan-dag](kaizen-l3-plan-dag.md)** - Dynamic task graph execution
+  - `PlanValidator` structural + envelope validation
+  - `PlanExecutor` with gradient rules (G1-G8)
+  - 7 typed modifications with batch-atomic application
+
+### v1.0 Developer Guides
+
+Located in the package source:
 
 - **Performance Optimization** (`09-performance-optimization-guide.md`) - Caching (10-100x speedup), parallel execution
 - **Specialist System** (`06-specialist-system-guide.md`) - Claude Code-style specialists and skills
@@ -214,7 +274,7 @@ Located in `kaizen/docs/developers/`:
 ### Testing & Quality
 
 - **[kaizen-testing-patterns](kaizen-testing-patterns.md)** - Testing AI agents
-- **Performance Benchmarks** - Measure Kaizen performance
+- **[Performance Benchmarks](../../../kailash-kaizen package: docs/benchmarks/BENCHMARK_GUIDE.md)** - Measure Kaizen performance
 
 ## Key Concepts
 
@@ -311,6 +371,20 @@ Use Kaizen when you need to:
   - Cross-organization agent coordination
   - Regulatory compliance with audit trails
   - Secure inter-agent communication
+- **Agent manifest, deploy, and composition (v1.3)**:
+  - Declare agents with TOML manifests and governance metadata
+  - Deploy agents to local FileRegistry or remote CARE Platform
+  - Validate composite agent DAGs for cycles
+  - Check schema compatibility between connected agents
+  - Estimate pipeline costs from historical data
+  - Discover/deploy agents via MCP Catalog Server
+  - Link budget thresholds to automatic posture transitions
+- **L3 Autonomy Primitives**:
+  - Agent spawning with PACT-governed lifecycle tracking
+  - Continuous budget tracking with gradient zones and non-bypassable enforcement
+  - Hierarchical scoped context with projection-based access control
+  - Typed inter-agent messaging with 8-step routing validation
+  - Dynamic task graph execution with gradient-driven failure handling
 
 **Use Pipeline Patterns When:**
 
@@ -366,12 +440,39 @@ workflow.add_node("KaizenAgent", "agent1", {
 - ✅ Extend BaseAgent for production agents
 - ✅ Use type hints in signatures for validation
 - ✅ Track costs in production environments
-- ✅ Test agents with real infrastructure where practical
+- ✅ Test agents with real infrastructure (real infrastructure recommended)
 - ✅ Enable hooks for observability
 - ✅ Use AgentRegistry for distributed coordination
 - ❌ NEVER skip signature definitions
 - ❌ NEVER ignore cost tracking in production
-- ❌ Avoid mocking LLM calls in integration tests where possible
+- ❌ Avoid mocking LLM calls in integration tests (real infrastructure recommended)
+
+### Kaizen-Agents Governance (v0.1.0)
+
+- **[kaizen-agents-governance](kaizen-agents-governance.md)** — GovernedSupervisor, progressive disclosure (Layer 1/2/3), 7 governance modules
+  - `GovernedSupervisor` with 3-layer progressive API (2-param simple → 8-param configured → 9 governance subsystems)
+  - `AccountabilityTracker` — D/T/R addressing, policy source chain
+  - `BudgetTracker` — reclamation, predictive warnings, reallocation
+  - `CascadeManager` — monotonic envelope tightening, BFS termination
+  - `ClearanceEnforcer` + `ClassificationAssigner` — data classification (C0-C4), regex pre-filter
+  - `DerelictionDetector` — insufficient tightening detection
+  - `BypassManager` — time-limited emergency overrides with anti-stacking
+  - `VacancyManager` — orphan detection, grandparent auto-designation
+  - `AuditTrail` — EATP hash chain with `hmac.compare_digest()`
+  - SDK integration: `EnvelopeAllocator` → `EnvelopeSplitter`, `ScopeBridge` → `ScopedContext`
+
+### L3 Integration & Event System
+
+- **[kaizen-l3-overview](kaizen-l3-overview.md)** -- L3 autonomy primitives, L3Runtime integration, EATP event system
+  - `L3Runtime` convenience class wiring all 5 subsystems (Factory->Enforcer, Factory->Router, Factory->Context, Enforcer->Plan)
+  - `L3EventBus` pub/sub for 15 governance event types across all primitives
+  - `EatpTranslator` converts L3 events into EATP audit records with severity classification
+
+- **[kaizen-agents-security](kaizen-agents-security.md)** — Security patterns for governance
+  - Anti-self-modification via `_ReadOnlyView` proxies
+  - Pervasive NaN/Inf defense (`math.isfinite()` on all numeric paths)
+  - Bounded collections, monotonic invariants, thread safety
+  - Delegate tool security (mandatory BashTool gate, ExecPolicy, session sanitization)
 
 ## Related Skills
 

@@ -20,4 +20,4 @@ class ReActSignature(Signature):
 ```
 
 ## References
-- **Examples**: `kaizen/examples/1-single-agent/react-agent/`
+- **Examples**: `examples/1-single-agent/react-agent/`

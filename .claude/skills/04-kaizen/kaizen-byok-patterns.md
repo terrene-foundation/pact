@@ -14,6 +14,8 @@ BaseAgentConfig(api_key="sk-tenant-123")
         → provider.chat(..., api_key="sk-tenant-123")
 ```
 
+Key module: `kailash/workflow/credentials.py`
+
 ## Usage: Per-Request API Key
 
 ```python
@@ -105,3 +107,8 @@ All provider exceptions pass through `sanitize_provider_error()` which strips AP
 
 ## Cross-References
 
+- `kailash/workflow/credentials.py` — CredentialStore
+- `kaizen/nodes/ai/error_sanitizer.py` — Error sanitization
+- `kaizen/nodes/ai/client_cache.py` — Client cache
+- `kaizen/config/providers.py` — Provider config functions
+- ADR-001: `workspaces/byok-hardening/02-plans/01-adr-credential-flow.md`

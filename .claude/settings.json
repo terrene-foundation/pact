@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "description": "PACT Platform - Claude Code hooks configuration",
+  "description": "Kailash COC Claude (Python) - Claude Code hooks configuration",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -35,11 +35,6 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-format.js\"",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/validate-hierarchy-grammar.js\"",
-            "timeout": 5
           }
         ]
       }
@@ -96,15 +91,5 @@
         ]
       }
     ]
-  },
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest", "--browser", "chromium"]
-    },
-    "marionette": {
-      "command": "marionette_mcp",
-      "args": []
-    }
   }
 }

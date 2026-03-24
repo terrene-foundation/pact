@@ -199,3 +199,6 @@ When this guidance is insufficient, consult:
 
 - `.claude/skills/15-enterprise-infrastructure/` - Complete infrastructure skills directory
 - `docs/enterprise-infrastructure/` - Full documentation with architecture diagrams
+- `kailash.db` module - QueryDialect, ConnectionManager, registry, migration
+- `kailash.infrastructure` module - Store backends, task queue, worker registry, idempotency
+- `workspaces/enterprise-infrastructure/04-validate/` - Red team report and convergence results

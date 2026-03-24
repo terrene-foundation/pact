@@ -6,9 +6,9 @@ These rules apply to ALL files in this repository — code, documentation, confi
 
 ## MUST Rules
 
-### 1. PACT Is a Standalone Foundation Product
+### 1. Kailash Python SDK Is a Standalone Foundation Product
 
-PACT is owned by the Terrene Foundation (Singapore CLG). It is an independent open-source product. All design decisions must be made on PACT's own merits — what is best for its users and the open-source community.
+Kailash Python SDK is owned by the Terrene Foundation (Singapore CLG). It is an independent open-source product. All design decisions must be made on the SDK's own merits — what is best for its users and the open-source community.
 
 ### 2. No Commercial References
 
@@ -20,39 +20,38 @@ MUST NOT reference, discuss, compare with, or design against any commercial or p
 - Market positioning or competitive differentiation (not a concern of this project)
 - Commercial deployment models (managed hosting, enterprise pricing, SaaS)
 
-**Why**: PACT is Foundation-owned and irrevocably open. It has no structural relationship with any commercial entity. Introducing commercial references — even for comparison — creates implicit coupling and suggests a relationship that does not exist.
+**Why**: Kailash Python SDK is Foundation-owned and irrevocably open. It has no structural relationship with any commercial entity. Introducing commercial references — even for comparison — creates implicit coupling and suggests a relationship that does not exist.
 
-**How to apply**: If you find yourself writing "unlike X" or "the open-source version of Y" or "differentiates from Z" — stop. Describe what PACT does on its own terms. If a feature is good for PACT users, build it. If it isn't, don't. The existence or non-existence of any other product is irrelevant.
+**How to apply**: If you find yourself writing "unlike X" or "the open-source version of Y" or "differentiates from Z" — stop. Describe what the Kailash Python SDK does on its own terms. If a feature is good for SDK users, build it. If it isn't, don't. The existence or non-existence of any other product is irrelevant.
 
 ### 3. Foundation-Only Dependencies
 
-PACT MUST depend only on:
+Kailash Python SDK MUST depend only on:
 
-- **Terrene Foundation open-source packages**: Kailash Python SDK (Core, DataFlow, Nexus, Kaizen), EATP SDK, trust-plane
 - **Standard open-source libraries**: From PyPI, with OSI-approved licenses
-- **Open standards**: CARE, EATP, CO (CC BY 4.0)
+- **Open standards**: CARE, EATP, CO (CC BY 4.0) where applicable
 
 MUST NOT depend on, import from, or interface with any proprietary SDK, runtime, or API.
 
 ### 4. No "Open-Source Version Of" Language
 
-MUST NOT describe PACT as:
+MUST NOT describe Kailash Python SDK as:
 
 - "The open-source version of [anything]"
-- "The open-source counterpart to [anything]"
+- "The Python port of [anything]"
 - "The community edition of [anything]"
 
-PACT IS the product. It is not a derivative, counterpart, or edition of something else.
+Kailash Python SDK IS the product. It is not a derivative, port, counterpart, or edition of something else.
 
-**Correct**: "PACT is the Terrene Foundation's open-source governed operational model."
-**Incorrect**: "PACT is the open-source version of [product name]."
+**Correct**: "Kailash Python SDK is the Terrene Foundation's open-source workflow orchestration platform."
+**Incorrect**: "Kailash Python SDK is the Python version of [product name]."
 
-### 5. Design for PACT Users
+### 5. Design for SDK Users
 
 All feature decisions, architectural choices, and roadmap priorities must be driven by:
 
-- What PACT users need
-- What the CARE, EATP, and CO standards require
+- What SDK users need
+- What Python developers expect from a workflow orchestration SDK
 - What the open-source community contributes
 
 Never by what any other product does, doesn't do, or plans to do.
@@ -86,4 +85,4 @@ MUST NOT:
 
 ## Clarification
 
-Third parties — anyone, anywhere — may build commercial products on top of PACT and Foundation standards. That is the intended open-source model. But PACT itself has zero knowledge of, zero dependency on, and zero design consideration for any such product. If someone builds on PACT, they adapt to PACT — not the other way around.
+Third parties — anyone, anywhere — may build commercial products on top of the Kailash Python SDK and Foundation standards. That is the intended open-source model. But the SDK itself has zero knowledge of, zero dependency on, and zero design consideration for any such product. If someone builds on Kailash, they adapt to Kailash — not the other way around.

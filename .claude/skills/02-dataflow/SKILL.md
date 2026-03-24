@@ -86,6 +86,7 @@ Each `@db.model` class generates:
 
 - **[dataflow-crud-operations](dataflow-crud-operations.md)** - Create, Read, Update, Delete
 - **[dataflow-queries](dataflow-queries.md)** - Query patterns and filtering
+- **[dataflow-aggregation](dataflow-aggregation.md)** - SQL aggregation queries (COUNT/SUM/AVG/MIN/MAX GROUP BY)
 - **[dataflow-bulk-operations](dataflow-bulk-operations.md)** - Batch operations
 - **[dataflow-transactions](dataflow-transactions.md)** - Transaction management
 - **[dataflow-connection-isolation](dataflow-connection-isolation.md)** - ⚠️ CRITICAL: ACID guarantees
@@ -106,6 +107,11 @@ Each `@db.model` class generates:
 - **ErrorEnhancer** - Automatic error enhancement (40+ DF-XXX codes)
 - **Inspector API** - Self-service debugging (18 introspection methods)
 - **CLI Tools** - dataflow-validate, dataflow-analyze, dataflow-debug (5 commands)
+
+### Connection Pool & Monitoring
+
+- **[dataflow-connection-config](dataflow-connection-config.md)** - Pool auto-scaling, env vars, override scenarios
+- **[dataflow-monitoring](dataflow-monitoring.md)** - Pool utilization, leak detection, health checks, diagnostics
 
 ### Troubleshooting
 
@@ -177,5 +183,5 @@ Use DataFlow when you need to:
 For DataFlow-specific questions, invoke:
 
 - `dataflow-specialist` - DataFlow implementation and patterns
-- `testing-specialist` - DataFlow testing strategies (NO MOCKING policy)
+- `testing-specialist` - DataFlow testing strategies (real infrastructure policy)
 - `framework-advisor` - Choose between Core SDK and DataFlow

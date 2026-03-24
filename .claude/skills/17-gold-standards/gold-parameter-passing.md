@@ -232,6 +232,7 @@ except ValueError as e:  # Missing required parameters
 ### Primary Sources
 
 ### Internal Implementation
+- `kailash/runtime/local.py:1621-1640` - Parameter scoping implementation
 
 ## Quick Tips
 

@@ -158,24 +158,6 @@ function buildWorkspaceSummary(cwd) {
     parts.push(`Todos: ${todos.active} active / ${todos.completed} done`);
   }
 
-  // Detect governance artifacts in the project source tree
-  const srcDir = path.join(cwd, "src");
-  if (fs.existsSync(srcDir)) {
-    try {
-      const srcEntries = fs.readdirSync(srcDir, { withFileTypes: true });
-      for (const entry of srcEntries.filter((e) => e.isDirectory())) {
-        const govDir = path.join(srcDir, entry.name, "governance");
-        if (fs.existsSync(govDir) && dirHasFiles(govDir)) {
-          const govFiles = fs
-            .readdirSync(govDir)
-            .filter((f) => f.endsWith(".py") && !f.startsWith("__"));
-          parts.push(`Governance: ${govFiles.length} modules`);
-          break;
-        }
-      }
-    } catch {}
-  }
-
   return parts.join(" | ");
 }
 
