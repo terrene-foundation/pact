@@ -86,7 +86,7 @@ def get_request(request_id: str) -> dict:
     wf = db.create_workflow()
     wf.add_node("AgenticRequestReadNode", "read", {"id": request_id})
     result = _exec(wf)["read"]
-    if not result or result.get("found") is False:
+    if not result or result.get("found") is False or result.get("failed"):
         raise HTTPException(404, f"Request {request_id} not found")
     return result
 

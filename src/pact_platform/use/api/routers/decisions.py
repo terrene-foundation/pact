@@ -76,7 +76,7 @@ def get_decision(decision_id: str) -> dict:
     wf = db.create_workflow()
     wf.add_node("AgenticDecisionReadNode", "read", {"id": decision_id})
     result = _exec(wf)["read"]
-    if not result or result.get("found") is False:
+    if not result or result.get("found") is False or result.get("failed"):
         raise HTTPException(404, f"Decision {decision_id} not found")
     return result
 
@@ -96,7 +96,7 @@ def _read_and_validate_pending(decision_id: str) -> dict:
     wf.add_node("AgenticDecisionReadNode", "read", {"id": decision_id})
     result = _exec(wf)["read"]
 
-    if not result or result.get("found") is False:
+    if not result or result.get("found") is False or result.get("failed"):
         raise HTTPException(404, f"Decision {decision_id} not found")
 
     current_status = result.get("status", "")

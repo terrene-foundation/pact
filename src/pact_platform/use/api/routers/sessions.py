@@ -53,7 +53,7 @@ def get_session(session_id: str) -> dict:
     wf = db.create_workflow()
     wf.add_node("AgenticWorkSessionReadNode", "read", {"id": session_id})
     result = _exec(wf)["read"]
-    if not result or result.get("found") is False:
+    if not result or result.get("found") is False or result.get("failed"):
         raise HTTPException(404, f"Session {session_id} not found")
     return result
 

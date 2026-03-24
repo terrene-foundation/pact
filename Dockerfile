@@ -47,7 +47,8 @@ EXPOSE 8080
 
 ENV PACT_API_HOST=0.0.0.0 \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DATABASE_URL=sqlite:////app/pact_platform.db
 
 # Start with seeded data — seeds on every cold start, then serves
 CMD sh -c "python scripts/run_seeded_server.py"

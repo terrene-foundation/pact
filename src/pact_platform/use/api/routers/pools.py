@@ -101,7 +101,7 @@ def get_pool(pool_id: str) -> dict:
     wf = db.create_workflow()
     wf.add_node("AgenticPoolReadNode", "read", {"id": pool_id})
     result = _exec(wf)["read"]
-    if not result or result.get("found") is False:
+    if not result or result.get("found") is False or result.get("failed"):
         raise HTTPException(404, f"Pool {pool_id} not found")
     return result
 
