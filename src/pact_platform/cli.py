@@ -38,7 +38,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from pact import __version__
+from pact_platform import __version__
 
 logger = logging.getLogger(__name__)
 

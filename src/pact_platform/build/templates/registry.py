@@ -3,7 +3,7 @@
 """Constraint Envelope Template Library — predefined team templates.
 
 Provides TeamTemplate and TemplateRegistry for creating teams from
-pre-configured templates. Templates cover the six Foundation team types:
+pre-configured templates. Templates cover common organizational team types:
 media, governance, standards, partnerships, engineering, and executive.
 
 Each template includes:
@@ -1365,7 +1365,7 @@ def _executive_template() -> TeamTemplate:
 class TemplateRegistry:
     """Registry of predefined team templates.
 
-    Loaded with built-in templates for the six Foundation team types
+    Loaded with built-in team templates
     on construction. Supports list(), get(), apply() with overrides,
     register() with validation, and load_from_yaml() for custom templates.
     """

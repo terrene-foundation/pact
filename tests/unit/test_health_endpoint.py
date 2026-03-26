@@ -75,14 +75,16 @@ class TestHealthEndpoint:
         resp = await client.get("/health")
         data = resp.json()
         assert "version" in data
-        assert data["version"] == pact.__version__
+        from pact_platform import __version__ as platform_ver
+
+        assert data["version"] == platform_ver
 
     @pytest.mark.asyncio
     async def test_health_version_matches_package(self, client: httpx.AsyncClient):
         """Version in health response must match pact.__version__."""
         resp = await client.get("/health")
         data = resp.json()
-        from pact import __version__
+        from pact_platform import __version__
 
         assert data["version"] == __version__
 

@@ -44,7 +44,7 @@ version: "1.0"
 
 class TestCLIVersion:
     def test_version_flag(self, runner):
-        from pact import __version__
+        from pact_platform import __version__
         from pact_platform.build.cli import main
 
         result = runner.invoke(main, ["--version"])

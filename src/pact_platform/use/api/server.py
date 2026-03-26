@@ -30,6 +30,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 import pact
+from pact_platform import __version__ as _platform_version
 from pact_platform.build.config.env import EnvConfig, load_env_config
 from pact_platform.build.workspace.bridge import BridgeManager
 from pact_platform.build.workspace.models import WorkspaceRegistry
@@ -361,7 +362,7 @@ def create_app(
         return {
             "status": "healthy",
             "service": "pact",
-            "version": pact.__version__,
+            "version": _platform_version,
             "components": {
                 "api": "ok",
                 "trust_store": "ok",

@@ -27,7 +27,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from pact import __version__
+from pact_platform import __version__
 from pact_platform.build.config.env import _load_dotenv
 from pact_platform.build.config.loader import ConfigError, load_config
 

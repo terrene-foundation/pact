@@ -1,1 +1,3 @@
-"""BUILD plane — define organizations (Shadow Enterprise, templates, org builder)."""
+# Copyright 2026 Terrene Foundation
+# SPDX-License-Identifier: Apache-2.0
+"""BUILD plane — define organizations (templates, org builder)."""
