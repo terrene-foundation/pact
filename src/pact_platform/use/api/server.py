@@ -879,7 +879,10 @@ def create_app(
                 rec = dm_runner.get_upgrade_recommendation(agent_id)
                 return ApiResponse(status="ok", data=rec)
             except KeyError as exc:
-                return ApiResponse(status="error", error=str(exc))
+                logger.exception("get_upgrade_recommendation failed for agent_id=%s", agent_id)
+                return ApiResponse(
+                    status="error", error="Upgrade recommendation not found for agent"
+                )
 
     # ------------------------------------------------------------------
     # Prometheus metrics endpoint (Task 5025)

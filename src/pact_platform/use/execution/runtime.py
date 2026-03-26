@@ -652,6 +652,13 @@ class ExecutionRuntime:
         # or default to AUTO_APPROVED if governance engine is not configured.
         # For non-governed agents, check NEVER_DELEGATED_ACTIONS and SUPERVISED posture.
         if not task.metadata.get("_governance_verified"):
+            if self._governance_engine is None:
+                logger.warning(
+                    "No governance engine configured — task '%s' action '%s' defaulting to AUTO_APPROVED. "
+                    "Configure a GovernanceEngine for production use.",
+                    task.task_id,
+                    task.action,
+                )
             # No governance engine configured: default AUTO_APPROVED
             if task.verification_level is None:
                 task.verification_level = VerificationLevel.AUTO_APPROVED

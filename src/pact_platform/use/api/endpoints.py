@@ -411,12 +411,11 @@ class PactAPI:
                 },
             )
         except ValueError as e:
-            logger.warning(
-                "API: approve_action failed — action_id=%s error=%s",
+            logger.exception(
+                "API: approve_action failed — action_id=%s",
                 action_id,
-                str(e),
             )
-            return ApiResponse(status="error", error=str(e))
+            return ApiResponse(status="error", error="Action approval failed")
 
     def reject_action(
         self,
@@ -471,12 +470,11 @@ class PactAPI:
                 },
             )
         except ValueError as e:
-            logger.warning(
-                "API: reject_action failed — action_id=%s error=%s",
+            logger.exception(
+                "API: reject_action failed — action_id=%s",
                 action_id,
-                str(e),
             )
-            return ApiResponse(status="error", error=str(e))
+            return ApiResponse(status="error", error="Action rejection failed")
 
     def held_actions(self) -> ApiResponse:
         """List all pending approval actions."""
@@ -1022,8 +1020,8 @@ class PactAPI:
                     ),
                 )
         except Exception as exc:
-            logger.warning("create_bridge: failed — %s", exc)
-            return ApiResponse(status="error", error=str(exc))
+            logger.exception("create_bridge: failed")
+            return ApiResponse(status="error", error="Bridge creation failed")
 
         logger.info(
             "API: bridge created — bridge_id=%s type=%s",
@@ -1112,13 +1110,12 @@ class PactAPI:
             else:
                 bridge = self._bridge_manager.approve_bridge_target(bridge_id, approver_id)
         except ValueError as exc:
-            logger.warning(
-                "API: approve_bridge failed — bridge_id=%s side=%s error=%s",
+            logger.exception(
+                "API: approve_bridge failed — bridge_id=%s side=%s",
                 bridge_id,
                 side,
-                exc,
             )
-            return ApiResponse(status="error", error=str(exc))
+            return ApiResponse(status="error", error="Bridge approval failed")
 
         logger.info(
             "API: bridge approved — bridge_id=%s side=%s approver=%s status=%s",
@@ -1154,12 +1151,11 @@ class PactAPI:
         try:
             bridge = self._bridge_manager.suspend_bridge(bridge_id, reason)
         except ValueError as exc:
-            logger.warning(
-                "API: suspend_bridge failed — bridge_id=%s error=%s",
+            logger.exception(
+                "API: suspend_bridge failed — bridge_id=%s",
                 bridge_id,
-                exc,
             )
-            return ApiResponse(status="error", error=str(exc))
+            return ApiResponse(status="error", error="Bridge suspension failed")
 
         logger.info(
             "API: bridge suspended — bridge_id=%s reason=%s",
@@ -1193,12 +1189,11 @@ class PactAPI:
         try:
             bridge = self._bridge_manager.close_bridge(bridge_id, reason)
         except ValueError as exc:
-            logger.warning(
-                "API: close_bridge failed — bridge_id=%s error=%s",
+            logger.exception(
+                "API: close_bridge failed — bridge_id=%s",
                 bridge_id,
-                exc,
             )
-            return ApiResponse(status="error", error=str(exc))
+            return ApiResponse(status="error", error="Bridge close failed")
 
         logger.info(
             "API: bridge closed — bridge_id=%s reason=%s",
@@ -1349,12 +1344,11 @@ class PactAPI:
         try:
             metrics = self._shadow_enforcer.get_metrics(agent_id)
         except KeyError as exc:
-            logger.warning(
-                "shadow_metrics: no evaluations for agent '%s': %s",
+            logger.exception(
+                "shadow_metrics: no evaluations for agent '%s'",
                 agent_id,
-                exc,
             )
-            return ApiResponse(status="error", error=str(exc))
+            return ApiResponse(status="error", error="Shadow metrics not found for agent")
 
         return ApiResponse(
             status="ok",
@@ -1400,12 +1394,11 @@ class PactAPI:
         try:
             report = self._shadow_enforcer.generate_report(agent_id)
         except KeyError as exc:
-            logger.warning(
-                "shadow_report: no evaluations for agent '%s': %s",
+            logger.exception(
+                "shadow_report: no evaluations for agent '%s'",
                 agent_id,
-                exc,
             )
-            return ApiResponse(status="error", error=str(exc))
+            return ApiResponse(status="error", error="Shadow report not found for agent")
 
         return ApiResponse(
             status="ok",

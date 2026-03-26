@@ -31,8 +31,7 @@ class RequestRouterService:
     Args:
         db: DataFlow instance for persistence.
         governance_engine: Optional GovernanceEngine.  When ``None``,
-            governance verification is skipped and requests are approved
-            unconditionally.
+            all requests are blocked (fail-closed).
     """
 
     def __init__(
@@ -42,6 +41,10 @@ class RequestRouterService:
     ) -> None:
         self._db = db
         self._governance_engine = governance_engine
+        if governance_engine is None:
+            logger.warning(
+                "RequestRouterService created without governance engine — all requests will be blocked"
+            )
 
     # ------------------------------------------------------------------
     # Public API
@@ -61,7 +64,7 @@ class RequestRouterService:
            - **blocked** -> reject immediately.
            - **held** -> persist an ``AgenticDecision`` for human review.
            - **auto_approved** / **flagged** -> assign to pool.
-        3. If no governance engine is set, treat as auto-approved.
+        3. If no governance engine is set, reject immediately (fail-closed).
 
         Args:
             request_id: Existing ``AgenticRequest.id``.
@@ -88,6 +91,18 @@ class RequestRouterService:
         cost_val = ctx.get("cost")
         if cost_val is not None:
             validate_finite(cost=cost_val)
+
+        # Fail-closed: governance engine required
+        if self._governance_engine is None:
+            logger.warning(
+                "Governance engine not configured — fail-closed BLOCKED for request %s",
+                request_id,
+            )
+            return {
+                "status": "blocked",
+                "reason": "Governance engine not configured — fail-closed",
+                "request_id": request_id,
+            }
 
         # ----- Governance verification -----
         if self._governance_engine is not None:
