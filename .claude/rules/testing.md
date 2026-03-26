@@ -21,7 +21,7 @@ Tests run ONCE per code change, not once per phase. This eliminates redundant te
 **The Protocol:**
 
 1. `/implement` runs the full test suite ONCE per todo and writes `.test-results` to the workspace
-2. `/redteam` READS `.test-results` -- does NOT re-run existing tests
+2. `/redteam` READS `.test-results` — does NOT re-run existing tests
 3. `/redteam` runs only NEW tests it creates (E2E user flows, Playwright, Marionette)
 4. Pre-commit hook runs Tier 1 unit tests as a fast safety net
 5. CI runs the full matrix as the final gate
@@ -50,7 +50,7 @@ Every bug fix MUST include a regression test BEFORE the fix is merged.
 3. Regression tests go in `tests/regression/test_issue_*.py`
 4. Mark with `@pytest.mark.regression`
 5. The test name includes the issue number (e.g., `test_issue_42_user_creation_drops_pk`)
-6. Regression tests are NEVER deleted -- they are permanent guards
+6. Regression tests are NEVER deleted — they are permanent guards
 
 **Why:** Without regression tests, the same bugs keep coming back. A fix verified only by code review is not verified at all.
 
@@ -62,7 +62,7 @@ import pytest
 
 @pytest.mark.regression
 def test_issue_42_user_creation_preserves_explicit_id():
-    """Regression: #42 -- CreateUser silently drops explicit id.
+    """Regression: #42 — CreateUser silently drops explicit id.
 
     The bug: when auto_increment is enabled, passing an explicit id was silently ignored.
     Fixed in: commit abc1234
@@ -79,7 +79,7 @@ def test_issue_42_user_creation_preserves_explicit_id():
 - Pre-release: regression suite is a mandatory checklist item
 
 **Applies to**: All bug fixes
-**Violation**: BLOCK merge -- a fix without a regression test is not a fix
+**Violation**: BLOCK merge — a fix without a regression test is not a fix
 
 ### 1. Test-First Development
 
@@ -109,9 +109,9 @@ Code changes MUST maintain or improve test coverage.
 **Enforced by**: CI coverage check
 **Violation**: BLOCK merge
 
-### 3. Real Infrastructure Recommended in Tiers 2-3
+### 3. Real Infrastructure in Tiers 2-3
 
-Integration and E2E tests SHOULD use real infrastructure where practical.
+Integration and E2E tests MUST use real infrastructure.
 
 **Tier 1 (Unit Tests)**:
 
@@ -121,22 +121,47 @@ Integration and E2E tests SHOULD use real infrastructure where practical.
 
 **Tier 2 (Integration Tests)**:
 
-- Real infrastructure recommended (real database, real API)
-- Mocking is acceptable for external services that are difficult to provision
+- Real infrastructure recommended - use real database
 - Test component interactions
+- Real API calls (use test server)
 
 **Tier 3 (E2E Tests)**:
 
-- Real infrastructure recommended
+- Real infrastructure recommended - real everything
 - Test full user journeys
-- Real browser, real database when feasible
+- Real browser, real database
+- **State persistence verification** — every write operation MUST be verified with a read-back (navigate away, reload, re-query). API 200 is NOT sufficient proof of persistence. See `rules/e2e-god-mode.md` Rule 6.
 
 **Enforced by**: validate-workflow hook
-**Violation**: Review recommendation
+**Violation**: Test invalid
 
-## MUST NOT Rules
+## MUST NOT Rules (CRITICAL)
 
-### 1. No Test Pollution
+### 1. Real infrastructure recommended in Tier 2-3
+
+MUST NOT use mocking in integration or E2E tests.
+
+**Detection Patterns**:
+
+```python
+❌ @patch('module.function')
+❌ MagicMock()
+❌ unittest.mock
+❌ from mock import Mock
+❌ mocker.patch()
+```
+
+**Why This Matters**:
+
+- Mocks hide real integration issues
+- Mocks don't catch API contract changes
+- Mocks give false confidence
+- Bugs slip through to production
+
+**Enforced by**: validate-workflow hook
+**Consequence**: Test invalid, must rewrite
+
+### 2. No Test Pollution
 
 Tests MUST NOT affect other tests.
 
@@ -146,7 +171,7 @@ Tests MUST NOT affect other tests.
 - Isolated test databases
 - No shared mutable state
 
-### 2. No Flaky Tests
+### 3. No Flaky Tests
 
 Tests MUST be deterministic.
 
@@ -189,10 +214,35 @@ def db():
     db.close()
 
 def test_user_creation(db):
-    # Real database operations
+    # Real infrastructure recommended - real database operations
     result = db.execute(CreateUser(name="test"))
     assert result.id is not None
+
+    # STATE PERSISTENCE: Always read back after write
+    # DataFlow silently ignores unknown params — verify the write actually wrote
+    user = db.execute(ReadUser(filter={"id": result.id}))
+    assert user is not None
+    assert user.name == "test"
 ```
+
+### State Persistence Verification (MANDATORY for Tiers 2-3)
+
+Every test that writes data MUST verify persistence with a read-back:
+
+```python
+# ❌ BAD: Only checks API response
+result = api.create_company(name="Acme")
+assert result.status == 200  # DataFlow may have silently ignored params!
+
+# ✅ GOOD: Verifies state persisted
+result = api.create_company(name="Acme")
+assert result.status == 200
+# Read back to verify
+company = api.get_company(result.id)
+assert company.name == "Acme"
+```
+
+**Why**: DataFlow `UpdateNode` silently ignores unknown parameter names (`conditions`/`updates` instead of `filter`/`fields`). The API returns success but zero bytes are written. This is the #1 source of false-positive tests.
 
 ### Workflow Testing
 

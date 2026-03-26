@@ -2,7 +2,7 @@
 
 ## Scope
 
-These rules apply when editing `kailash/trust/` files (excluding `plane/`)
+These rules apply when working with EATP trust code
 
 ## SDK Conventions
 

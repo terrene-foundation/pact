@@ -27,7 +27,7 @@ dependencies = [
     "kailash[trust,pact]>=2.1.0",
     "kailash-pact>=0.4.0",
     "kailash-dataflow>=1.2.0",
-    "kailash-kaizen>=2.2.1",
+    "kailash-kaizen>=2.3.0",
     # CLI Framework
     "click>=8.0",
     "rich>=13.0.0",
@@ -57,7 +57,7 @@ nexus = [
 ]
 # kaizen-agents (GovernedSupervisor — Delegate engine)
 agents = [
-    "kaizen-agents>=0.1.0",
+    "kaizen-agents>=0.3.0",
 ]
 # Firebase Admin SDK for SSO token verification
 firebase = [

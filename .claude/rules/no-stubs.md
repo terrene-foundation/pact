@@ -1,24 +1,22 @@
-# Avoid Stubs, TODOs, or Simulated Data in Production
+# No Stubs, TODOs, or Simulated Data
 
 ## Scope
 
 These rules apply to ALL production code (non-test files).
 
-## SHOULD NOT Rules
+## MUST NOT Rules
 
-### 1. Avoid Stubs or Placeholders in Production Code
+### 1. No Stubs or Placeholders
 
 Production code SHOULD NOT contain:
 
-- `TODO`, `FIXME`, `HACK`, `STUB`, `XXX` markers in shipped code
+- `TODO`, `FIXME`, `HACK`, `STUB`, `XXX` markers
 - `raise NotImplementedError` (implement the method)
 - `pass # placeholder` or `pass # stub`
 - `return None # not implemented`
 - Empty function/method bodies that should have logic
 
-**Note**: During active development and iteration, TODOs may be used temporarily to track work in progress. Remove them before shipping.
-
-### 2. Avoid Simulated or Fake Data
+### 2. No Simulated or Fake Data
 
 Production code SHOULD NOT contain:
 
@@ -27,9 +25,9 @@ Production code SHOULD NOT contain:
 - `return {"status": "ok"}` as a placeholder for real logic
 - Test fixtures masquerading as production defaults
 
-### 3. Avoid Silent Fallbacks
+### 3. No Silent Fallbacks
 
-Production code SHOULD NOT silently swallow errors:
+Production code MUST NOT silently swallow errors:
 
 - `except: pass` (bare except with pass)
 - `catch(e) {}` (empty catch block)
@@ -41,16 +39,16 @@ Production code SHOULD NOT silently swallow errors:
 
 When implementing a feature:
 
-- Implement ALL methods fully, not just the happy path
-- If an endpoint exists, it should return real data
-- If a service is referenced, it should be functional
-- Prefer implementing over leaving "will implement later" comments
+- Aim to implement ALL methods fully, not just the happy path
+- If an endpoint exists, it must return real data
+- If a service is referenced, it must be functional
+- Never leave "will implement later" comments
 
 ## Enforcement
 
-- **PostToolUse hook**: `validate-workflow.js` warns on stub patterns in production Python code
-- **UserPromptSubmit hook**: Injects reminder every turn
-- **Red-team agents**: Scan for violations during validation rounds
+- **PostToolUse hook**: `validate-workflow.js` **BLOCKS** (exit code 2) stub patterns in production Python code. This is NOT a warning — it stops the operation.
+- **UserPromptSubmit hook**: Injects zero-tolerance reminder every turn
+- **Red-team agents**: Scan for violations during validation rounds. If a stub is found, the red team MUST fix it — not report it.
 
 ## Why This Matters
 
@@ -65,6 +63,6 @@ Stubs and TODOs accumulate silently. Each one is a hidden failure point:
 
 Test files (`test_*`, `*_test.*`, `*.test.*`, `*.spec.*`, `__tests__/`) are excluded from stub detection.
 
-During active development, TODOs are acceptable as temporary markers. Remove them before releasing or shipping production code.
+**Exceptions may be made for iterative development where TODOs are actively tracked.** Previous versions of this rule allowed stubs with "explicit user approval." Users iterating on projects may use TODOs when actively tracked. If you cannot implement something, ask the user what the behavior should be, then implement it. If the user says "remove it entirely," delete the function — do NOT leave a stub.
 
 See also: `rules/zero-tolerance.md` (Absolute Rule 2)

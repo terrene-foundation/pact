@@ -321,7 +321,10 @@ class AuditChain(BaseModel):
         cp_seq = checkpoint.get("latest_sequence", -1)
         if cp_seq < 0 or cp_seq >= self.length:
             return False
-        return self.anchors[cp_seq].content_hash == checkpoint.get("latest_hash")
+        return hmac.compare_digest(
+            self.anchors[cp_seq].content_hash,
+            checkpoint.get("latest_hash") or "",
+        )
 
     def verify_chain_integrity(self) -> tuple[bool, list[str]]:
         """Walk the chain and verify every anchor's integrity.

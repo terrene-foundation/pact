@@ -199,7 +199,7 @@ function checkPythonPackageFreshness(cwd) {
     {
       name: "kailash",
       pyproject: "pyproject.toml",
-      init: "kailash/__init__.py",
+      init: "src/kailash/__init__.py",
     },
   ];
 
