@@ -85,6 +85,7 @@ class ApprovalQueue:
         max_queue_depth: int = 100,
         max_resolved_history: int = 10000,
         on_expire: Callable[[PendingAction], None] | None = None,
+        timeout_seconds: int = 86400,
     ) -> None:
         self._lock = threading.Lock()  # RT9-03: thread-safe queue access
         self._pending: list[PendingAction] = []
@@ -96,6 +97,8 @@ class ApprovalQueue:
         self.max_queue_depth: int = max_queue_depth
         # RT2-35: Optional callback invoked for each expired action (e.g., audit recording)
         self._on_expire: Callable[[PendingAction], None] | None = on_expire
+        # TODO-09: HELD timeout — actions pending longer than this are auto-denied
+        self._timeout_seconds: int = timeout_seconds
 
     def _check_expiry(self) -> None:
         """Lazily expire old pending actions.
@@ -398,3 +401,40 @@ class ApprovalQueue:
                 self._on_expire(pa)
 
         return expired
+
+    def check_timeouts(self) -> list[str]:
+        """Auto-deny pending actions that exceed the approval timeout.
+
+        Iterates all pending actions and marks any that have been pending
+        longer than ``timeout_seconds`` as ``"timeout_denied"``.  Already-
+        resolved actions (approved, rejected, expired) are not affected.
+
+        Returns:
+            List of action IDs that were timed out and auto-denied.
+        """
+        cutoff = datetime.now(UTC) - timedelta(seconds=self._timeout_seconds)
+        timed_out_ids: list[str] = []
+        still_pending: list[PendingAction] = []
+
+        with self._lock:
+            now = datetime.now(UTC)
+            for pa in self._pending:
+                if pa.submitted_at < cutoff:
+                    pa.status = "timeout_denied"
+                    pa.decided_at = now
+                    pa.decision_reason = (
+                        "Auto-denied: exceeded approval timeout " "per EATP guidance"
+                    )
+                    timed_out_ids.append(pa.action_id)
+                    self._resolved.append(pa)
+                    logger.info(
+                        "Action timeout-denied: action_id=%s agent=%s " "(pending > %ds)",
+                        pa.action_id,
+                        pa.agent_id,
+                        self._timeout_seconds,
+                    )
+                else:
+                    still_pending.append(pa)
+            self._pending = still_pending
+
+        return timed_out_ids

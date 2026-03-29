@@ -1235,6 +1235,18 @@ class ExecutionRuntime:
             )
 
             # Map governance verdict levels to runtime behavior
+            # TODO-13: Attach reasoning trace to HELD/BLOCKED verdicts
+            # so the platform records WHY the constraint triggered.
+            if verdict.level in ("held", "blocked"):
+                task.metadata["reasoning_trace"] = {
+                    "verdict": verdict.level,
+                    "reason": verdict.reason,
+                    "role_address": role_address,
+                    "action": task.action,
+                    "envelope_snapshot": getattr(verdict, "effective_envelope_snapshot", None),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+
             if verdict.level == "blocked":
                 with self._lock:
                     task.status = TaskStatus.BLOCKED

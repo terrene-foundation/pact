@@ -26,7 +26,11 @@ export type { AgentEntry } from "./use-agents";
 export { useTrustChains, useTrustChainDetail } from "./use-trust-chains";
 
 // Envelopes
-export { useEnvelopes, useEnvelopeDetail } from "./use-envelopes";
+export {
+  useEnvelopes,
+  useEnvelopeDetail,
+  useUpdateEnvelope,
+} from "./use-envelopes";
 
 // Approvals
 export {
@@ -88,3 +92,6 @@ export {
   useAddPoolMember,
   useRemovePoolMember,
 } from "./use-pools";
+
+// Org Builder
+export { useOrgStructure, useDeployOrg } from "./use-org";

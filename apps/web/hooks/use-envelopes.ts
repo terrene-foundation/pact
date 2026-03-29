@@ -5,10 +5,11 @@
  * React Query hooks for constraint envelope data.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiClientAsync } from "@/lib/use-api";
 import { queryKeys } from "@/lib/query-keys";
 import { STALE_TIMES } from "@/lib/query-provider";
+import type { ConstraintEnvelope } from "@/types/pact";
 
 /** Fetch all constraint envelopes. */
 export function useEnvelopes() {
@@ -38,5 +39,35 @@ export function useEnvelopeDetail(envelopeId: string) {
     },
     staleTime: STALE_TIMES.standard,
     enabled: !!envelopeId,
+  });
+}
+
+/** Update envelope constraint values via PUT. */
+export function useUpdateEnvelope() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      envelopeId,
+      data,
+    }: {
+      envelopeId: string;
+      data: Parameters<
+        Awaited<ReturnType<typeof getApiClientAsync>>["updateEnvelope"]
+      >[1];
+    }) => {
+      const client = await getApiClientAsync();
+      const res = await client.updateEnvelope(envelopeId, data);
+      if (res.status === "error")
+        throw new Error(res.error ?? "Failed to update envelope");
+      return res.data as ConstraintEnvelope;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.envelopes.detail(variables.envelopeId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.envelopes.all,
+      });
+    },
   });
 }

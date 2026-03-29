@@ -15,7 +15,10 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardShell from "../../components/layout/DashboardShell";
 import AuditTable from "../../components/audit/AuditTable";
 import Pagination from "../../components/audit/elements/Pagination";
@@ -165,13 +168,52 @@ function AuditTableSkeleton() {
   );
 }
 
+/** Valid verification levels for URL param validation. */
+const VALID_LEVELS = new Set<string>([
+  "AUTO_APPROVED",
+  "FLAGGED",
+  "HELD",
+  "BLOCKED",
+]);
+
 export default function AuditPage() {
-  const [filters, setFilters] = useState<AuditFilterState>(EMPTY_FILTERS);
+  return (
+    <Suspense>
+      <AuditPageInner />
+    </Suspense>
+  );
+}
+
+function AuditPageInner() {
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<AuditFilterState>(() => {
+    const levelParam = searchParams.get("level") ?? "";
+    const normalizedLevel = levelParam.toUpperCase();
+    return {
+      ...EMPTY_FILTERS,
+      level: VALID_LEVELS.has(normalizedLevel)
+        ? (normalizedLevel as VerificationLevel)
+        : "",
+    };
+  });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selectedAnchor, setSelectedAnchor] = useState<AuditAnchor | null>(
     null,
   );
+
+  // Sync filter state when URL search params change externally
+  useEffect(() => {
+    const levelParam = searchParams.get("level") ?? "";
+    const normalizedLevel = levelParam.toUpperCase();
+    if (VALID_LEVELS.has(normalizedLevel)) {
+      setFilters((prev) => ({
+        ...prev,
+        level: normalizedLevel as VerificationLevel,
+      }));
+      setPage(1);
+    }
+  }, [searchParams]);
 
   const { data, isLoading, error, refetch } = useAuditAnchors();
 
