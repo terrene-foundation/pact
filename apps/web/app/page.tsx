@@ -323,10 +323,12 @@ export default function OverviewPage() {
   const activeAgents =
     chainsData?.trust_chains.filter((c) => c.status === "active").length ?? 0;
   const totalAgents = chainsData?.trust_chains.length ?? 0;
-  const agentTrend = activeAgents > 0 ? `+${Math.min(activeAgents, 2)}` : "0";
+  const agentTrend = totalAgents > 0 ? `${activeAgents}/${totalAgents}` : "0";
 
   const totalCostToday = costData ? parseFloat(costData.total_cost) : 0;
-  const dailyBudget = 50;
+  const dailyBudget = (costData as Record<string, unknown>)?.daily_budget
+    ? parseFloat(String((costData as Record<string, unknown>).daily_budget))
+    : 100;
   const budgetPercent =
     dailyBudget > 0 ? Math.round((totalCostToday / dailyBudget) * 100) : 0;
 
