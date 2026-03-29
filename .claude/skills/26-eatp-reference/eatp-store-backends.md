@@ -322,7 +322,6 @@ def _safe_connection(self):
 
 ## See Also
 
-- `kailash/trust/plane/CLAUDE.md` — Store Architecture section, Store Security Contract
 - `workspaces/trust-plane/04-validate/09-R13-store-red-team.md` — R13 findings that informed this skill
 - `workspaces/trust-plane/04-validate/R14-validation-report.md` — R14 findings (PostgreSQL PoolTimeout, exception wrapping)
 - TODO-24: PostgreSQL backend — first real application of this codified pattern

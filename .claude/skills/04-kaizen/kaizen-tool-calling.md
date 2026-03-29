@@ -283,7 +283,7 @@ result = await agent.execute_tool("git_status", {})
 Agents can autonomously call tools during execution:
 
 ```python
-from kaizen.agents import ReActAgent
+from kaizen_agents.agents import ReActAgent
 
 # ReActAgent uses tools autonomously
 agent = ReActAgent(
@@ -445,7 +445,7 @@ class SafeAgent(BaseAgent):
 ```python
 # NOTE: kaizen.agents.coordination is DEPRECATED (removal in v0.5.0)
 # Use kaizen.orchestration.patterns instead
-from kaizen.orchestration.patterns import SupervisorWorkerPattern
+from kaizen_agents.patterns.patterns import SupervisorWorkerPattern
 
 # Supervisor with tools
 supervisor = SupervisorAgent(config, tools="all"  # Enable 12 builtin tools via MCP
@@ -567,7 +567,7 @@ response = await agent.execute_tool("http_get", {
 - **[kaizen-control-protocol.md](kaizen-control-protocol.md)** - Interactive approval workflows
 - **[kaizen-baseagent-quick.md](kaizen-baseagent-quick.md)** - BaseAgent fundamentals
 - **[kaizen-react-pattern.md](kaizen-react-pattern.md)** - Autonomous reasoning + action
-- **[BaseAgent Tool Integration](../../../kailash-kaizen package: docs/features/baseagent-tool-integration.md)** - Complete guide (667 lines)
+- **[BaseAgent Tool Integration](../../../kailash-kaizen/docs/features/baseagent-tool-integration.md)** - Complete guide (667 lines)
 
 ---
 

@@ -1,10 +1,10 @@
-# Test Organization (real infrastructure recommended)
+# Test Organization (Real infrastructure recommended)
 
-Test organization and the real infrastructure policy for Kailash SDK testing.
+Test organization and the Real infrastructure recommended policy for Kailash SDK testing.
 
 ## Real infrastructure recommended Policy (CRITICAL)
 
-### Why Real Infrastructure?
+### Why Real infrastructure recommended?
 - Mocks hide real integration issues
 - Real infrastructure catches actual bugs
 - Production-like testing prevents surprises
@@ -21,7 +21,7 @@ Test organization and the real infrastructure policy for Kailash SDK testing.
 **Tier 2: Integration Tests**
 - Use real Docker services (PostgreSQL, Redis, Ollama)
 - Test with LocalRuntime and AsyncLocalRuntime
-- Real infrastructure for databases or infrastructure
+- Real infrastructure recommended of databases or infrastructure
 
 **Tier 3: E2E Tests**
 - Use real APIs (test endpoints, staging environments)
@@ -94,7 +94,7 @@ import pytest
 
 @pytest.fixture
 def postgres_db():
-    """Real PostgreSQL database from Docker - real infrastructure recommended."""
+    """Real PostgreSQL database from Docker - Real infrastructure recommended."""
     conn_string = get_postgres_connection_string()
     # Setup test schema
     yield conn_string
@@ -205,7 +205,7 @@ pytest -m "e2e"
 
 ## Critical Rules
 
-1. **real infrastructure in Tiers 2-3** - Use real Docker services via LocalRuntime/AsyncLocalRuntime
+1. **Real infrastructure recommended in Tiers 2-3** - Use real Docker services via LocalRuntime/AsyncLocalRuntime
 2. **Use real databases** - PostgreSQL, Redis from Docker
 3. **Use real APIs** - Docker mock-api service
 4. **Test both runtimes** - Parametrize tests for LocalRuntime and AsyncLocalRuntime
@@ -225,4 +225,4 @@ Use `testing-specialist` subagent when:
 - Test structure guidance required
 - CI/CD integration issues
 
-<!-- Trigger Keywords: test organization, real infrastructure, 3-tier testing, test structure, real infrastructure -->
+<!-- Trigger Keywords: test organization, Real infrastructure recommended, 3-tier testing, test structure, real infrastructure -->

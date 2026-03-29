@@ -1,6 +1,6 @@
 # Skill: TrustPlane Enterprise Features
 
-Quick reference for TrustPlane enterprise capabilities. For full documentation, see `kailash/trust/plane/`.
+Quick reference for TrustPlane enterprise capabilities. For full documentation, see the trust-plane module.
 
 ## Budget Enforcement (`trustplane.project` + `trustplane.models`)
 
@@ -145,5 +145,4 @@ All trace to `TrustPlaneError` with `.details: dict[str, Any]`. Key branches:
 
 ## See Also
 
-- `kailash/trust/plane/` — Full reference with code examples
 - `.claude/skills/project/trust-plane-security-patterns.md` — 13 security patterns

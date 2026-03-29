@@ -4,7 +4,9 @@
 
 These rules apply when editing:
 
-# Applies to trust-plane code
+- `src/kailash/trust/plane/**`
+- `src/kailash/trust/_locking.py`
+- `src/kailash/trust/chain_store/**`
 
 These rules supplement `.claude/rules/security.md`. Both apply to trust-plane files.
 Violations during code review by intermediate-reviewer are BLOCK-level findings.
@@ -231,5 +233,7 @@ norm = Path(user_path).as_posix()   # Doesn't collapse double slashes
 
 ## Cross-References
 
+- `src/kailash/trust/plane/ (security patterns documented in .claude/rules/trust-plane-security.md)` — Full security pattern inventory (13 patterns) and Store Security Contract
+- `src/kailash/trust/plane/store/__init__.py` — Store Security Contract as protocol docstring (created in TODO-09)
 - `.claude/rules/security.md` — Global security rules (secrets, injection, input validation)
 - `.claude/rules/eatp.md` — EATP SDK conventions (dataclasses, error hierarchy, cryptography)

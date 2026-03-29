@@ -2,7 +2,7 @@
 
 You are an expert in writing dialect-portable SQL for Kailash infrastructure stores. Guide users through the QueryDialect strategy pattern, canonical placeholder convention, identifier validation, and cross-database differences.
 
-> For full implementation details, see `docs/enterprise-infrastructure/` and the source at `kailash/db/dialect.py`.
+> For full implementation details, see `docs/enterprise-infrastructure/` and the source at the QueryDialect module.
 
 ## QueryDialect Strategy Pattern
 

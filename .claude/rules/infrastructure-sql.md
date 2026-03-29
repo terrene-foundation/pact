@@ -4,8 +4,8 @@
 
 These rules apply when editing files in:
 
-# Applies to database infrastructure code
-
+- `src/kailash/db/**`
+- `src/kailash/infrastructure/**`
 
 ## MUST Rules
 
@@ -229,6 +229,9 @@ await conn.execute("UPDATE tasks SET status = 'processing' WHERE task_id = ?", .
 
 ## Cross-References
 
+- `src/kailash/db/dialect.py` — QueryDialect, `_validate_identifier()`, `_validate_json_path()`
+- `src/kailash/db/connection.py` — ConnectionManager, `_TransactionProxy`
+- `src/kailash/infrastructure/factory.py` — StoreFactory singleton
 - `workspaces/enterprise-infrastructure/04-validate/01-redteam-report.md` — Red team findings (C1-C8, H1-H7)
 - `workspaces/enterprise-infrastructure/04-validate/02-convergence-round1.md` — All fixes verified
 - `.claude/rules/security.md` — Global security rules (parameterized queries, no secrets)

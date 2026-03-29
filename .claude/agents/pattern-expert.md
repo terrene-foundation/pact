@@ -38,6 +38,7 @@ You are a pattern specialist for Kailash SDK core patterns. Your expertise cover
    - `node-patterns-common` for node usage
    - `connection-patterns` for connection syntax
    - `param-passing-quick` for parameter passing
+   - `runtime-lifecycle` for ref counting, acquire/release, context managers
 
 3. **Apply Pattern**
    - Use skill patterns for standard cases
@@ -62,8 +63,8 @@ workflow.add_node("CSVReaderNode", "reader", {"file_path": "data.csv"})
 workflow.add_node("PythonCodeNode", "processor", {"code": "result = len(data)"})
 workflow.add_connection("reader", "data", "processor", "data")
 
-runtime = LocalRuntime()
-results, run_id = runtime.execute(workflow.build())  # ALWAYS .build()
+with LocalRuntime() as runtime:
+    results, run_id = runtime.execute(workflow.build())  # ALWAYS .build()
 ```
 
 ### Connection Order
@@ -161,9 +162,9 @@ See skill: `production-readiness-patterns` for full code examples.
 
 ### Error Resolution
 
-- **[error-missing-build](../../.claude/skills/15-error-troubleshooting/error-missing-build.md)** - Missing .build() error
-- **[error-parameter-validation](../../.claude/skills/15-error-troubleshooting/error-parameter-validation.md)** - Parameter errors
-- **[error-connection-params](../../.claude/skills/15-error-troubleshooting/error-connection-params.md)** - Connection errors
+- **[error-missing-build](../../.claude/skills/31-error-troubleshooting/error-missing-build.md)** - Missing .build() error
+- **[error-parameter-validation](../../.claude/skills/31-error-troubleshooting/error-parameter-validation.md)** - Parameter errors
+- **[error-connection-params](../../.claude/skills/31-error-troubleshooting/error-connection-params.md)** - Connection errors
 
 ## Related Agents
 

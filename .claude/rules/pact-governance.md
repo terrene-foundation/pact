@@ -2,7 +2,7 @@
 
 ## Scope
 
-These rules apply when working with PACT governance code.
+These rules apply when editing `packages/kailash-pact/**` files.
 
 These rules supplement `.claude/rules/security.md` and `.claude/rules/trust-plane-security.md`. All three apply to PACT governance files.
 Violations during code review by intermediate-reviewer are BLOCK-level findings.
@@ -241,3 +241,5 @@ raise Exception("something went wrong")  # Bare exception — uncatchable by gov
 
 - `.claude/rules/trust-plane-security.md` — Trust-plane security patterns (NaN/Inf, bounded collections, fail-closed)
 - `.claude/rules/eatp.md` — EATP SDK conventions (dataclasses, error hierarchy, cryptography)
+- `packages/kailash-pact/src/pact/governance/agent.py` — Anti-self-modification defense
+- `packages/kailash-pact/src/pact/governance/envelopes.py` — Monotonic tightening

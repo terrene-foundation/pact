@@ -1,6 +1,6 @@
 ---
 name: core-sdk
-description: "Kailash Core SDK fundamentals including workflow creation, node patterns, connections, runtime execution, parameter passing, error handling, cyclic workflows, async patterns, MCP integration, and installation. Use when asking about 'workflow basics', 'core sdk', 'create workflow', 'workflow builder', 'node patterns', 'connections', 'runtime', 'parameters', 'imports', 'installation', 'getting started', 'workflow execution', 'async workflows', 'error handling', 'cyclic workflows', 'PythonCode node', 'SwitchNode', or 'MCP integration'."
+description: "Kailash Core SDK fundamentals including workflow creation, node patterns, connections, runtime execution, parameter passing, error handling, cyclic workflows, async patterns, MCP integration, and installation. Use when asking about 'workflow basics', 'core sdk', 'create workflow', 'workflow builder', 'node patterns', 'connections', 'runtime', 'parameters', 'imports', 'installation', 'getting started', 'workflow execution', 'async workflows', 'error handling', 'cyclic workflows', 'PythonCode node', 'SwitchNode', or 'MCP integration'. Also covers observability: 'OpenTelemetry', 'OTel', 'tracing', 'TracingLevel', 'WorkflowTracer', 'node instrumentation', 'NodeInstrumentor', 'database instrumentation', 'Prometheus metrics', 'MetricsBridge', 'KAILASH_TRACING_LEVEL', or 'span attributes'."
 ---
 
 # Kailash Core SDK - Foundational Skills
@@ -48,6 +48,7 @@ with LocalRuntime() as runtime:
 - **[connection-patterns](connection-patterns.md)** - Linking nodes and data flow
 - **[param-passing-quick](param-passing-quick.md)** - Parameter passing strategies
 - **[runtime-execution](runtime-execution.md)** - Executing workflows (sync/async)
+- **[runtime-lifecycle](runtime-lifecycle.md)** - Runtime lifecycle, ref counting, acquire/release, context managers
 
 ### Advanced Topics
 

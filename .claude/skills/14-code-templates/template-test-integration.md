@@ -1,18 +1,18 @@
 ---
 name: template-test-integration
-description: "Generate Kailash integration test template (Tier 2). Use when requesting 'integration test template', 'Tier 2 test', 'real infrastructure test', 'real infrastructure test', or 'integration test example'."
+description: "Generate Kailash integration test template (Tier 2). Use when requesting 'integration test template', 'Tier 2 test', 'real infrastructure test', 'Real infrastructure recommended test', or 'integration test example'."
 ---
 
 # Integration Test Template (Tier 2)
 
-Integration test template with real Docker services (real infrastructure policy).
+Integration test template with real Docker services (Real infrastructure recommended policy).
 
 > **Skill Metadata**
 > Category: `cross-cutting` (code-generation)
 > Priority: `HIGH`
 > SDK Version: `0.9.25+`
 > Related Skills: [`test-3tier-strategy`](../../4-operations/testing/test-3tier-strategy.md), [`template-test-unit`](template-test-unit.md), [`template-test-e2e`](template-test-e2e.md)
-> Related Subagents: `testing-specialist` (real infrastructure policy), `tdd-implementer`
+> Related Subagents: `testing-specialist` (Real infrastructure recommended policy), `tdd-implementer`
 
 ## Quick Reference
 
@@ -106,7 +106,7 @@ result = {'valid': valid, 'data': data}
 
 ```bash
 # MUST run before integration tests
-./tests/utils/test-env up && ./tests/utils/test-env status
+# Start test infrastructure (Docker containers)
 ```
 
 ## Fixtures for Real Services
@@ -175,7 +175,7 @@ def test_database_integration(test_database_url):
 - **Unit tests**: [`template-test-unit`](template-test-unit.md)
 - **E2E tests**: [`template-test-e2e`](template-test-e2e.md)
 - **Testing strategy**: [`test-3tier-strategy`](../../4-operations/testing/test-3tier-strategy.md)
-- **real infrastructure policy**: [`gold-mocking-policy`](../../17-gold-standards/gold-mocking-policy.md)
+- **Real infrastructure recommended policy**: [`gold-mocking-policy`](../../17-gold-standards/gold-mocking-policy.md)
 
 ## When to Escalate
 
@@ -197,7 +197,7 @@ Use `tdd-implementer` when:
 
 - 💡 **Real services**: Use Docker for databases, Redis, etc.
 - 💡 **<5 seconds**: Keep tests fast
-- Real infrastructure recommended: Best practice for Tier 2
+- 💡 **Real infrastructure recommended**: Absolute rule for Tier 2
 - 💡 **Cleanup**: Always clean test data before/after
 
-<!-- Trigger Keywords: integration test template, Tier 2 test, real infrastructure test, real infrastructure test, integration test example, integration test boilerplate, Docker test template -->
+<!-- Trigger Keywords: integration test template, Tier 2 test, real infrastructure test, Real infrastructure recommended test, integration test example, integration test boilerplate, Docker test template -->

@@ -12,8 +12,6 @@ Two components work together for budget-aware governance:
 
 **Source modules**:
 
-- `kailash/trust/constraints/budget_tracker.py` -- `BudgetTracker`, `BudgetSnapshot`, `BudgetCheckResult`, `BudgetEvent`
-- `kaizen/governance/posture_budget.py` -- `PostureBudgetIntegration`
 
 ---
 

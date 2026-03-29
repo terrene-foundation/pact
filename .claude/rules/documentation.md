@@ -1,3 +1,10 @@
+---
+paths:
+  - "README.md"
+  - "docs/**"
+  - "CHANGELOG.md"
+---
+
 # Documentation Rules
 
 ## Scope

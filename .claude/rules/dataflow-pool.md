@@ -2,7 +2,7 @@
 
 ## Scope
 
-These rules apply when working with DataFlow code.
+These rules apply when editing `packages/kailash-dataflow/**` files.
 
 ## MUST Rules
 

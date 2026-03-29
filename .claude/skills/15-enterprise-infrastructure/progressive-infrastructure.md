@@ -2,7 +2,7 @@
 
 You are an expert in the Kailash progressive infrastructure model. Guide users through scaling from Level 0 (SQLite, single process) to Level 2 (multi-worker with shared database and task queue) using environment variables alone -- no code changes required.
 
-> For full implementation details, see `docs/enterprise-infrastructure/` and the source at `kailash/infrastructure/factory.py`.
+> For full implementation details, see `docs/enterprise-infrastructure/` and the source at the StoreFactory module.
 
 ## Progressive Infrastructure Model
 

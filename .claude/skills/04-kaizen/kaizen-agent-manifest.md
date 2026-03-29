@@ -14,11 +14,6 @@ The Agent Manifest system provides:
 
 **Source modules**:
 
-- `kaizen/manifest/agent.py` -- `AgentManifest`
-- `kaizen/manifest/governance.py` -- `GovernanceManifest`
-- `kaizen/deploy/client.py` -- `deploy()`, `deploy_local()`
-- `kaizen/deploy/registry.py` -- `FileRegistry` (alias: `LocalRegistry`)
-- `kaizen/deploy/introspect.py` -- `introspect_agent()`
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: kaizen-specialist
-description: Kaizen AI framework specialist for signature-based programming, autonomous tool calling, multi-agent coordination, and enterprise AI workflows. Use proactively when implementing AI agents, optimizing prompts, or building intelligent systems with BaseAgent architecture.
+description: "Kaizen AI framework specialist. Use for BaseAgent, signatures, multi-agent coordination, or orchestration."
 tools: Read, Write, Edit, Bash, Grep, Glob, Task
 model: opus
 ---
@@ -131,7 +131,6 @@ Expert in Kaizen AI framework - signature-based programming, BaseAgent architect
 - **[Kaizen Skills](../../skills/04-kaizen/SKILL.md)** - Quick reference
 - **[Agent Patterns](../../skills/04-kaizen/kaizen-agent-patterns.md)** - Agent architecture patterns
 - **[Advanced Patterns](../../skills/04-kaizen/kaizen-advanced-patterns.md)** - Control protocol, meta-controller, journeys
-- **[Example Gallery](Kaizen autonomy example gallery)** - 15 autonomy examples
 
 ### By Use Case
 
@@ -323,7 +322,7 @@ result = agent.process("input")
 
 ## Examples Directory
 
-**Location**: `examples/`
+**Location**: `packages/kailash-kaizen/examples/`
 
 - **1-single-agent/** (10): simple-qa, chain-of-thought, rag-research, code-generation, memory-agent, react-agent, self-reflection, human-approval, resilient-fallback, streaming-chat
 - **2-multi-agent/** (6): consensus-building, debate-decision, domain-specialists, producer-consumer, shared-insights, supervisor-worker
@@ -388,24 +387,5 @@ See the [Kaizen Skills](../../skills/04-kaizen/) (47 skills) for:
 - Custom agent development
 - Performance optimization
 - A2A protocol advanced use
-- Agent manifest and deployment lifecycle
-- Composition validation and cost estimation
-- Budget-posture governance integration
 
-**Core Principle**: Kaizen is signature-based programming for AI workflows. The LLM does ALL reasoning — tools are dumb data endpoints. No if-else routing, no keyword matching, no regex classification. Use rich Signatures, follow patterns from examples/, validate with real models.
-
-## Related Agents
-
-- **pattern-expert**: Core SDK workflow patterns for Kaizen integration
-- **testing-specialist**: 3-tier testing strategy for agent validation
-- **framework-advisor**: Choose between Core/DataFlow/Nexus/Kaizen
-- **mcp-specialist**: MCP integration and tool calling patterns
-- **nexus-specialist**: Deploy Kaizen agents via multi-channel platform
-
-## Full Documentation
-
-When this guidance is insufficient, consult:
-
-- `.claude/skills/04-kaizen/` - Complete Kaizen skills directory
-- `.claude/skills/04-kaizen/kaizen-advanced-patterns.md` - Advanced patterns
-- `examples/` - Working examples
+**Full API reference**: `.claude/skills/04-kaizen/kaizen-agent-reference.md`

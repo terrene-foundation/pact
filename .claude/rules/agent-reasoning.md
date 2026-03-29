@@ -4,6 +4,7 @@
 
 These rules apply to ALL agent code, ALL Kaizen implementations, ALL AI agent patterns, and ALL codegen that produces agent logic. This includes:
 
+- `packages/kailash-kaizen/**`
 - Any file creating, extending, or configuring a `BaseAgent`
 - Any file implementing agent routing, dispatch, classification, or decision-making
 - Any code that processes user input to determine agent behavior

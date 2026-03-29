@@ -155,7 +155,7 @@ context = skill_tool.execute(skill="python-patterns")
 
 ## Developer Documentation
 
-Full v1.0 documentation in `kaizen/docs/developers/`:
+Full v1.0 documentation in the Kaizen src/kaizen/docs/developers/`:
 
 | Guide | Description |
 |-------|-------------|

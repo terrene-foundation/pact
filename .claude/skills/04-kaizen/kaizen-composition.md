@@ -12,11 +12,6 @@ The composition module validates multi-agent pipelines before execution:
 
 **Source modules**:
 
-- `kaizen/composition/dag_validator.py` -- `validate_dag()`
-- `kaizen/composition/schema_compat.py` -- `check_schema_compatibility()`
-- `kaizen/composition/cost_estimator.py` -- `estimate_cost()`
-- `kaizen/composition/models.py` -- `ValidationResult`, `CompatibilityResult`, `CostEstimate`
-- `kaizen/composition/errors.py` -- `CompositionError`, `CycleDetectedError`, `SchemaIncompatibleError`
 
 ---
 

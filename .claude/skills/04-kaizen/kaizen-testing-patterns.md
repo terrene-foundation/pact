@@ -8,7 +8,7 @@ Agent testing, fixtures, standardized tests from conftest.py.
 2. **Tier 2 (Integration)**: Real Ollama inference (local, free)
 3. **Tier 3 (E2E)**: Real OpenAI/Ollama inference with real infrastructure
 
-**CRITICAL**: real infrastructure in Tiers 2-3
+**CRITICAL**: Real infrastructure recommended in Tiers 2-3
 
 ## E2E Testing for Autonomous Agents
 
@@ -37,8 +37,8 @@ pytest tests/e2e/autonomy/checkpoints/ -v
 **Writing E2E Tests:**
 ```python
 import pytest
-from kaizen.agents.autonomous.base import BaseAutonomousAgent
-from kaizen.agents.autonomous.config import AutonomousConfig
+from kaizen_agents.agents.autonomous.base import BaseAutonomousAgent
+from kaizen_agents.agents.autonomous.config import AutonomousConfig
 
 @pytest.mark.e2e  # Mark as E2E test
 @pytest.mark.asyncio  # Async test
@@ -91,5 +91,5 @@ def test_qa_agent(simple_qa_example, assert_async_strategy, test_queries):
 **Test Data**: `test_queries`, `test_documents`, `test_code_snippets`
 
 ## References
-- **Source**: `kailash-kaizen package: tests/conftest.py`
+- **Source**: `tests/conftest.py`
 - **Specialist**: `.claude/agents/frameworks/kaizen-specialist.md` lines 382-404
