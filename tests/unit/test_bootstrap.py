@@ -376,3 +376,123 @@ class TestBootstrapResult:
     def test_not_successful_with_errors(self):
         result = BootstrapResult(genesis_authority="test", errors=["something broke"])
         assert not result.is_successful
+
+
+# ---------------------------------------------------------------------------
+# Signed EATP Records — Ed25519 signature verification
+# ---------------------------------------------------------------------------
+
+
+class TestSignedEATPRecords:
+    """Bootstrap creates L1 EATP records with valid Ed25519 signatures."""
+
+    def test_genesis_has_ed25519_signature(self, store: SQLiteTrustStore, config: PactConfig):
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        genesis = store.get_genesis("test.foundation")
+        assert genesis is not None
+        assert "signature" in genesis
+        assert "signature_algorithm" in genesis
+        assert genesis["signature_algorithm"] == "Ed25519"
+        # Signature is a non-empty base64 string
+        assert len(genesis["signature"]) > 0
+
+    def test_genesis_signature_verifies(self, store: SQLiteTrustStore, config: PactConfig):
+        from kailash.trust.signing.crypto import verify_signature
+
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        genesis = store.get_genesis("test.foundation")
+        assert genesis is not None
+
+        # The public key is stored in metadata
+        public_key = genesis["metadata"]["public_key"]
+
+        # Reconstruct the signing payload from stored fields
+        payload = {
+            "id": genesis["id"],
+            "agent_id": genesis["agent_id"],
+            "authority_id": genesis["authority_id"],
+            "authority_type": genesis["authority_type"],
+            "created_at": genesis["created_at"],
+            "expires_at": genesis.get("expires_at"),
+            "metadata": genesis["metadata"],
+        }
+        assert verify_signature(payload, genesis["signature"], public_key)
+
+    def test_delegation_has_ed25519_signature(self, store: SQLiteTrustStore, config: PactConfig):
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        delegations = store.get_delegations_for("agent-writer")
+        assert len(delegations) == 1
+        deleg = delegations[0]
+        assert "signature" in deleg
+        assert len(deleg["signature"]) > 0
+
+    def test_delegation_has_eatp_fields(self, store: SQLiteTrustStore, config: PactConfig):
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        delegations = store.get_delegations_for("agent-writer")
+        deleg = delegations[0]
+        assert deleg["delegation_depth"] == 0
+        assert deleg["delegation_chain"] == ["test.foundation", "agent-writer"]
+        assert deleg["task_id"] == "bootstrap:test.foundation"
+
+    def test_delegation_signature_verifies(self, store: SQLiteTrustStore, config: PactConfig):
+        from kailash.trust.chain import DelegationRecord
+        from kailash.trust.signing.crypto import verify_signature
+
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        # Get the public key from genesis metadata
+        genesis = store.get_genesis("test.foundation")
+        public_key = genesis["metadata"]["public_key"]
+
+        delegations = store.get_delegations_for("agent-writer")
+        deleg = delegations[0]
+
+        # Reconstruct the L1 DelegationRecord from stored dict, use its
+        # to_signing_payload() to verify the signature matches.
+        record = DelegationRecord.from_dict(deleg)
+        payload = record.to_signing_payload()
+        assert verify_signature(payload, deleg["signature"], public_key)
+
+    def test_attestation_has_ed25519_signature(self, store: SQLiteTrustStore, config: PactConfig):
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        attestations = store.get_attestations_for("agent-writer")
+        assert len(attestations) == 1
+        att = attestations[0]
+        assert "signature" in att
+        assert len(att["signature"]) > 0
+
+    def test_attestation_signature_verifies(self, store: SQLiteTrustStore, config: PactConfig):
+        from kailash.trust.signing.crypto import verify_signature
+
+        bootstrap = PlatformBootstrap(store=store)
+        bootstrap.initialize(config)
+
+        genesis = store.get_genesis("test.foundation")
+        public_key = genesis["metadata"]["public_key"]
+
+        attestations = store.get_attestations_for("agent-writer")
+        att = attestations[0]
+
+        # Reconstruct signing payload from attestation fields
+        payload = {
+            "id": att["id"],
+            "capability": att["capability"],
+            "capability_type": att["capability_type"],
+            "constraints": sorted(att["constraints"]),
+            "attester_id": att["attester_id"],
+            "attested_at": att["attested_at"],
+            "expires_at": att.get("expires_at"),
+            "scope": att.get("scope"),
+        }
+        assert verify_signature(payload, att["signature"], public_key)

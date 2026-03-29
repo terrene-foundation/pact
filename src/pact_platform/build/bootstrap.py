@@ -26,13 +26,20 @@ from __future__ import annotations
 import hashlib
 import logging
 import sqlite3
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
+from kailash.trust.chain import (
+    AuthorityType,
+    CapabilityAttestation,
+    CapabilityType,
+    DelegationRecord,
+    GenesisRecord,
+)
 from pact_platform.build.config.env import _load_dotenv
 from pact_platform.build.config.schema import (
     AgentConfig,
@@ -48,6 +55,41 @@ logger = logging.getLogger(__name__)
 
 # Ensure .env is loaded when bootstrap is used as a module entry point
 _load_dotenv()
+
+
+def _sign_payload(payload: dict, private_key: str) -> str:
+    """Sign a dict payload with Ed25519 and return base64-encoded signature.
+
+    Uses ``kailash.trust.signing.crypto`` functions for deterministic
+    serialization and Ed25519 signing.  Imported lazily so that the
+    heavy ``pynacl`` import only happens when signing is actually used.
+    """
+    from kailash.trust.signing.crypto import sign
+
+    return sign(payload, private_key)
+
+
+def _genesis_record_to_dict(record: GenesisRecord) -> dict[str, Any]:
+    """Serialize a GenesisRecord to a dict for the TrustStore protocol.
+
+    GenesisRecord does not have a ``to_dict()`` in the L1 SDK, so we
+    build the dict here from its public fields + signing payload.
+    """
+    d = record.to_signing_payload()
+    d["signature"] = record.signature
+    d["signature_algorithm"] = record.signature_algorithm
+    return d
+
+
+def _attestation_to_dict(att: CapabilityAttestation) -> dict[str, Any]:
+    """Serialize a CapabilityAttestation to a dict for the TrustStore protocol.
+
+    CapabilityAttestation does not have a ``to_dict()`` in the L1 SDK,
+    so we build the dict here from its public fields + signing payload.
+    """
+    d = att.to_signing_payload()
+    d["signature"] = att.signature
+    return d
 
 
 class _NoCommitProxy:
@@ -116,8 +158,15 @@ class PlatformBootstrap:
         Args:
             store: The TrustStore to persist trust state into. Can be
                 MemoryStore, FilesystemStore, or SQLiteTrustStore.
+
+        Generates an Ed25519 keypair for signing trust records during
+        bootstrap.  The public key is embedded in the genesis record's
+        metadata so downstream verifiers can validate signatures.
         """
+        from kailash.trust.signing.crypto import generate_keypair
+
         self._store = store
+        self._private_key, self._public_key = generate_keypair()
 
     @staticmethod
     def load_config(config_path: str | Path) -> PactConfig:
@@ -206,6 +255,7 @@ class PlatformBootstrap:
 
         if use_transaction:
             real_conn = self._store._get_connection()  # type: ignore[attr-defined]
+            assert real_conn is not None  # guaranteed by hasattr check above
             prev_isolation_level = real_conn.isolation_level
             real_conn.isolation_level = None  # manual commit mode
             real_conn.execute("BEGIN")
@@ -321,19 +371,56 @@ class PlatformBootstrap:
     def _create_genesis(self, config: PactConfig, result: BootstrapResult) -> None:
         """Create the genesis record (root of trust).
 
+        Constructs a signed ``GenesisRecord`` (L1 EATP type) with Ed25519
+        signature, then serializes to dict for TrustStore persistence.
+
         RT5-14: Genesis records are write-once. If the record already exists
         (idempotent re-run), we log it and continue. If the store raises
         ``GenesisAlreadyExistsError``, we catch it gracefully since
         re-running bootstrap on the same authority is expected behavior.
         """
-        genesis_data: dict[str, Any] = {
-            "authority_id": config.genesis.authority,
-            "authority_name": config.genesis.authority_name,
-            "policy_reference": config.genesis.policy_reference,
-            "platform_name": config.name,
-            "config_version": config.version,
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        now = datetime.now(timezone.utc)
+        genesis_id = f"genesis-{config.genesis.authority}"
+
+        # Build the unsigned record to get its signing payload
+        unsigned_genesis = GenesisRecord(
+            id=genesis_id,
+            agent_id=config.genesis.authority,
+            authority_id=config.genesis.authority,
+            authority_type=AuthorityType.ORGANIZATION,
+            created_at=now,
+            signature="",  # placeholder — replaced after signing
+            signature_algorithm="Ed25519",
+            metadata={
+                "authority_name": config.genesis.authority_name,
+                "policy_reference": config.genesis.policy_reference,
+                "platform_name": config.name,
+                "config_version": config.version,
+                "public_key": self._public_key,
+            },
+        )
+
+        # Sign the payload and construct the final record
+        signature = _sign_payload(unsigned_genesis.to_signing_payload(), self._private_key)
+        genesis = GenesisRecord(
+            id=unsigned_genesis.id,
+            agent_id=unsigned_genesis.agent_id,
+            authority_id=unsigned_genesis.authority_id,
+            authority_type=unsigned_genesis.authority_type,
+            created_at=unsigned_genesis.created_at,
+            signature=signature,
+            signature_algorithm=unsigned_genesis.signature_algorithm,
+            metadata=unsigned_genesis.metadata,
+        )
+
+        # Serialize to dict — include platform-specific fields for backward
+        # compatibility with code that reads ``genesis["authority_name"]``
+        # directly from the stored dict.
+        genesis_data = _genesis_record_to_dict(genesis)
+        genesis_data["authority_name"] = config.genesis.authority_name
+        genesis_data["policy_reference"] = config.genesis.policy_reference
+        genesis_data["platform_name"] = config.name
+        genesis_data["config_version"] = config.version
 
         # RT4-H5: Call TrustStore protocol methods directly (no hasattr duck-typing)
         try:
@@ -440,7 +527,14 @@ class PlatformBootstrap:
         config: PactConfig,
         result: BootstrapResult,
     ) -> None:
-        """Register an agent and create its delegation record."""
+        """Register an agent and create its signed delegation record.
+
+        Constructs a signed ``DelegationRecord`` (L1 EATP type) with
+        Ed25519 signature, delegation_depth=0 (direct from authority),
+        and the full delegation chain.  Platform-specific fields
+        (``envelope_id``, ``team_id``, etc.) are merged into the dict
+        for backward compatibility.
+        """
         # Find which team this agent belongs to
         team_id = ""
         for team in config.teams:
@@ -448,23 +542,54 @@ class PlatformBootstrap:
                 team_id = team.id
                 break
 
-        # Delegation record: authority delegates to this agent
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         delegation_id = _delegation_id(authority, agent_config.id)
-        delegation_data: dict[str, Any] = {
-            "delegation_id": delegation_id,
-            "delegator_id": authority,
-            "delegatee_id": agent_config.id,
-            "agent_name": agent_config.name,
-            "agent_role": agent_config.role,
-            "team_id": team_id,
-            "envelope_id": agent_config.constraint_envelope,
-            "initial_posture": agent_config.initial_posture.value,
-            "capabilities": agent_config.capabilities,
-            "created_at": now.isoformat(),
-            # RT4-M6: Delegation expiry — default 365 days from creation
-            "expires_at": (now + timedelta(days=365)).isoformat(),
-        }
+        expires_at = now + timedelta(days=365)
+
+        # Build the unsigned DelegationRecord to get signing payload
+        unsigned_deleg = DelegationRecord(
+            id=delegation_id,
+            delegator_id=authority,
+            delegatee_id=agent_config.id,
+            task_id=f"bootstrap:{authority}",
+            capabilities_delegated=list(agent_config.capabilities),
+            constraint_subset=[],
+            delegated_at=now,
+            signature="",  # placeholder — replaced after signing
+            expires_at=expires_at,
+            parent_delegation_id=None,
+            delegation_chain=[authority, agent_config.id],
+            delegation_depth=0,
+        )
+
+        # Sign and construct the final record
+        signature = _sign_payload(unsigned_deleg.to_signing_payload(), self._private_key)
+        delegation = DelegationRecord(
+            id=unsigned_deleg.id,
+            delegator_id=unsigned_deleg.delegator_id,
+            delegatee_id=unsigned_deleg.delegatee_id,
+            task_id=unsigned_deleg.task_id,
+            capabilities_delegated=unsigned_deleg.capabilities_delegated,
+            constraint_subset=unsigned_deleg.constraint_subset,
+            delegated_at=unsigned_deleg.delegated_at,
+            signature=signature,
+            expires_at=unsigned_deleg.expires_at,
+            parent_delegation_id=unsigned_deleg.parent_delegation_id,
+            delegation_chain=unsigned_deleg.delegation_chain,
+            delegation_depth=unsigned_deleg.delegation_depth,
+        )
+
+        # Serialize via L1 to_dict(), then merge platform-specific fields
+        # for backward compatibility with existing code and tests.
+        delegation_data = delegation.to_dict()
+        delegation_data["delegation_id"] = delegation_id
+        delegation_data["agent_name"] = agent_config.name
+        delegation_data["agent_role"] = agent_config.role
+        delegation_data["team_id"] = team_id
+        delegation_data["envelope_id"] = agent_config.constraint_envelope
+        delegation_data["initial_posture"] = agent_config.initial_posture.value
+        delegation_data["capabilities"] = agent_config.capabilities
+        delegation_data["created_at"] = now.isoformat()
 
         # RT4-H5: Call TrustStore protocol methods directly (no hasattr duck-typing)
         self._store.store_delegation(delegation_id, delegation_data)
@@ -472,21 +597,62 @@ class PlatformBootstrap:
         result.agents_registered += 1
         result.delegations_created += 1
 
-        # Store attestation for agent capabilities
+        # Store signed attestation for agent capabilities
         if agent_config.capabilities:
-            attestation_id = f"att:{agent_config.id}"
-            attestation_data: dict[str, Any] = {
-                "attestation_id": attestation_id,
-                "agent_id": agent_config.id,
-                "capabilities": agent_config.capabilities,
-                "authority": authority,
-                # RT4-M3: Proper CapabilityAttestation format
-                "attestation_type": "capability",
-                "delegator_id": authority,
-                "delegation_id": delegation_id,
-                "created_at": now.isoformat(),
-            }
-            self._store.store_attestation(attestation_id, attestation_data)
+            self._create_attestation(agent_config, authority, delegation_id, now)
+
+    def _create_attestation(
+        self,
+        agent_config: AgentConfig,
+        authority: str,
+        delegation_id: str,
+        now: datetime,
+    ) -> None:
+        """Create a signed CapabilityAttestation for an agent's capabilities.
+
+        One attestation per agent covers all its capabilities.  The
+        attestation is signed with the bootstrap authority's Ed25519 key.
+        """
+        attestation_id = f"att:{agent_config.id}"
+
+        # Build unsigned attestation — one per agent, covering all capabilities
+        unsigned_att = CapabilityAttestation(
+            id=attestation_id,
+            capability=",".join(agent_config.capabilities),
+            capability_type=CapabilityType.ACTION,
+            constraints=[],
+            attester_id=authority,
+            attested_at=now,
+            signature="",  # placeholder — replaced after signing
+            scope={"delegation_id": delegation_id},
+        )
+
+        # Sign and construct the final attestation
+        signature = _sign_payload(unsigned_att.to_signing_payload(), self._private_key)
+        attestation = CapabilityAttestation(
+            id=unsigned_att.id,
+            capability=unsigned_att.capability,
+            capability_type=unsigned_att.capability_type,
+            constraints=unsigned_att.constraints,
+            attester_id=unsigned_att.attester_id,
+            attested_at=unsigned_att.attested_at,
+            signature=signature,
+            scope=unsigned_att.scope,
+        )
+
+        # Serialize, then merge platform-specific fields for backward compat
+        attestation_data = _attestation_to_dict(attestation)
+        attestation_data["attestation_id"] = attestation_id
+        attestation_data["agent_id"] = agent_config.id
+        attestation_data["capabilities"] = agent_config.capabilities
+        attestation_data["authority"] = authority
+        # RT4-M3: Proper CapabilityAttestation format
+        attestation_data["attestation_type"] = "capability"
+        attestation_data["delegator_id"] = authority
+        attestation_data["delegation_id"] = delegation_id
+        attestation_data["created_at"] = now.isoformat()
+
+        self._store.store_attestation(attestation_id, attestation_data)
 
 
 def _delegation_id(delegator_id: str, delegatee_id: str) -> str:

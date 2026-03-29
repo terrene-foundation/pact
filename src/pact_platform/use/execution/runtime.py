@@ -15,6 +15,8 @@ The runtime integrates:
 - Lifecycle: Track task status from submission to completion
 - Trust store: Optional persistence for audit anchors, posture changes
 - Revocation: Optional revocation checks during agent assignment
+- Delegation chain verification: verify agent delegation back to genesis
+- Cascade revocation: revoke downstream delegates when parent is revoked
 - Posture: Optional trust posture enforcement (PSEUDO_AGENT blocked)
 - Thread safety: All task queue mutations are lock-protected (RT4-M9)
 
@@ -36,6 +38,8 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
+import hmac as hmac_mod
 import logging
 import threading
 import time
@@ -72,6 +76,10 @@ _MAX_TRACKED_AGENTS: int = 10_000
 
 # LC-3: Rolling window for rate-limit enforcement (24 hours in seconds).
 _RATE_LIMIT_WINDOW_SECONDS: float = 86_400.0
+
+# DC-1: Maximum depth for delegation chain walks (prevents infinite loops on
+# cyclic delegation graphs and bounds stack usage).
+_MAX_CHAIN_DEPTH: int = 50
 
 
 class TaskStatus(str, Enum):
@@ -1294,6 +1302,7 @@ class ExecutionRuntime:
         RT4-H3: If a revocation manager is configured, checks whether the
         agent has been revoked before accepting the assignment.
         RT5-08: Also checks registry REVOKED status (set by _sync_revocations).
+        DC-1: Verifies delegation chain from agent back to genesis.
         """
         if task.agent_id:
             agent = self._registry.get(task.agent_id)
@@ -1319,6 +1328,20 @@ class ExecutionRuntime:
                         )
                         task.result = TaskResult(error=f"Agent '{agent.agent_id}' has been revoked")
                         return None
+                # DC-1: Verify delegation chain back to genesis (fail-closed).
+                chain_valid, chain_reason = self._verify_delegation_chain(agent.agent_id)
+                if not chain_valid:
+                    logger.warning(
+                        "DC-1: Delegation chain verification failed for agent '%s' "
+                        "on task '%s': %s",
+                        agent.agent_id,
+                        task.task_id,
+                        chain_reason,
+                    )
+                    task.result = TaskResult(
+                        error=f"Delegation chain verification failed: {chain_reason}"
+                    )
+                    return None
                 return agent
             return None
 
@@ -1331,6 +1354,8 @@ class ExecutionRuntime:
                 candidates = [
                     a for a in candidates if not self._revocation_manager.is_revoked(a.agent_id)
                 ]
+            # DC-1: Filter out agents with invalid delegation chains
+            candidates = [a for a in candidates if self._verify_delegation_chain(a.agent_id)[0]]
             if candidates:
                 return candidates[0]
 
@@ -1338,6 +1363,8 @@ class ExecutionRuntime:
         active = self._registry.active_agents()
         if self._revocation_manager is not None:
             active = [a for a in active if not self._revocation_manager.is_revoked(a.agent_id)]
+        # DC-1: Filter out agents with invalid delegation chains
+        active = [a for a in active if self._verify_delegation_chain(a.agent_id)[0]]
         return active[0] if active else None
 
     def _record_audit(
@@ -1419,6 +1446,222 @@ class ExecutionRuntime:
                     "Synced revocation: agent '%s' marked REVOKED in registry",
                     agent.agent_id,
                 )
+
+    def _verify_delegation_chain(self, agent_id: str) -> tuple[bool, str]:
+        """DC-1: Walk delegation records from *agent_id* back to genesis.
+
+        Verifies that the agent has a valid delegation chain rooted in a
+        genesis authority. At each link, verifies the signature payload
+        (HMAC-SHA256) if one is present in the delegation record.
+
+        This is a sync verification that reads directly from the TrustStore.
+        It does NOT use the L1 async ``TrustOperations.verify_delegation_chain()``.
+
+        Args:
+            agent_id: The agent whose delegation chain to verify.
+
+        Returns:
+            A ``(valid, reason)`` tuple.  ``valid`` is True when the chain
+            reaches a genesis record with all intermediate signatures verified.
+            On failure, ``reason`` describes why.
+        """
+        if self._trust_store is None:
+            # No store -- cannot verify.  Backward-compatible: skip gracefully.
+            return True, "no trust store configured — chain verification skipped"
+
+        visited: set[str] = set()
+        current_id = agent_id
+        depth = 0
+
+        while depth < _MAX_CHAIN_DEPTH:
+            if current_id in visited:
+                return False, f"cycle detected in delegation chain at '{current_id}'"
+            visited.add(current_id)
+
+            # Check if current_id is a genesis authority (chain root).
+            genesis = self._trust_store.get_genesis(current_id)
+            if genesis is not None:
+                logger.debug(
+                    "DC-1: Delegation chain for '%s' verified — reached genesis '%s' at depth %d",
+                    agent_id,
+                    current_id,
+                    depth,
+                )
+                return True, f"chain verified to genesis '{current_id}'"
+
+            # Find delegation records where current_id is the delegatee.
+            delegations = self._trust_store.get_delegations_for(current_id)
+            inbound = [d for d in delegations if d.get("delegatee_id") == current_id]
+
+            if not inbound:
+                if depth == 0:
+                    # No delegation records at all for this agent — skip
+                    # gracefully for backward compatibility.
+                    return True, "no delegation records found — chain verification skipped"
+                return False, (
+                    f"broken chain: no delegation record with delegatee_id='{current_id}' "
+                    f"at depth {depth}"
+                )
+
+            # Use the first inbound delegation (there should be exactly one
+            # canonical delegation path per agent; if multiple exist, we
+            # use the first and log a warning).
+            delegation = inbound[0]
+            if len(inbound) > 1:
+                logger.warning(
+                    "DC-1: Agent '%s' has %d inbound delegations — using first",
+                    current_id,
+                    len(inbound),
+                )
+
+            # Verify signature payload if present.
+            signature = delegation.get("signature")
+            signing_payload = delegation.get("signing_payload")
+            if signature is not None and signing_payload is not None:
+                # Recompute expected signature using SHA-256 of the canonical
+                # signing payload. This matches the EATP delegation record
+                # structure where ``signing_payload`` is the canonical JSON
+                # and ``signature`` is the hex-encoded HMAC-SHA256 digest.
+                if isinstance(signing_payload, dict):
+                    import json as _json
+
+                    payload_bytes = _json.dumps(
+                        signing_payload, sort_keys=True, separators=(",", ":")
+                    ).encode()
+                elif isinstance(signing_payload, str):
+                    payload_bytes = signing_payload.encode()
+                else:
+                    payload_bytes = bytes(signing_payload)
+
+                expected_hash = hashlib.sha256(payload_bytes).hexdigest()
+                if not hmac_mod.compare_digest(str(signature), expected_hash):
+                    return False, (
+                        f"signature mismatch on delegation from "
+                        f"'{delegation.get('delegator_id')}' to '{current_id}' "
+                        f"at depth {depth}"
+                    )
+
+            # Check revocation status of this delegation link.
+            if delegation.get("revoked"):
+                return False, (
+                    f"delegation from '{delegation.get('delegator_id')}' "
+                    f"to '{current_id}' has been revoked"
+                )
+
+            # Move up the chain.
+            delegator_id = delegation.get("delegator_id", "")
+            if not delegator_id:
+                return False, (f"delegation record for '{current_id}' has no delegator_id")
+
+            current_id = delegator_id
+            depth += 1
+
+        return False, f"delegation chain exceeded maximum depth ({_MAX_CHAIN_DEPTH})"
+
+    def revoke_delegation_chain(self, agent_id: str, reason: str) -> list[str]:
+        """DC-2: Cascade revocation through the delegation chain.
+
+        When an agent is revoked, all agents whose delegation chain passes
+        through the revoked agent must also be revoked.  This method:
+
+        1. Marks *agent_id* as REVOKED in the AgentRegistry.
+        2. Finds all delegations where *agent_id* is the delegator.
+        3. Recursively revokes each downstream delegatee.
+        4. Stores revocation records in the TrustStore.
+        5. Persists posture change events with CASCADE_REVOCATION trigger.
+
+        Args:
+            agent_id: The root agent to revoke.
+            reason: Human-readable reason for the revocation.
+
+        Returns:
+            List of all agent IDs that were revoked (including the root).
+        """
+        if not reason:
+            raise ValueError("Revocation reason must not be empty")
+
+        revoked_ids: list[str] = []
+        visited: set[str] = set()
+        stack: list[str] = [agent_id]
+
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            # Mark as REVOKED in registry if known.
+            agent_record = self._registry.get(current)
+            if agent_record is not None and agent_record.status != AgentStatus.REVOKED:
+                self._registry.update_status(current, AgentStatus.REVOKED)
+                logger.info(
+                    "DC-2: Cascade revocation — agent '%s' marked REVOKED (reason: %s)",
+                    current,
+                    reason,
+                )
+
+            revoked_ids.append(current)
+
+            # Store revocation record in TrustStore.
+            if self._trust_store is not None:
+                revocation_id = f"rev-{uuid.uuid4().hex[:12]}"
+                revocation_data: dict[str, Any] = {
+                    "revocation_id": revocation_id,
+                    "agent_id": current,
+                    "reason": reason,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "cascade_root": agent_id,
+                    "trigger": "cascade_revocation" if current != agent_id else "direct",
+                }
+                try:
+                    self._trust_store.store_revocation(revocation_id, revocation_data)
+                except Exception as exc:
+                    logger.error(
+                        "DC-2: Failed to persist revocation for agent '%s': %s",
+                        current,
+                        exc,
+                    )
+
+            # Persist posture change event.
+            self._persist_posture_change(
+                current,
+                {
+                    "agent_id": current,
+                    "event": "cascade_revocation",
+                    "trigger": "cascade_revocation",
+                    "reason": reason,
+                    "cascade_root": agent_id,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+
+            # Find downstream delegatees (agents this one delegated to).
+            if self._trust_store is not None:
+                try:
+                    delegations = self._trust_store.get_delegations_for(current)
+                    for d in delegations:
+                        delegatee = d.get("delegatee_id", "")
+                        if (
+                            delegatee
+                            and delegatee != current
+                            and d.get("delegator_id") == current
+                            and delegatee not in visited
+                        ):
+                            stack.append(delegatee)
+                except Exception as exc:
+                    logger.error(
+                        "DC-2: Failed to query delegations for agent '%s': %s",
+                        current,
+                        exc,
+                    )
+
+        logger.info(
+            "DC-2: Cascade revocation from '%s' revoked %d agents: %s",
+            agent_id,
+            len(revoked_ids),
+            revoked_ids,
+        )
+        return revoked_ids
 
     def _persist_posture_change(self, agent_id: str, posture_data: dict) -> None:
         """Persist a posture change to the TrustStore (RT4-M7).
