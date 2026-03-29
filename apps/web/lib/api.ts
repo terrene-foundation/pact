@@ -347,6 +347,39 @@ export class PactApiClient {
     return this.request(`/api/v1/envelopes/${encodeURIComponent(envelopeId)}`);
   }
 
+  /** Update a constraint envelope. */
+  async updateEnvelope(
+    envelopeId: string,
+    data: {
+      financial?: Partial<{
+        max_spend_usd: number;
+        requires_approval_above_usd: number | null;
+      }>;
+      operational?: Partial<{
+        allowed_actions: string[];
+        max_actions_per_day: number | null;
+      }>;
+      temporal?: Partial<{
+        active_hours_start: string | null;
+        active_hours_end: string | null;
+        timezone: string;
+      }>;
+      data_access?: Partial<{
+        read_paths: string[];
+        write_paths: string[];
+      }>;
+      communication?: Partial<{
+        internal_only: boolean;
+        allowed_channels: string[];
+      }>;
+    },
+  ): Promise<ApiResponse<ConstraintEnvelope>> {
+    return this.request(`/api/v1/envelopes/${encodeURIComponent(envelopeId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
   /** List audit anchors with optional filters. */
   async listAuditAnchors(params?: {
     agentId?: string;
@@ -845,6 +878,44 @@ export class PactApiClient {
       `/api/v1/pools/${encodeURIComponent(poolId)}/members/${encodeURIComponent(agentId)}`,
       { method: "DELETE" },
     );
+  }
+
+  // ------------------------------------------------------------------
+  // Org Builder endpoints
+  // ------------------------------------------------------------------
+
+  /** Load the current org structure from the backend. */
+  async loadOrgStructure(): Promise<
+    ApiResponse<{
+      org_name: string;
+      departments: Array<{
+        id: string;
+        name: string;
+        role: { id: string; name: string; clearance_level: string };
+        teams: Array<{
+          id: string;
+          name: string;
+          role: { id: string; name: string; clearance_level: string };
+          roles: Array<{ id: string; name: string; clearance_level: string }>;
+        }>;
+      }>;
+    }>
+  > {
+    return this.request("/api/v1/org/structure");
+  }
+
+  /** Deploy an org YAML to the backend for compilation. */
+  async deployOrg(yaml: string): Promise<
+    ApiResponse<{
+      status: string;
+      message: string;
+      compiled_nodes: number;
+    }>
+  > {
+    return this.request("/api/v1/org/deploy", {
+      method: "POST",
+      body: JSON.stringify({ yaml }),
+    });
   }
 }
 

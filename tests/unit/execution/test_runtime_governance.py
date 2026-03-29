@@ -34,10 +34,17 @@ from pact_platform.use.execution.runtime import (
 class _MockVerdict:
     """Minimal verdict object returned by the mock engine."""
 
-    def __init__(self, level: str, reason: str = "", audit_details: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        level: str,
+        reason: str = "",
+        audit_details: dict[str, Any] | None = None,
+        effective_envelope_snapshot: dict[str, Any] | None = None,
+    ):
         self.level = level
         self.reason = reason
         self.audit_details = audit_details if audit_details is not None else {}
+        self.effective_envelope_snapshot = effective_envelope_snapshot
 
 
 class _MockEnvelopeConfig:
@@ -347,6 +354,156 @@ class TestGovernanceVerificationHappyPath:
         assert task.result.error is not None
         assert "action outside envelope" in task.result.error
         assert engine.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Test: reasoning trace attachment (TODO-13)
+# ---------------------------------------------------------------------------
+
+
+class TestReasoningTraceAttachment:
+    """Verify that HELD and BLOCKED verdicts attach a reasoning_trace to task metadata.
+
+    TODO-13: When GovernanceEngine.verify_action() returns a HELD or BLOCKED
+    verdict, the platform should attach a reasoning trace dict explaining WHY
+    the constraint triggered.
+    """
+
+    def _make_governed_runtime(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+        verdict: _MockVerdict,
+    ) -> tuple[ExecutionRuntime, _MockGovernanceEngine]:
+        engine = _MockGovernanceEngine(verdict=verdict)
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+        return rt, engine
+
+    def test_blocked_verdict_has_reasoning_trace(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """BLOCKED verdict populates task.metadata['reasoning_trace']."""
+        snapshot = {"financial": {"max_spend_per_action": 50.0}}
+        rt, engine = self._make_governed_runtime(
+            registry,
+            audit_chain,
+            _MockVerdict(
+                "blocked",
+                reason="budget exceeded",
+                effective_envelope_snapshot=snapshot,
+            ),
+        )
+
+        rt.submit("expensive_action", agent_id="agent-1")
+        task = rt.process_next()
+
+        assert task is not None
+        assert task.status == TaskStatus.BLOCKED
+        trace = task.metadata.get("reasoning_trace")
+        assert trace is not None
+        assert trace["verdict"] == "blocked"
+        assert trace["reason"] == "budget exceeded"
+        assert trace["role_address"] == "D1-R1"
+        assert trace["action"] == "expensive_action"
+        assert trace["envelope_snapshot"] == snapshot
+        assert "timestamp" in trace
+
+    def test_held_verdict_has_reasoning_trace(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """HELD verdict populates task.metadata['reasoning_trace']."""
+        rt, engine = self._make_governed_runtime(
+            registry,
+            audit_chain,
+            _MockVerdict(
+                "held",
+                reason="requires human approval",
+                effective_envelope_snapshot=None,
+            ),
+        )
+
+        rt.submit("sensitive_action", agent_id="agent-1")
+        task = rt.process_next()
+
+        assert task is not None
+        assert task.status == TaskStatus.HELD
+        trace = task.metadata.get("reasoning_trace")
+        assert trace is not None
+        assert trace["verdict"] == "held"
+        assert trace["reason"] == "requires human approval"
+        assert trace["role_address"] == "D1-R1"
+        assert trace["action"] == "sensitive_action"
+        assert trace["envelope_snapshot"] is None
+        assert "timestamp" in trace
+
+    def test_auto_approved_has_no_reasoning_trace(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """AUTO_APPROVED verdict does NOT attach a reasoning trace."""
+        rt, engine = self._make_governed_runtime(
+            registry,
+            audit_chain,
+            _MockVerdict("auto_approved"),
+        )
+
+        rt.submit("read_docs", agent_id="agent-1")
+        task = rt.process_next()
+
+        assert task is not None
+        assert task.metadata.get("reasoning_trace") is None
+
+    def test_flagged_has_no_reasoning_trace(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """FLAGGED verdict does NOT attach a reasoning trace."""
+        rt, engine = self._make_governed_runtime(
+            registry,
+            audit_chain,
+            _MockVerdict("flagged", reason="near boundary"),
+        )
+
+        rt.submit("moderate_action", agent_id="agent-1")
+        task = rt.process_next()
+
+        assert task is not None
+        assert task.metadata.get("reasoning_trace") is None
+
+    def test_reasoning_trace_timestamp_is_iso_format(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """The reasoning trace timestamp should be a valid ISO-8601 string."""
+        from datetime import datetime as dt
+
+        rt, engine = self._make_governed_runtime(
+            registry,
+            audit_chain,
+            _MockVerdict("blocked", reason="test"),
+        )
+
+        rt.submit("test_action", agent_id="agent-1")
+        task = rt.process_next()
+
+        assert task is not None
+        trace = task.metadata.get("reasoning_trace")
+        assert trace is not None
+        # Should parse without error
+        parsed = dt.fromisoformat(trace["timestamp"])
+        assert parsed is not None
 
 
 # ---------------------------------------------------------------------------

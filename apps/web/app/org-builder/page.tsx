@@ -19,6 +19,9 @@ import { useState, useCallback, useMemo } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
 import ErrorAlert from "../../components/ui/ErrorAlert";
 import { useAuth } from "../../lib/auth-context";
+import { useOrgStructure, useDeployOrg } from "@/hooks";
+import { toast } from "@/hooks/use-toast";
+import { ApiError } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -289,6 +292,8 @@ function AddForm({
 
 export default function OrgBuilderPage() {
   const { user } = useAuth();
+  const orgStructureQuery = useOrgStructure();
+  const deployOrgMutation = useDeployOrg();
 
   const [tree, setTree] = useState<OrgTree>({
     org_name: "My Organization",
@@ -298,6 +303,79 @@ export default function OrgBuilderPage() {
   const [addMode, setAddMode] = useState<AddMode>(null);
   const [exportVisible, setExportVisible] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Load org structure from API
+  const handleLoadFromApi = useCallback(async () => {
+    try {
+      const result = await orgStructureQuery.refetch();
+      if (result.data) {
+        setTree({
+          org_name: result.data.org_name,
+          departments: result.data.departments.map((dept) => ({
+            id: dept.id,
+            name: dept.name,
+            role: dept.role,
+            teams: dept.teams.map((team) => ({
+              id: team.id,
+              name: team.name,
+              role: team.role,
+              roles: team.roles,
+            })),
+          })),
+        });
+        toast({
+          title: "Org structure loaded",
+          description: `Loaded ${result.data.departments.length} department(s) from the backend.`,
+        });
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.statusCode === 404) {
+        toast({
+          title: "Coming soon",
+          description:
+            "The org structure endpoint is not yet available on the backend.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to load",
+          description:
+            err instanceof Error ? err.message : "Unknown error occurred",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [orgStructureQuery]);
+
+  // Deploy org YAML to backend
+  const handleDeploy = useCallback(
+    async (yaml: string) => {
+      try {
+        const result = await deployOrgMutation.mutateAsync(yaml);
+        toast({
+          title: "Org deployed",
+          description: `${result.message} (${result.compiled_nodes} nodes compiled)`,
+        });
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.statusCode === 404) {
+          toast({
+            title: "Coming soon",
+            description:
+              "The org deploy endpoint is not yet available on the backend.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Deploy failed",
+            description:
+              err instanceof Error ? err.message : "Unknown error occurred",
+            variant: "destructive",
+          });
+        }
+      }
+    },
+    [deployOrgMutation],
+  );
 
   // Add department
   const addDepartment = useCallback(
@@ -504,10 +582,26 @@ export default function OrgBuilderPage() {
       actions={
         <div className="flex gap-2">
           <button
+            onClick={() => void handleLoadFromApi()}
+            disabled={orgStructureQuery.isFetching}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            {orgStructureQuery.isFetching ? "Loading..." : "Load from API"}
+          </button>
+          <button
             onClick={() => setExportVisible((v) => !v)}
             className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             {exportVisible ? "Hide YAML" : "Export YAML"}
+          </button>
+          <button
+            onClick={() => void handleDeploy(yamlContent)}
+            disabled={
+              deployOrgMutation.isPending || tree.departments.length === 0
+            }
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {deployOrgMutation.isPending ? "Deploying..." : "Deploy"}
           </button>
         </div>
       }

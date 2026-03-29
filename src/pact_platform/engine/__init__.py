@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pact_platform.engine.approval_bridge import ApprovalBridge
 from pact_platform.engine.delegate import GovernedDelegate
+from pact_platform.engine.emergency_bypass import BypassRecord, BypassTier, EmergencyBypass
 from pact_platform.engine.envelope_adapter import PlatformEnvelopeAdapter
 from pact_platform.engine.event_bridge import EventBridge
 from pact_platform.engine.orchestrator import SupervisorOrchestrator
@@ -24,6 +25,9 @@ __all__ = [
     "PlatformEnvelopeAdapter",
     "GovernedDelegate",
     "ApprovalBridge",
+    "EmergencyBypass",
+    "BypassRecord",
+    "BypassTier",
     "EventBridge",
     "SupervisorOrchestrator",
     "seed_demo_data",

@@ -14,13 +14,15 @@
 
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import DashboardShell from "../../../components/layout/DashboardShell";
 import DimensionGauge from "../../../components/constraints/DimensionGauge";
+import EnvelopeEditSheet from "../../../components/envelopes/elements/EnvelopeEditSheet";
 import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
 import { Skeleton } from "@/components/ui/shadcn/skeleton";
+import { Button } from "@/components/ui/shadcn/button";
 import { useEnvelopeDetail } from "@/hooks";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Pencil } from "lucide-react";
 
 /** SVG icon paths for each dimension. */
 const DIMENSION_ICONS = {
@@ -43,6 +45,7 @@ export default function EnvelopeDetailPage({
   params,
 }: EnvelopeDetailPageProps) {
   const { id } = use(params);
+  const [editOpen, setEditOpen] = useState(false);
 
   const {
     data,
@@ -61,6 +64,14 @@ export default function EnvelopeDetailPage({
         { label: "Envelopes", href: "/envelopes" },
         { label: data?.description ?? id },
       ]}
+      actions={
+        data ? (
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="mr-1.5 h-4 w-4" />
+            Edit
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-6">
         {/* Loading state */}
@@ -73,7 +84,12 @@ export default function EnvelopeDetailPage({
         )}
 
         {/* Error state */}
-        {error && (<Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>)}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Envelope details */}
         {data && (
@@ -237,6 +253,15 @@ export default function EnvelopeDetailPage({
           </>
         )}
       </div>
+
+      {/* Edit side panel */}
+      {data && (
+        <EnvelopeEditSheet
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          envelope={data}
+        />
+      )}
     </DashboardShell>
   );
 }

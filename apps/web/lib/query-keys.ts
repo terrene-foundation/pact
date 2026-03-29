@@ -88,4 +88,8 @@ export const queryKeys = {
     list: () => [...queryKeys.pools.all, "list"] as const,
     detail: (id: string) => [...queryKeys.pools.all, "detail", id] as const,
   },
+  org: {
+    all: ["org"] as const,
+    structure: () => [...queryKeys.org.all, "structure"] as const,
+  },
 } as const;

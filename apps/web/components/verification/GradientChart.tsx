@@ -15,6 +15,7 @@
 
 "use client";
 
+import Link from "next/link";
 import type { VerificationStats } from "../../types/pact";
 
 interface GradientChartProps {
@@ -101,11 +102,12 @@ export default function GradientChart({ stats }: GradientChartProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`text-sm font-semibold ${level.textColor}`}
+                    <Link
+                      href={`/audit?level=${level.key}`}
+                      className={`text-sm font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid ${level.textColor}`}
                     >
                       {count.toLocaleString()}
-                    </span>
+                    </Link>
                     <span className="text-xs text-gray-400">
                       ({percentage}%)
                     </span>
@@ -136,9 +138,10 @@ export default function GradientChart({ stats }: GradientChartProps) {
             stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
 
           return (
-            <div
+            <Link
               key={level.key}
-              className={`rounded-lg border p-4 text-center ${level.bgColor} ${level.borderColor}`}
+              href={`/audit?level=${level.key}`}
+              className={`rounded-lg border p-4 text-center transition-shadow hover:shadow-md ${level.bgColor} ${level.borderColor}`}
             >
               <p className={`text-2xl font-bold ${level.textColor}`}>
                 {count.toLocaleString()}
@@ -147,7 +150,7 @@ export default function GradientChart({ stats }: GradientChartProps) {
                 {level.label}
               </p>
               <p className="text-xs text-gray-500">{percentage}%</p>
-            </div>
+            </Link>
           );
         })}
         {/* Total */}
