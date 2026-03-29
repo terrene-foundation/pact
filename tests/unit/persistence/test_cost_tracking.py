@@ -147,10 +147,12 @@ class TestMonthlySpend:
     def test_monthly_spend_excludes_other_months(self):
         tracker = CostTracker()
         now = datetime.now(UTC)
+        # Use day=1 to avoid day-out-of-range when previous month has fewer days
+        first_of_month = now.replace(day=1)
         last_month = (
-            now.replace(month=now.month - 1)
-            if now.month > 1
-            else now.replace(year=now.year - 1, month=12)
+            first_of_month.replace(month=first_of_month.month - 1)
+            if first_of_month.month > 1
+            else first_of_month.replace(year=first_of_month.year - 1, month=12)
         )
         tracker.record(_make_record(team_id="team-ops", cost_usd="1.00", timestamp=now))
         tracker.record(_make_record(team_id="team-ops", cost_usd="9.00", timestamp=last_month))
