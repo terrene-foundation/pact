@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     # Kailash SDK ecosystem (aligned with kailash-coc-claude-py template)
-    "kailash[trust,pact]>=2.1.0",
+    "kailash[trust,pact]>=2.2.0",
     "kailash-pact>=0.4.0",
     "kailash-dataflow>=1.2.0",
     "kailash-kaizen>=2.3.0",
@@ -53,7 +53,7 @@ dependencies = [
 [project.optional-dependencies]
 # Nexus multi-channel deployment
 nexus = [
-    "kailash-nexus>=1.4.3",
+    "kailash-nexus>=1.5.0",
 ]
 # kaizen-agents (GovernedSupervisor — Delegate engine)
 agents = [
@@ -109,6 +109,9 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
+]
+markers = [
+    "regression: permanent regression tests that guard against previously-fixed bugs",
 ]
 
 [tool.black]
