@@ -87,7 +87,9 @@ class ApprovalQueue:
         on_expire: Callable[[PendingAction], None] | None = None,
         timeout_seconds: int = 86400,
     ) -> None:
-        self._lock = threading.Lock()  # RT9-03: thread-safe queue access
+        self._lock = (
+            threading.RLock()
+        )  # RT9-03: thread-safe queue access (reentrant for expire_old)
         self._pending: list[PendingAction] = []
         self._resolved: deque[PendingAction] = deque(maxlen=max_resolved_history)
         # None = no restriction (backward compat)
@@ -332,8 +334,11 @@ class ApprovalQueue:
         Returns:
             Dictionary with capacity metrics.
         """
+        with self._lock:
+            resolved_snapshot = list(self._resolved)
+            pending_count = len(self._pending)
         resolved_times: list[float] = []
-        for pa in self._resolved:
+        for pa in resolved_snapshot:
             if pa.decided_at is not None:
                 delta = (pa.decided_at - pa.submitted_at).total_seconds()
                 resolved_times.append(delta)
@@ -343,8 +348,8 @@ class ApprovalQueue:
         )
 
         return {
-            "pending_count": len(self._pending),
-            "resolved_count": len(self._resolved),
+            "pending_count": pending_count,
+            "resolved_count": len(resolved_snapshot),
             "avg_resolution_seconds": avg_resolution_seconds,
         }
 
@@ -354,9 +359,11 @@ class ApprovalQueue:
         Returns:
             Age in seconds, or 0.0 if the queue is empty.
         """
-        if not self._pending:
+        with self._lock:
+            pending = list(self._pending)
+        if not pending:
             return 0.0
-        oldest = min(self._pending, key=lambda pa: pa.submitted_at)
+        oldest = min(pending, key=lambda pa: pa.submitted_at)
         return (datetime.now(UTC) - oldest.submitted_at).total_seconds()
 
     def expire_old(self, max_age_hours: int = 48) -> list[PendingAction]:
@@ -373,27 +380,24 @@ class ApprovalQueue:
         still_pending: list[PendingAction] = []
         callbacks: list[PendingAction] = []
 
-        # Note: when called from submit/approve/reject, the lock is already held.
-        # When called directly, we need the lock. Use reentrant pattern or
-        # document that _check_expiry is always called under lock.
-        for pa in self._pending:
-            if pa.submitted_at < cutoff:
-                pa.status = "expired"
-                pa.decided_at = datetime.now(UTC)
-                expired.append(pa)
-                self._resolved.append(pa)
-                logger.info(
-                    "Action expired: action_id=%s agent=%s (age > %dh)",
-                    pa.action_id,
-                    pa.agent_id,
-                    max_age_hours,
-                )
-                if self._on_expire is not None:
-                    callbacks.append(pa)
-            else:
-                still_pending.append(pa)
-
-        self._pending = still_pending
+        with self._lock:  # RLock allows reentrant calls from submit/approve/reject
+            for pa in self._pending:
+                if pa.submitted_at < cutoff:
+                    pa.status = "expired"
+                    pa.decided_at = datetime.now(UTC)
+                    expired.append(pa)
+                    self._resolved.append(pa)
+                    logger.info(
+                        "Action expired: action_id=%s agent=%s (age > %dh)",
+                        pa.action_id,
+                        pa.agent_id,
+                        max_age_hours,
+                    )
+                    if self._on_expire is not None:
+                        callbacks.append(pa)
+                else:
+                    still_pending.append(pa)
+            self._pending = still_pending
 
         # RT9-03: Fire callbacks outside lock (they may do I/O)
         for pa in callbacks:
