@@ -13,12 +13,14 @@ export { useTeams } from "./use-teams";
 
 // Agents
 export {
+  useAllAgents,
   useAgents,
   useAgentDetail,
   useSuspendAgent,
   useRevokeAgent,
   useChangePosture,
 } from "./use-agents";
+export type { AgentEntry } from "./use-agents";
 
 // Trust Chains
 export { useTrustChains, useTrustChainDetail } from "./use-trust-chains";
@@ -37,6 +39,7 @@ export {
 export {
   useBridges,
   useBridgeDetail,
+  useBridgeAudit,
   useCreateBridge,
   useApproveBridge,
   useSuspendBridge,
@@ -78,4 +81,10 @@ export {
 } from "./use-requests";
 
 // Pools
-export { usePools, usePoolDetail, useCreatePool } from "./use-pools";
+export {
+  usePools,
+  usePoolDetail,
+  useCreatePool,
+  useAddPoolMember,
+  useRemovePoolMember,
+} from "./use-pools";

@@ -3,20 +3,39 @@
 
 /**
  * Bridge list page -- shows all Cross-Functional Bridges with lifecycle
- * status badges (color-coded), type indicators, and team connections.
+ * status badges, type indicators, and team connections.
  *
- * Links to bridge detail pages and the bridge creation wizard.
+ * Uses React Query (useBridges) for data fetching and Shadcn UI components
+ * for layout, filtering, and status display.
  */
 
 "use client";
 
 import { useState } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
-import ErrorAlert from "../../components/ui/ErrorAlert";
-import StatusBadge from "../../components/ui/StatusBadge";
-import { CardSkeleton } from "../../components/ui/Skeleton";
-import { useApi } from "../../lib/use-api";
+import { useBridges } from "@/hooks";
 import type { BridgeStatus } from "../../types/pact";
+import {
+  Card,
+  CardContent,
+  Badge,
+  Button,
+  Skeleton,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/shadcn";
 
 /** Human-readable labels for bridge types. */
 const BRIDGE_TYPE_LABELS: Record<string, string> = {
@@ -25,7 +44,7 @@ const BRIDGE_TYPE_LABELS: Record<string, string> = {
   ad_hoc: "Ad-Hoc",
 };
 
-/** All possible bridge statuses for the filter dropdown. */
+/** All possible bridge statuses for the filter. */
 const STATUS_OPTIONS: Array<{ value: BridgeStatus | "all"; label: string }> = [
   { value: "all", label: "All Statuses" },
   { value: "active", label: "Active" },
@@ -37,15 +56,48 @@ const STATUS_OPTIONS: Array<{ value: BridgeStatus | "all"; label: string }> = [
   { value: "revoked", label: "Revoked" },
 ];
 
+/** Map status to badge variant. */
+function statusVariant(
+  status: string,
+): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case "active":
+      return "default";
+    case "pending":
+    case "negotiating":
+      return "secondary";
+    case "suspended":
+    case "revoked":
+      return "destructive";
+    default:
+      return "outline";
+  }
+}
+
+/** Loading skeleton for bridges. */
+function BridgesListSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i}>
+          <CardContent className="p-5 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function BridgesPage() {
   const [statusFilter, setStatusFilter] = useState<BridgeStatus | "all">("all");
 
-  const {
-    data: bridgesData,
-    loading,
-    error,
-    refetch,
-  } = useApi((client) => client.listBridges(), []);
+  const { data: bridgesData, isLoading, error, refetch } = useBridges();
 
   const allBridges = bridgesData?.bridges ?? [];
   const bridges =
@@ -54,7 +106,7 @@ export default function BridgesPage() {
       : allBridges.filter((b) => b.status === statusFilter);
 
   // Group bridges by status for summary counts
-  const statusCounts = bridges.reduce(
+  const statusCounts = allBridges.reduce(
     (acc, b) => {
       acc[b.status] = (acc[b.status] ?? 0) + 1;
       return acc;
@@ -69,181 +121,195 @@ export default function BridgesPage() {
       breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Bridges" }]}
       actions={
         <div className="flex gap-2">
-          <a
-            href="/bridges/create"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-          >
-            Create Bridge
-          </a>
-          <button
-            onClick={refetch}
-            disabled={loading}
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          <Button asChild>
+            <a href="/bridges/create">Create Bridge</a>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isLoading}
           >
             Refresh
-          </button>
+          </Button>
         </div>
       }
     >
       <div className="space-y-6">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Cross-Functional Bridges enable controlled data and communication flow
           between agent teams. Standing bridges are permanent, Scoped bridges
           are time-bounded, and Ad-Hoc bridges serve one-time requests.
         </p>
 
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Failed to load bridges</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {error instanceof Error ? error.message : "Unknown error"}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Summary stat cards */}
-        {!loading && bridges.length > 0 && (
+        {!isLoading && allBridges.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
               {
                 label: "Total",
-                count: bridges.length,
-                color: "bg-gray-50 text-gray-900",
+                count: allBridges.length,
+                variant: "outline" as const,
               },
               {
                 label: "Active",
                 count: statusCounts["active"] ?? 0,
-                color: "bg-green-50 text-green-700",
+                variant: "default" as const,
               },
               {
                 label: "Pending",
                 count: statusCounts["pending"] ?? 0,
-                color: "bg-yellow-50 text-yellow-700",
+                variant: "secondary" as const,
               },
               {
                 label: "Suspended",
                 count: statusCounts["suspended"] ?? 0,
-                color: "bg-orange-50 text-orange-700",
+                variant: "destructive" as const,
               },
               {
                 label: "Closed",
                 count: statusCounts["closed"] ?? 0,
-                color: "bg-gray-50 text-gray-600",
+                variant: "outline" as const,
               },
               {
                 label: "Revoked",
                 count: statusCounts["revoked"] ?? 0,
-                color: "bg-red-50 text-red-700",
+                variant: "destructive" as const,
               },
             ].map((stat) => (
-              <div
-                key={stat.label}
-                className={`rounded-lg border border-gray-200 p-3 text-center ${stat.color}`}
-              >
-                <p className="text-lg font-bold">{stat.count}</p>
-                <p className="text-xs">{stat.label}</p>
-              </div>
+              <Card key={stat.label}>
+                <CardContent className="p-3 text-center">
+                  <p className="text-lg font-bold text-foreground">
+                    {stat.count}
+                  </p>
+                  <Badge variant={stat.variant} className="mt-1">
+                    {stat.label}
+                  </Badge>
+                </CardContent>
+              </Card>
             ))}
+          </div>
+        )}
+
+        {/* Status filter */}
+        {!isLoading && allBridges.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Filter:</span>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as BridgeStatus | "all")
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
         {/* Loading skeleton */}
-        {loading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))}
-          </div>
-        )}
+        {isLoading && <BridgesListSkeleton />}
 
-        {/* Bridge list */}
-        {!loading && bridges.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Bridge
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Source / Target
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+        {/* Bridge list table */}
+        {!isLoading && bridges.length > 0 && (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bridge</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Source / Target</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {bridges.map((bridge) => (
-                  <tr
+                  <TableRow
                     key={bridge.bridge_id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="cursor-pointer"
                     onClick={() => {
                       window.location.href = `/bridges/${bridge.bridge_id}`;
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        window.location.href = `/bridges/${bridge.bridge_id}`;
-                      }
-                    }}
-                    tabIndex={0}
-                    role="link"
-                    aria-label={`Bridge: ${bridge.purpose}, status ${bridge.status}`}
                   >
-                    <td className="px-4 py-3">
+                    <TableCell>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                        <p className="text-sm font-medium text-foreground truncate max-w-xs">
                           {bridge.purpose}
                         </p>
-                        <p className="text-xs text-gray-400 font-mono">
+                        <p className="text-xs text-muted-foreground font-mono">
                           {bridge.bridge_id}
                         </p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-700">
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-foreground">
                         {BRIDGE_TYPE_LABELS[bridge.bridge_type] ??
                           bridge.bridge_type}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700">
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-foreground">
                         <span className="font-medium">
                           {bridge.source_team_id}
                         </span>
-                        <span className="mx-1 text-gray-400">&rarr;</span>
+                        <span className="mx-1 text-muted-foreground">
+                          &rarr;
+                        </span>
                         <span className="font-medium">
                           {bridge.target_team_id}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge value={bridge.status} size="xs" />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant(bridge.status)}>
+                        {bridge.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {new Date(bridge.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
         )}
 
         {/* Empty state */}
-        {!loading && bridges.length === 0 && (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-            <p className="text-gray-500">
-              No bridges found. Cross-Functional Bridges connect agent teams for
-              controlled data sharing.
-            </p>
-            <a
-              href="/bridges/create"
-              className="mt-4 inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            >
-              Create Your First Bridge
-            </a>
-          </div>
+        {!isLoading && bridges.length === 0 && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">
+                No bridges found. Cross-Functional Bridges connect agent teams
+                for controlled data sharing.
+              </p>
+              <Button className="mt-4" asChild>
+                <a href="/bridges/create">Create Your First Bridge</a>
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardShell>

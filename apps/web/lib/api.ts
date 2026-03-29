@@ -824,6 +824,28 @@ export class PactApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  /** Add a member to a pool. */
+  async addPoolMember(
+    poolId: string,
+    data: { agent_id: string },
+  ): Promise<ApiResponse<{ agent_id: string }>> {
+    return this.request(`/api/v1/pools/${encodeURIComponent(poolId)}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** Remove a member from a pool. */
+  async removePoolMember(
+    poolId: string,
+    agentId: string,
+  ): Promise<ApiResponse<{ removed: boolean }>> {
+    return this.request(
+      `/api/v1/pools/${encodeURIComponent(poolId)}/members/${encodeURIComponent(agentId)}`,
+      { method: "DELETE" },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

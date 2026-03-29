@@ -64,3 +64,49 @@ export function useCreatePool() {
     },
   });
 }
+
+/** Add a member to a pool. */
+export function useAddPoolMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { poolId: string; agent_id: string }) => {
+      const client = await getApiClientAsync();
+      const res = await client.addPoolMember(params.poolId, {
+        agent_id: params.agent_id,
+      });
+      if (res.status === "error")
+        throw new Error(res.error ?? "Failed to add pool member");
+      return res.data!;
+    },
+    onSuccess: (_data, params) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pools.detail(params.poolId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pools.all,
+      });
+    },
+  });
+}
+
+/** Remove a member from a pool. */
+export function useRemovePoolMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { poolId: string; agentId: string }) => {
+      const client = await getApiClientAsync();
+      const res = await client.removePoolMember(params.poolId, params.agentId);
+      if (res.status === "error")
+        throw new Error(res.error ?? "Failed to remove pool member");
+      return res.data!;
+    },
+    onSuccess: (_data, params) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pools.detail(params.poolId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pools.all,
+      });
+    },
+  });
+}

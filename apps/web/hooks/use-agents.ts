@@ -9,6 +9,49 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiClientAsync } from "@/lib/use-api";
 import { queryKeys } from "@/lib/query-keys";
 import { STALE_TIMES } from "@/lib/query-provider";
+import type { TrustPosture, AgentStatus } from "@/types/pact";
+
+/** Agent entry combined with its team (used by useAllAgents). */
+export interface AgentEntry {
+  agent_id: string;
+  name: string;
+  role: string;
+  posture: TrustPosture;
+  status: AgentStatus;
+  team_id: string;
+}
+
+/** Fetch all agents across all teams. */
+export function useAllAgents() {
+  return useQuery({
+    queryKey: [...queryKeys.agents.all, "all-teams"],
+    queryFn: async () => {
+      const client = await getApiClientAsync();
+      const teamsRes = await client.listTeams();
+      if (teamsRes.status === "error" || !teamsRes.data)
+        throw new Error(teamsRes.error ?? "Failed to load teams");
+
+      const allAgents: AgentEntry[] = [];
+      for (const teamId of teamsRes.data.teams) {
+        const agentsRes = await client.listAgents(teamId);
+        if (agentsRes.status === "ok" && agentsRes.data) {
+          for (const agent of agentsRes.data.agents) {
+            allAgents.push({
+              agent_id: agent.agent_id,
+              name: agent.name,
+              role: agent.role,
+              posture: agent.posture as TrustPosture,
+              status: agent.status as AgentStatus,
+              team_id: teamId,
+            });
+          }
+        }
+      }
+      return allAgents;
+    },
+    staleTime: STALE_TIMES.frequent,
+  });
+}
 
 /** Fetch agents for a specific team. */
 export function useAgents(teamId: string) {

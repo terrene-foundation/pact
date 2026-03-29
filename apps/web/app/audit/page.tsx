@@ -4,9 +4,9 @@
 /**
  * Audit Trail page -- searchable, filterable view of all audit anchors.
  *
- * Provides filters for agent, action, team, verification level, and date range.
- * Displays matching anchors in a sortable table with client-side pagination.
- * Supports CSV/JSON export and a slide-out detail panel for each anchor.
+ * Uses React Query (useAuditAnchors) for data fetching, Shadcn UI components
+ * for filters (Select, Input) and display (Table, Skeleton), and the existing
+ * AuditTable/Pagination/ExportButtons/AnchorDetailPanel subcomponents.
  *
  * NOTE: Pagination is currently client-side. When the API supports offset/limit
  * parameters, this should be replaced with server-side pagination to avoid
@@ -17,19 +17,41 @@
 
 import { useState, useMemo } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
-import AuditFilters, {
-  type AuditFilterState,
-} from "../../components/audit/AuditFilters";
 import AuditTable from "../../components/audit/AuditTable";
 import Pagination from "../../components/audit/elements/Pagination";
 import ExportButtons from "../../components/audit/elements/ExportButtons";
 import AnchorDetailPanel from "../../components/audit/elements/AnchorDetailPanel";
-import ErrorAlert from "../../components/ui/ErrorAlert";
-import { TableSkeleton } from "../../components/ui/Skeleton";
-import { useApi } from "../../lib/use-api";
-import type { AuditAnchor } from "../../types/pact";
+import { useAuditAnchors } from "@/hooks";
+import type { AuditAnchor, VerificationLevel } from "../../types/pact";
+import {
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Button,
+  Badge,
+  Skeleton,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/shadcn";
 
 const DEFAULT_PAGE_SIZE = 25;
+
+/** Filter state for audit anchors. */
+interface AuditFilterState {
+  agentQuery: string;
+  actionQuery: string;
+  teamId: string;
+  level: VerificationLevel | "";
+  startDate: string;
+  endDate: string;
+}
 
 const EMPTY_FILTERS: AuditFilterState = {
   agentQuery: "",
@@ -39,6 +61,19 @@ const EMPTY_FILTERS: AuditFilterState = {
   startDate: "",
   endDate: "",
 };
+
+/** Verification level options with semantic colors. */
+const LEVELS: Array<{
+  value: VerificationLevel | "";
+  label: string;
+  variant: "default" | "secondary" | "destructive" | "outline";
+}> = [
+  { value: "", label: "All Levels", variant: "outline" },
+  { value: "AUTO_APPROVED", label: "Auto Approved", variant: "default" },
+  { value: "FLAGGED", label: "Flagged", variant: "secondary" },
+  { value: "HELD", label: "Held", variant: "secondary" },
+  { value: "BLOCKED", label: "Blocked", variant: "destructive" },
+];
 
 /** Apply client-side filters to audit anchors. */
 function applyFilters(
@@ -89,13 +124,7 @@ function extractTeams(anchors: AuditAnchor[]): string[] {
   return Array.from(teams).sort();
 }
 
-/**
- * Paginate an array client-side.
- *
- * NOTE: This is a temporary measure. When the API supports offset/limit
- * query parameters, pagination should be done server-side to avoid loading
- * all records into the browser.
- */
+/** Paginate an array client-side. */
 function paginateClientSide<T>(
   items: T[],
   page: number,
@@ -103,6 +132,37 @@ function paginateClientSide<T>(
 ): T[] {
   const start = (page - 1) * pageSize;
   return items.slice(start, start + pageSize);
+}
+
+/** Count active filters (non-empty values). */
+function countActiveFilters(filters: AuditFilterState): number {
+  let count = 0;
+  if (filters.agentQuery) count++;
+  if (filters.actionQuery) count++;
+  if (filters.teamId) count++;
+  if (filters.level) count++;
+  if (filters.startDate) count++;
+  if (filters.endDate) count++;
+  return count;
+}
+
+/** Table loading skeleton. */
+function AuditTableSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex gap-4">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-20 rounded-full" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function AuditPage() {
@@ -113,10 +173,7 @@ export default function AuditPage() {
     null,
   );
 
-  const { data, loading, error, refetch } = useApi(
-    (client) => client.listAuditAnchors(),
-    [],
-  );
+  const { data, isLoading, error, refetch } = useAuditAnchors();
 
   // Extract unique team IDs for the dropdown
   const teams = useMemo(() => {
@@ -130,9 +187,11 @@ export default function AuditPage() {
     return applyFilters(data.anchors, filters);
   }, [data, filters]);
 
+  const activeFilterCount = countActiveFilters(filters);
+
   // Reset to page 1 when filters change
-  const handleFilterChange = (newFilters: AuditFilterState) => {
-    setFilters(newFilters);
+  const handleFilterChange = (partial: Partial<AuditFilterState>) => {
+    setFilters((prev) => ({ ...prev, ...partial }));
     setPage(1);
   };
 
@@ -163,33 +222,168 @@ export default function AuditPage() {
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Cryptographic audit anchors recording every significant agent
             action. Each anchor provides an immutable proof of the trust state
             at a point in time.
           </p>
 
           {/* Export buttons */}
-          {data && !loading && <ExportButtons anchors={filteredAnchors} />}
+          {data && !isLoading && <ExportButtons anchors={filteredAnchors} />}
         </div>
 
         {/* Filters */}
-        <AuditFilters
-          filters={filters}
-          onChange={handleFilterChange}
-          onReset={handleFilterReset}
-          teams={teams}
-        />
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            {/* First row: text searches */}
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="min-w-[200px] flex-1">
+                <Label
+                  htmlFor="audit-agent-filter"
+                  className="mb-1 block text-xs"
+                >
+                  Agent
+                </Label>
+                <Input
+                  id="audit-agent-filter"
+                  value={filters.agentQuery}
+                  onChange={(e) =>
+                    handleFilterChange({ agentQuery: e.target.value })
+                  }
+                  placeholder="Search by agent name or ID..."
+                />
+              </div>
+              <div className="min-w-[200px] flex-1">
+                <Label
+                  htmlFor="audit-action-filter"
+                  className="mb-1 block text-xs"
+                >
+                  Action
+                </Label>
+                <Input
+                  id="audit-action-filter"
+                  value={filters.actionQuery}
+                  onChange={(e) =>
+                    handleFilterChange({ actionQuery: e.target.value })
+                  }
+                  placeholder="Search by action name..."
+                />
+              </div>
+            </div>
+
+            {/* Second row: dropdowns and dates */}
+            <div className="flex flex-wrap items-end gap-4">
+              {/* Team dropdown */}
+              <div className="min-w-[160px]">
+                <Label className="mb-1 block text-xs">Team</Label>
+                <Select
+                  value={filters.teamId || "all"}
+                  onValueChange={(value) =>
+                    handleFilterChange({
+                      teamId: value === "all" ? "" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Teams" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teams</SelectItem>
+                    {teams.map((team) => (
+                      <SelectItem key={team} value={team}>
+                        {team}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Verification level dropdown */}
+              <div className="min-w-[180px]">
+                <Label className="mb-1 block text-xs">Verification Level</Label>
+                <Select
+                  value={filters.level || "all"}
+                  onValueChange={(value) =>
+                    handleFilterChange({
+                      level:
+                        value === "all" ? "" : (value as VerificationLevel),
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Levels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEVELS.map((opt) => (
+                      <SelectItem
+                        key={opt.value || "all"}
+                        value={opt.value || "all"}
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Start date */}
+              <div className="min-w-[150px]">
+                <Label className="mb-1 block text-xs">From</Label>
+                <Input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) =>
+                    handleFilterChange({ startDate: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* End date */}
+              <div className="min-w-[150px]">
+                <Label className="mb-1 block text-xs">To</Label>
+                <Input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) =>
+                    handleFilterChange({ endDate: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Clear Filters button */}
+              {activeFilterCount > 0 && (
+                <Button variant="outline" size="sm" onClick={handleFilterReset}>
+                  Clear Filters
+                  <Badge variant="secondary" className="ml-1.5">
+                    {activeFilterCount}
+                  </Badge>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Loading state */}
-        {loading && <TableSkeleton rows={8} />}
+        {isLoading && <AuditTableSkeleton />}
 
         {/* Error state */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Failed to load audit anchors</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {error instanceof Error ? error.message : "Unknown error"}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Results summary */}
-        {data && !loading && (
-          <p className="text-xs text-gray-500">
+        {data && !isLoading && (
+          <p className="text-xs text-muted-foreground">
             {filteredAnchors.length} of {data.anchors.length} audit anchors
             match the current filters
           </p>
@@ -204,7 +398,7 @@ export default function AuditPage() {
         )}
 
         {/* Pagination */}
-        {data && !loading && filteredAnchors.length > 0 && (
+        {data && !isLoading && filteredAnchors.length > 0 && (
           <Pagination
             page={page}
             pageSize={pageSize}

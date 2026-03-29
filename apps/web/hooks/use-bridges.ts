@@ -119,6 +119,22 @@ export function useSuspendBridge() {
   });
 }
 
+/** Fetch bridge audit trail by bridge ID. */
+export function useBridgeAudit(bridgeId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.bridges.detail(bridgeId), "audit"],
+    queryFn: async () => {
+      const client = await getApiClientAsync();
+      const res = await client.bridgeAudit(bridgeId);
+      if (res.status === "error")
+        throw new Error(res.error ?? "Failed to load bridge audit");
+      return res.data!;
+    },
+    staleTime: STALE_TIMES.frequent,
+    enabled: !!bridgeId,
+  });
+}
+
 /** Close a bridge. */
 export function useCloseBridge() {
   const queryClient = useQueryClient();

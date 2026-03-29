@@ -4,6 +4,9 @@
 /**
  * Agent detail page -- shows agent info, current posture, capabilities,
  * posture change history, and governance actions (suspend, revoke, change posture).
+ *
+ * Uses React Query hooks for data fetching and mutations, Shadcn UI components
+ * for layout, and AlertDialog for destructive action confirmations.
  */
 
 "use client";
@@ -12,13 +15,42 @@ import { use, useState, useCallback } from "react";
 import DashboardShell from "../../../components/layout/DashboardShell";
 import PostureBadge from "../../../components/agents/PostureBadge";
 import PostureUpgradeWizard from "../../../components/agents/PostureUpgradeWizard";
-import StatusBadge from "../../../components/ui/StatusBadge";
-import ErrorAlert from "../../../components/ui/ErrorAlert";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
-import { CardSkeleton } from "../../../components/ui/Skeleton";
-import { useApi, getApiClient } from "../../../lib/use-api";
+import {
+  useAgentDetail,
+  useSuspendAgent,
+  useRevokeAgent,
+  useChangePosture,
+} from "@/hooks";
 import { useAuth } from "../../../lib/auth-context";
 import type { TrustPosture } from "../../../types/pact";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Skeleton,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+  Input,
+  Label,
+  Separator,
+} from "@/components/ui/shadcn";
 
 /** All trust postures in ascending autonomy order. */
 const ALL_POSTURES: TrustPosture[] = [
@@ -53,6 +85,112 @@ function formatDate(iso: string): string {
   }
 }
 
+/** Skeleton for the detail page. */
+function AgentDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-24 rounded-full" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-1">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-6 space-y-3">
+          <Skeleton className="h-5 w-40" />
+          <div className="flex gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-md" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** AlertDialog wrapper for destructive actions requiring a reason. */
+function ReasonAlertDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  destructive,
+  isPending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  isPending: boolean;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-2 py-2">
+          <Label htmlFor="action-reason">Reason</Label>
+          <Input
+            id="action-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Provide a reason for this action..."
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setReason("");
+            }}
+          >
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!reason.trim() || isPending}
+            onClick={() => {
+              onConfirm(reason.trim());
+              setReason("");
+            }}
+            className={
+              destructive
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : ""
+            }
+          >
+            {isPending ? "Processing..." : confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 interface AgentDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -62,12 +200,12 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
   const { user } = useAuth();
   const officerId = user?.name ?? "unknown-operator";
 
-  const { data, loading, error, refetch } = useApi(
-    (client) => client.getAgentDetail(id),
-    [id],
-  );
+  const { data, isLoading, error, refetch } = useAgentDetail(id);
+  const suspendMutation = useSuspendAgent();
+  const revokeMutation = useRevokeAgent();
+  const changePostureMutation = useChangePosture();
 
-  // Governance action modal state
+  // Dialog state
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [postureOpen, setPostureOpen] = useState(false);
@@ -84,57 +222,77 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
   }, []);
 
   const handleSuspend = useCallback(
-    async (reason: string) => {
+    (reason: string) => {
       clearMessages();
-      const client = getApiClient();
-      const result = await client.suspendAgent(id, reason, officerId);
-      if (result.status === "error") {
-        throw new Error(result.error ?? "Failed to suspend agent");
-      }
-      setSuspendOpen(false);
-      setActionSuccess("Agent has been suspended.");
-      refetch();
+      suspendMutation.mutate(
+        { agentId: id, reason, suspendedBy: officerId },
+        {
+          onSuccess: () => {
+            setSuspendOpen(false);
+            setActionSuccess("Agent has been suspended.");
+          },
+          onError: (err) => {
+            setActionError(
+              err instanceof Error ? err.message : "Failed to suspend agent",
+            );
+          },
+        },
+      );
     },
-    [id, officerId, refetch, clearMessages],
+    [id, officerId, suspendMutation, clearMessages],
   );
 
   const handleRevoke = useCallback(
-    async (reason: string) => {
+    (reason: string) => {
       clearMessages();
-      const client = getApiClient();
-      const result = await client.revokeAgent(id, reason, officerId);
-      if (result.status === "error") {
-        throw new Error(result.error ?? "Failed to revoke agent");
-      }
-      setRevokeOpen(false);
-      setActionSuccess("Agent has been revoked. This action cannot be undone.");
-      refetch();
+      revokeMutation.mutate(
+        { agentId: id, reason, revokedBy: officerId },
+        {
+          onSuccess: () => {
+            setRevokeOpen(false);
+            setActionSuccess(
+              "Agent has been revoked. This action cannot be undone.",
+            );
+          },
+          onError: (err) => {
+            setActionError(
+              err instanceof Error ? err.message : "Failed to revoke agent",
+            );
+          },
+        },
+      );
     },
-    [id, officerId, refetch, clearMessages],
+    [id, officerId, revokeMutation, clearMessages],
   );
 
   const handleChangePosture = useCallback(
-    async (reason: string) => {
+    (reason: string) => {
       if (!selectedPosture) return;
       clearMessages();
-      const client = getApiClient();
-      const result = await client.changePosture(
-        id,
-        selectedPosture,
-        reason,
-        officerId,
+      changePostureMutation.mutate(
+        {
+          agentId: id,
+          newPosture: selectedPosture,
+          reason,
+          changedBy: officerId,
+        },
+        {
+          onSuccess: () => {
+            setPostureOpen(false);
+            setActionSuccess(
+              `Posture changed to ${POSTURE_LABELS[selectedPosture]}.`,
+            );
+            setSelectedPosture(null);
+          },
+          onError: (err) => {
+            setActionError(
+              err instanceof Error ? err.message : "Failed to change posture",
+            );
+          },
+        },
       );
-      if (result.status === "error") {
-        throw new Error(result.error ?? "Failed to change posture");
-      }
-      setPostureOpen(false);
-      setSelectedPosture(null);
-      setActionSuccess(
-        `Posture changed to ${POSTURE_LABELS[selectedPosture]}.`,
-      );
-      refetch();
     },
-    [id, selectedPosture, officerId, refetch, clearMessages],
+    [id, selectedPosture, officerId, changePostureMutation, clearMessages],
   );
 
   const openPostureModal = useCallback(
@@ -150,32 +308,36 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
     async (reason: string, override: boolean) => {
       if (!data) return;
       clearMessages();
-      // Determine the next posture level
       const currentIdx = ALL_POSTURES.indexOf(data.posture);
       if (currentIdx < 0 || currentIdx >= ALL_POSTURES.length - 1) return;
       const nextPosture = ALL_POSTURES[currentIdx + 1];
 
-      const client = getApiClient();
       const fullReason = override ? `[GOVERNANCE OVERRIDE] ${reason}` : reason;
-      const result = await client.changePosture(
-        id,
-        nextPosture,
-        fullReason,
-        officerId,
+      changePostureMutation.mutate(
+        {
+          agentId: id,
+          newPosture: nextPosture,
+          reason: fullReason,
+          changedBy: officerId,
+        },
+        {
+          onSuccess: () => {
+            setUpgradeWizardOpen(false);
+            setActionSuccess(
+              `Posture upgraded to ${POSTURE_LABELS[nextPosture]}${override ? " (governance override)" : ""}.`,
+            );
+          },
+          onError: (err) => {
+            setActionError(
+              err instanceof Error ? err.message : "Failed to upgrade posture",
+            );
+          },
+        },
       );
-      if (result.status === "error") {
-        throw new Error(result.error ?? "Failed to upgrade posture");
-      }
-      setUpgradeWizardOpen(false);
-      setActionSuccess(
-        `Posture upgraded to ${POSTURE_LABELS[nextPosture]}${override ? " (governance override)" : ""}.`,
-      );
-      refetch();
     },
-    [data, id, officerId, refetch, clearMessages],
+    [data, id, officerId, changePostureMutation, clearMessages],
   );
 
-  /** Whether the agent might be eligible for an upgrade (not at max posture). */
   const canShowUpgrade =
     data?.status === "active" &&
     ALL_POSTURES.indexOf(data.posture) < ALL_POSTURES.length - 1;
@@ -196,326 +358,358 @@ export default function AgentDetailPage({ params }: AgentDetailPageProps) {
     >
       <div className="space-y-6">
         {/* Loading */}
-        {loading && (
-          <div className="space-y-6">
-            <CardSkeleton />
-            <CardSkeleton />
-          </div>
-        )}
+        {isLoading && <AgentDetailSkeleton />}
 
         {/* Error */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Failed to load agent</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {error instanceof Error ? error.message : "Unknown error"}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Action feedback */}
         {actionSuccess && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-green-800">
-                {actionSuccess}
-              </p>
-              <button
-                onClick={clearMessages}
-                className="text-sm text-green-600 hover:text-green-800"
-              >
+          <Alert>
+            <AlertTitle>Success</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>{actionSuccess}</span>
+              <Button variant="ghost" size="sm" onClick={clearMessages}>
                 Dismiss
-              </button>
-            </div>
-          </div>
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {actionError && (
-          <ErrorAlert
-            message={actionError}
-            onRetry={() => setActionError(null)}
-          />
+          <Alert variant="destructive">
+            <AlertTitle>Action failed</AlertTitle>
+            <AlertDescription>{actionError}</AlertDescription>
+          </Alert>
         )}
 
         {data && (
-          <>
-            {/* Agent overview card */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {data.name}
-                  </h2>
-                  <p className="text-sm text-gray-500">{data.role}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge value={data.status} size="md" />
-                  <PostureBadge posture={data.posture} size="md" />
-                </div>
-              </div>
+          <Tabs defaultValue="overview">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="governance">Governance</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <p className="text-xs text-gray-500">Agent ID</p>
-                  <p className="font-mono text-sm text-gray-900">
-                    {data.agent_id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Team</p>
-                  <p className="text-sm text-gray-900">{data.team_id}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Created</p>
-                  <p className="text-sm text-gray-900">
-                    {formatDate(data.created_at)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Last Active</p>
-                  <p className="text-sm text-gray-900">
-                    {formatDate(data.last_active_at)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Envelope link */}
-              {data.envelope_id && (
-                <div className="mt-4 border-t border-gray-100 pt-4">
-                  <p className="text-xs text-gray-500">Constraint Envelope</p>
-                  <a
-                    href={`/envelopes/${data.envelope_id}`}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                  >
-                    {data.envelope_id}
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* Governance actions */}
-            {!isRevoked && (
-              <div className="rounded-lg border border-gray-200 bg-white p-6">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                  Governance Actions
-                </h3>
-
-                <div className="space-y-4">
-                  {/* Upgrade Posture (wizard) */}
-                  {canShowUpgrade && (
+            {/* Overview tab */}
+            <TabsContent value="overview" className="space-y-6">
+              {/* Agent overview card */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <button
-                        onClick={() => {
-                          clearMessages();
-                          setUpgradeWizardOpen(true);
-                        }}
-                        className="inline-flex items-center gap-2 rounded-md bg-care-primary px-4 py-2 text-sm font-medium text-white hover:bg-care-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-care-primary focus:ring-offset-2"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                          />
-                        </svg>
-                        Upgrade Posture
-                      </button>
-                      <p className="mt-1.5 text-xs text-gray-500">
-                        Review evidence and approve a posture upgrade to the
-                        next trust level.
+                      <h2 className="text-lg font-semibold text-foreground">
+                        {data.name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {data.role}
                       </p>
                     </div>
-                  )}
-
-                  {/* Change Posture */}
-                  {(isActive || isSuspended) && (
-                    <div>
-                      <p className="mb-2 text-xs text-gray-500">
-                        Change Trust Posture
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {ALL_POSTURES.filter((p) => p !== data.posture).map(
-                          (posture) => (
-                            <button
-                              key={posture}
-                              onClick={() => openPostureModal(posture)}
-                              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                              {POSTURE_LABELS[posture]}
-                            </button>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Suspend / Revoke buttons */}
-                  <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
-                    {isActive && (
-                      <button
-                        onClick={() => {
-                          clearMessages();
-                          setSuspendOpen(true);
-                        }}
-                        className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          data.status === "active"
+                            ? "default"
+                            : data.status === "revoked"
+                              ? "destructive"
+                              : "secondary"
+                        }
                       >
-                        Suspend Agent
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        clearMessages();
-                        setRevokeOpen(true);
-                      }}
-                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
-                    >
-                      Revoke Agent
-                    </button>
+                        {data.status}
+                      </Badge>
+                      <PostureBadge posture={data.posture} size="md" />
+                    </div>
                   </div>
 
-                  {isSuspended && (
-                    <p className="text-xs text-gray-500">
-                      This agent is currently suspended. You can change its
-                      posture or permanently revoke it.
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Agent ID</p>
+                      <p className="font-mono text-sm text-foreground">
+                        {data.agent_id}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Team</p>
+                      <p className="text-sm text-foreground">{data.team_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="text-sm text-foreground">
+                        {formatDate(data.created_at)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Last Active
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {formatDate(data.last_active_at)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {data.envelope_id && (
+                    <>
+                      <Separator className="my-4" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Constraint Envelope
+                        </p>
+                        <a
+                          href={`/envelopes/${data.envelope_id}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          {data.envelope_id}
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Capabilities */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Capabilities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {data.capabilities.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {data.capabilities.map((cap) => (
+                        <Badge key={cap} variant="outline">
+                          {cap}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No capabilities declared.
                     </p>
                   )}
-                </div>
-              </div>
-            )}
+                </CardContent>
+              </Card>
 
-            {isRevoked && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-                <h3 className="mb-2 text-sm font-semibold text-red-800">
-                  Agent Revoked
-                </h3>
-                <p className="text-sm text-red-700">
-                  This agent has been permanently revoked and cannot be
-                  reactivated. All trust credentials have been invalidated.
-                </p>
-              </div>
-            )}
-
-            {/* Capabilities */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                Capabilities
-              </h3>
-              {data.capabilities.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {data.capabilities.map((cap) => (
-                    <span
-                      key={cap}
-                      className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700"
-                    >
-                      {cap}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No capabilities declared.
-                </p>
+              {isRevoked && (
+                <Alert variant="destructive">
+                  <AlertTitle>Agent Revoked</AlertTitle>
+                  <AlertDescription>
+                    This agent has been permanently revoked and cannot be
+                    reactivated. All trust credentials have been invalidated.
+                  </AlertDescription>
+                </Alert>
               )}
-            </div>
+            </TabsContent>
 
-            {/* Posture history */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                Posture History
-              </h3>
-              {data.posture_history.length > 0 ? (
-                <div className="space-y-4">
-                  {data.posture_history.map((change, index) => (
-                    <div
-                      key={`${change.changed_at}-${index}`}
-                      className="flex items-start gap-4 border-l-2 border-gray-200 pl-4"
-                    >
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <PostureBadge
-                            posture={change.from_posture}
-                            size="sm"
-                          />
-                          <svg
-                            className="h-4 w-4 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M14 5l7 7m0 0l-7 7m7-7H3"
-                            />
-                          </svg>
-                          <PostureBadge posture={change.to_posture} size="sm" />
-                        </div>
-                        <p className="mt-1 text-sm text-gray-600">
-                          {change.reason}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Changed by {change.changed_by} on{" "}
-                          {formatDate(change.changed_at)}
+            {/* Governance tab */}
+            <TabsContent value="governance" className="space-y-6">
+              {isRevoked ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Agent Revoked</AlertTitle>
+                  <AlertDescription>
+                    This agent has been permanently revoked. No governance
+                    actions are available.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">
+                      Governance Actions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Upgrade Posture */}
+                    {canShowUpgrade && (
+                      <div>
+                        <Button
+                          onClick={() => {
+                            clearMessages();
+                            setUpgradeWizardOpen(true);
+                          }}
+                        >
+                          Upgrade Posture
+                        </Button>
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          Review evidence and approve a posture upgrade to the
+                          next trust level.
                         </p>
                       </div>
+                    )}
+
+                    {/* Change Posture */}
+                    {(isActive || isSuspended) && (
+                      <div>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Change Trust Posture
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {ALL_POSTURES.filter((p) => p !== data.posture).map(
+                            (posture) => (
+                              <Button
+                                key={posture}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openPostureModal(posture)}
+                              >
+                                {POSTURE_LABELS[posture]}
+                              </Button>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Suspend / Revoke buttons */}
+                    <div className="flex flex-wrap gap-3">
+                      {isActive && (
+                        <AlertDialog
+                          open={suspendOpen}
+                          onOpenChange={setSuspendOpen}
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                clearMessages();
+                                setSuspendOpen(true);
+                              }}
+                            >
+                              Suspend Agent
+                            </Button>
+                          </AlertDialogTrigger>
+                        </AlertDialog>
+                      )}
+                      <AlertDialog
+                        open={revokeOpen}
+                        onOpenChange={setRevokeOpen}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              clearMessages();
+                              setRevokeOpen(true);
+                            }}
+                          >
+                            Revoke Agent
+                          </Button>
+                        </AlertDialogTrigger>
+                      </AlertDialog>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No posture changes recorded. The agent has maintained its
-                  initial posture since creation.
-                </p>
+
+                    {isSuspended && (
+                      <p className="text-xs text-muted-foreground">
+                        This agent is currently suspended. You can change its
+                        posture or permanently revoke it.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </div>
-          </>
+            </TabsContent>
+
+            {/* History tab */}
+            <TabsContent value="history" className="space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Posture History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {data.posture_history.length > 0 ? (
+                    <div className="space-y-4">
+                      {data.posture_history.map((change, index) => (
+                        <div
+                          key={`${change.changed_at}-${index}`}
+                          className="flex items-start gap-4 border-l-2 border-border pl-4"
+                        >
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <PostureBadge
+                                posture={change.from_posture}
+                                size="sm"
+                              />
+                              <span className="text-muted-foreground">
+                                &rarr;
+                              </span>
+                              <PostureBadge
+                                posture={change.to_posture}
+                                size="sm"
+                              />
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {change.reason}
+                            </p>
+                            <p className="text-xs text-muted-foreground/70">
+                              Changed by {change.changed_by} on{" "}
+                              {formatDate(change.changed_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No posture changes recorded. The agent has maintained its
+                      initial posture since creation.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
 
-      {/* Suspend Modal */}
-      <ConfirmationModal
+      {/* Suspend Dialog */}
+      <ReasonAlertDialog
         open={suspendOpen}
-        onClose={() => setSuspendOpen(false)}
-        onConfirm={handleSuspend}
+        onOpenChange={setSuspendOpen}
         title="Suspend Agent"
-        description="Suspending this agent will immediately halt all its operations. The agent can be reactivated later or permanently revoked. Please provide a reason for the suspension."
+        description="Suspending this agent will immediately halt all its operations. The agent can be reactivated later or permanently revoked."
         confirmLabel="Suspend Agent"
         destructive
-        inputRequired
-        inputLabel="Suspension Reason"
-        inputPlaceholder="Why is this agent being suspended?"
+        isPending={suspendMutation.isPending}
+        onConfirm={handleSuspend}
       />
 
-      {/* Revoke Modal */}
-      <ConfirmationModal
+      {/* Revoke Dialog */}
+      <ReasonAlertDialog
         open={revokeOpen}
-        onClose={() => setRevokeOpen(false)}
-        onConfirm={handleRevoke}
+        onOpenChange={setRevokeOpen}
         title="Revoke Agent"
-        description="This action is irreversible. Revoking this agent will permanently invalidate all its trust credentials, attestations, and delegations. The agent will never be able to operate again."
+        description="This action is irreversible. Revoking this agent will permanently invalidate all its trust credentials, attestations, and delegations."
         confirmLabel="Permanently Revoke"
         destructive
-        inputRequired
-        inputLabel="Revocation Reason"
-        inputPlaceholder="Why is this agent being permanently revoked?"
+        isPending={revokeMutation.isPending}
+        onConfirm={handleRevoke}
       />
 
-      {/* Change Posture Modal */}
-      <ConfirmationModal
+      {/* Change Posture Dialog */}
+      <ReasonAlertDialog
         open={postureOpen}
-        onClose={() => {
-          setPostureOpen(false);
-          setSelectedPosture(null);
+        onOpenChange={(open) => {
+          setPostureOpen(open);
+          if (!open) setSelectedPosture(null);
         }}
-        onConfirm={handleChangePosture}
         title={`Change Posture to ${selectedPosture ? POSTURE_LABELS[selectedPosture] : ""}`}
-        description={`This will change the agent's trust posture from "${data ? POSTURE_LABELS[data.posture] : ""}" to "${selectedPosture ? POSTURE_LABELS[selectedPosture] : ""}". This affects what level of autonomy the agent has and what actions require human oversight.`}
+        description={`This will change the agent's trust posture from "${data ? POSTURE_LABELS[data.posture] : ""}" to "${selectedPosture ? POSTURE_LABELS[selectedPosture] : ""}". This affects the level of autonomy the agent has.`}
         confirmLabel="Change Posture"
-        inputRequired
-        inputLabel="Reason for Posture Change"
-        inputPlaceholder="Why is this posture change needed?"
+        isPending={changePostureMutation.isPending}
+        onConfirm={handleChangePosture}
       />
 
       {/* Posture Upgrade Wizard */}

@@ -6,17 +6,27 @@
  *
  * Displays all held actions as cards with approve/reject buttons.
  * Actions are sorted by urgency (critical first) then by submission time.
- * Resolved actions are visually updated in place.
+ * Uses React Query mutations for approve/reject API calls with automatic
+ * cache invalidation.
  */
 
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import DashboardShell from "../../components/layout/DashboardShell";
 import ApprovalCard from "../../components/approvals/ApprovalCard";
-import ErrorAlert from "../../components/ui/ErrorAlert";
-import { CardSkeleton } from "../../components/ui/Skeleton";
-import { useApi, getApiClient } from "../../lib/use-api";
+import {
+  Card,
+  CardContent,
+  Skeleton,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Badge,
+  Button,
+} from "@/components/ui/shadcn";
+import { useHeldActions, useApproveAction, useRejectAction } from "@/hooks";
 import { useAuth } from "../../lib/auth-context";
 
 /** Urgency sort order -- lower number = higher priority (shown first). */
@@ -27,14 +37,51 @@ const URGENCY_ORDER: Record<string, number> = {
   low: 3,
 };
 
+// ---------------------------------------------------------------------------
+// Loading Skeleton
+// ---------------------------------------------------------------------------
+
+function ApprovalsSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Card key={i}>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-8 w-20 rounded-md" />
+              <Skeleton className="h-8 w-20 rounded-md" />
+              <Skeleton className="h-8 w-24 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page Component
+// ---------------------------------------------------------------------------
+
 export default function ApprovalsPage() {
   const { user } = useAuth();
   const approverId = user?.name ?? "unknown-operator";
 
-  const { data, loading, error, refetch } = useApi(
-    (client) => client.heldActions(),
-    [],
-  );
+  // --- Data fetching via React Query ---
+  const { data, isLoading, error, refetch } = useHeldActions();
+  const approveMutation = useApproveAction();
+  const rejectMutation = useRejectAction();
 
   const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
 
@@ -47,18 +94,26 @@ export default function ApprovalsPage() {
 
   const handleApprove = useCallback(
     async (agentId: string, actionId: string, reason?: string) => {
-      const client = getApiClient();
-      await client.approveAction(agentId, actionId, approverId, reason);
+      await approveMutation.mutateAsync({
+        agentId,
+        actionId,
+        approverId,
+        reason,
+      });
     },
-    [approverId],
+    [approveMutation, approverId],
   );
 
   const handleReject = useCallback(
     async (agentId: string, actionId: string, reason?: string) => {
-      const client = getApiClient();
-      await client.rejectAction(agentId, actionId, approverId, reason);
+      await rejectMutation.mutateAsync({
+        agentId,
+        actionId,
+        approverId,
+        reason,
+      });
     },
-    [approverId],
+    [rejectMutation, approverId],
   );
 
   /** Sort pending actions by urgency (critical first), then by time (oldest first). */
@@ -87,65 +142,88 @@ export default function ApprovalsPage() {
       title="Approval Queue"
       breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Approvals" }]}
       actions={
-        <button
-          onClick={refetch}
-          disabled={loading}
-          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void refetch()}
+          disabled={isLoading}
         >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           Refresh
-        </button>
+        </Button>
       }
     >
       <div className="space-y-6">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Actions that exceeded a soft constraint limit and require human
           approval. Review each request and approve or reject based on the
           action context and constraint boundaries.
         </p>
 
         {/* Summary bar */}
-        {data && !loading && (
-          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">
-                {pendingActions.length}
-              </span>
-              <span className="text-sm text-gray-700">Pending</span>
-            </div>
-            {criticalCount > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">
-                  {criticalCount}
-                </span>
-                <span className="text-sm text-red-700 font-medium">
-                  Critical
-                </span>
+        {data && !isLoading && (
+          <Card>
+            <CardContent className="px-4 py-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="secondary"
+                    className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 border-transparent"
+                  >
+                    {pendingActions.length}
+                  </Badge>
+                  <span className="text-sm text-foreground">Pending</span>
+                </div>
+                {criticalCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive">{criticalCount}</Badge>
+                    <span className="text-sm font-medium text-destructive">
+                      Critical
+                    </span>
+                  </div>
+                )}
+                {resolvedCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-transparent"
+                    >
+                      {resolvedCount}
+                    </Badge>
+                    <span className="text-sm text-foreground">
+                      Resolved this session
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-            {resolvedCount > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
-                  {resolvedCount}
-                </span>
-                <span className="text-sm text-gray-700">
-                  Resolved this session
-                </span>
-              </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Loading */}
-        {loading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))}
-          </div>
-        )}
+        {isLoading && <ApprovalsSkeleton />}
 
         {/* Error */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Failed to load approval queue</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {error instanceof Error
+                  ? error.message
+                  : "An unexpected error occurred"}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Approval cards */}
         {data && (
@@ -163,28 +241,17 @@ export default function ApprovalsPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-8 text-center">
-                <svg
-                  className="mx-auto mb-3 h-10 w-10 text-green-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <p className="text-sm font-medium text-green-800">
-                  All caught up
-                </p>
-                <p className="text-xs text-green-600">
-                  No actions are awaiting approval right now.
-                </p>
-              </div>
+              <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
+                <CardContent className="p-8 text-center">
+                  <CheckCircle className="mx-auto mb-3 h-10 w-10 text-green-500" />
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    All caught up
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    No actions are awaiting approval right now.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </>
         )}
