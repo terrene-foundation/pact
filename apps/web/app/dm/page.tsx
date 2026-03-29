@@ -22,12 +22,13 @@
 
 import { useMemo } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
-import ErrorAlert from "../../components/ui/ErrorAlert";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
+import { AlertCircle } from "lucide-react";
 import DmSkeleton from "./elements/DmSkeleton";
 import DmTeamSummary from "./elements/DmTeamSummary";
 import DmAgentCards from "./elements/DmAgentCards";
 import TaskSubmissionForm from "./elements/TaskSubmissionForm";
-import { useApi } from "../../lib/use-api";
+import { useDmStatus as useDmStatusHook } from "@/hooks";
 import { ApiError } from "../../lib/api";
 import type {
   DmStatus,
@@ -41,104 +42,21 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * Custom hook that loads DM team status.
- *
- * Tries the dedicated DM status endpoint first. If it returns 404
- * (endpoint not yet provisioned), falls back to loading agents from
- * the standard teams/agents API and constructing a synthetic DmStatus.
+ * Wrapper that uses the shared React Query hook for DM status.
  */
-function useDmStatus(): {
+function useDmStatusLocal(): {
   status: DmStatus | null;
   loading: boolean;
   error: string | null;
   refetch: () => void;
 } {
-  // Try the dedicated DM status endpoint
-  const {
-    data: dmData,
-    loading: dmLoading,
-    error: dmError,
-    refetch: dmRefetch,
-  } = useApi(async (client) => {
-    try {
-      return await client.getDmStatus();
-    } catch (err) {
-      // If 404, the DM status endpoint is not provisioned yet.
-      // Return a sentinel so we know to fall back.
-      if (err instanceof ApiError && err.statusCode === 404) {
-        return {
-          status: "ok" as const,
-          data: null,
-          error: null,
-        };
-      }
-      throw err;
-    }
-  }, []);
-
-  // Determine if we need the fallback (dmData loaded but null = 404)
-  const needsFallback = !dmLoading && dmData === null && dmError === null;
-
-  // Fallback: load agents from the standard teams API
-  const {
-    data: fallbackData,
-    loading: fallbackLoading,
-    error: fallbackError,
-    refetch: fallbackRefetch,
-  } = useApi(
-    async (client) => {
-      if (!needsFallback) {
-        // Skip fallback -- dedicated endpoint returned data or errored
-        return { status: "ok" as const, data: null, error: null };
-      }
-
-      const agentsResp = await client.listAgents("dm-team");
-      if (agentsResp.status === "ok" && agentsResp.data) {
-        const agents: DmAgentSummary[] = agentsResp.data.agents.map(
-          (a: Record<string, unknown>) => ({
-            agent_id: a.agent_id as string,
-            name: a.name as string,
-            role: a.role as string,
-            posture: a.posture as TrustPosture,
-            status: a.status as AgentStatus,
-            tasks_submitted: 0,
-            tasks_completed: 0,
-            tasks_held: 0,
-            tasks_blocked: 0,
-          }),
-        );
-
-        const synthetic: DmStatus = {
-          team_id: "dm-team",
-          agents,
-          total_agents: agents.length,
-        };
-
-        return {
-          status: "ok" as const,
-          data: synthetic,
-          error: null,
-        };
-      }
-
-      return { status: "ok" as const, data: null, error: null };
-    },
-    [needsFallback],
-  );
-
-  // Merge results: prefer dedicated endpoint, then fallback
-  const status = dmData ?? fallbackData ?? null;
-  const loading = dmLoading || (needsFallback && fallbackLoading);
-  const error = dmError ?? (needsFallback ? fallbackError : null);
-
-  const refetch = () => {
-    dmRefetch();
-    if (needsFallback) {
-      fallbackRefetch();
-    }
+  const { data, isLoading, error, refetch } = useDmStatusHook();
+  return {
+    status: (data as DmStatus | undefined) ?? null,
+    loading: isLoading,
+    error: error?.message ?? null,
+    refetch,
   };
-
-  return { status, loading, error, refetch };
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +64,7 @@ function useDmStatus(): {
 // ---------------------------------------------------------------------------
 
 export default function DmPage() {
-  const { status, loading, error, refetch } = useDmStatus();
+  const { status, loading, error, refetch } = useDmStatusLocal();
 
   // Memoize agents list for child components
   const agents = useMemo(() => status?.agents ?? [], [status]);
@@ -176,7 +94,7 @@ export default function DmPage() {
         </p>
 
         {/* Error state */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (<Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>)}
 
         {/* Loading state */}
         {loading && <DmSkeleton />}

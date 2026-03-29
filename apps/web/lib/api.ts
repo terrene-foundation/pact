@@ -596,6 +596,256 @@ export class PactApiClient {
   async getDmTaskStatus(taskId: string): Promise<ApiResponse<DmTask>> {
     return this.request(`/api/v1/dm/tasks/${encodeURIComponent(taskId)}`);
   }
+
+  // ------------------------------------------------------------------
+  // Objective endpoints
+  // ------------------------------------------------------------------
+
+  /** List objectives with optional filters. */
+  async listObjectives(filters?: { status?: string }): Promise<
+    ApiResponse<{
+      objectives: Array<{
+        id: string;
+        title: string;
+        description: string;
+        org_address: string;
+        status: string;
+        priority: string;
+        budget: number;
+        spent: number;
+        request_count: number;
+        created_at: string;
+        updated_at: string;
+      }>;
+    }>
+  > {
+    const searchParams = new URLSearchParams();
+    if (filters?.status) searchParams.set("status", filters.status);
+    const qs = searchParams.toString();
+    return this.request(`/api/v1/objectives${qs ? `?${qs}` : ""}`);
+  }
+
+  /** Get objective detail by ID. */
+  async getObjective(id: string): Promise<
+    ApiResponse<{
+      id: string;
+      title: string;
+      description: string;
+      org_address: string;
+      status: string;
+      priority: string;
+      budget: number;
+      spent: number;
+      request_count: number;
+      created_at: string;
+      updated_at: string;
+      requests: Array<{
+        id: string;
+        title: string;
+        status: string;
+        assigned_to: string | null;
+        cost: number;
+      }>;
+    }>
+  > {
+    return this.request(`/api/v1/objectives/${encodeURIComponent(id)}`);
+  }
+
+  /** Create a new objective. */
+  async createObjective(data: {
+    title: string;
+    org_address: string;
+    budget: number;
+    priority: string;
+    description?: string;
+  }): Promise<ApiResponse<{ id: string; title: string; status: string }>> {
+    return this.request("/api/v1/objectives", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** Cancel an objective. */
+  async cancelObjective(
+    id: string,
+  ): Promise<ApiResponse<{ id: string; status: string }>> {
+    return this.request(`/api/v1/objectives/${encodeURIComponent(id)}/cancel`, {
+      method: "POST",
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Request endpoints
+  // ------------------------------------------------------------------
+
+  /** List work requests with optional filters. */
+  async listRequests(filters?: {
+    status?: string;
+    objective_id?: string;
+  }): Promise<
+    ApiResponse<{
+      requests: Array<{
+        id: string;
+        title: string;
+        objective_id: string;
+        objective_title: string;
+        status: string;
+        priority: string;
+        assigned_to: string | null;
+        governance_verdict: string | null;
+        cost: number;
+        created_at: string;
+        updated_at: string;
+      }>;
+    }>
+  > {
+    const searchParams = new URLSearchParams();
+    if (filters?.status) searchParams.set("status", filters.status);
+    if (filters?.objective_id)
+      searchParams.set("objective_id", filters.objective_id);
+    const qs = searchParams.toString();
+    return this.request(`/api/v1/requests${qs ? `?${qs}` : ""}`);
+  }
+
+  /** Get request detail by ID. */
+  async getRequest(id: string): Promise<
+    ApiResponse<{
+      id: string;
+      title: string;
+      description: string;
+      objective_id: string;
+      objective_title: string;
+      status: string;
+      priority: string;
+      assigned_to: string | null;
+      governance_verdict: string | null;
+      cost: number;
+      created_at: string;
+      updated_at: string;
+      sessions: Array<{
+        id: string;
+        status: string;
+        agent_id: string;
+        started_at: string;
+        ended_at: string | null;
+        cost: number;
+      }>;
+      artifacts: Array<{
+        id: string;
+        type: string;
+        name: string;
+        created_at: string;
+      }>;
+    }>
+  > {
+    return this.request(`/api/v1/requests/${encodeURIComponent(id)}`);
+  }
+
+  /** Submit a new work request. */
+  async submitRequest(data: {
+    title: string;
+    objective_id: string;
+    priority: string;
+    description?: string;
+  }): Promise<ApiResponse<{ id: string; title: string; status: string }>> {
+    return this.request("/api/v1/requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** Cancel a work request. */
+  async cancelRequest(
+    id: string,
+  ): Promise<ApiResponse<{ id: string; status: string }>> {
+    return this.request(`/api/v1/requests/${encodeURIComponent(id)}/cancel`, {
+      method: "POST",
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Pool endpoints
+  // ------------------------------------------------------------------
+
+  /** List all pools. */
+  async listPools(): Promise<
+    ApiResponse<{
+      pools: Array<{
+        id: string;
+        name: string;
+        org_id: string;
+        type: string;
+        routing_strategy: string;
+        member_count: number;
+        capacity: number;
+        active_requests: number;
+        created_at: string;
+      }>;
+    }>
+  > {
+    return this.request("/api/v1/pools");
+  }
+
+  /** Get pool detail by ID. */
+  async getPool(id: string): Promise<
+    ApiResponse<{
+      id: string;
+      name: string;
+      org_id: string;
+      type: string;
+      routing_strategy: string;
+      member_count: number;
+      capacity: number;
+      active_requests: number;
+      created_at: string;
+      description: string;
+      members: Array<{
+        agent_id: string;
+        name: string;
+        role: string;
+        status: string;
+        current_load: number;
+        joined_at: string;
+      }>;
+    }>
+  > {
+    return this.request(`/api/v1/pools/${encodeURIComponent(id)}`);
+  }
+
+  /** Create a new pool. */
+  async createPool(data: {
+    name: string;
+    org_id: string;
+    type: string;
+    routing_strategy: string;
+  }): Promise<ApiResponse<{ id: string; name: string }>> {
+    return this.request("/api/v1/pools", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** Add a member to a pool. */
+  async addPoolMember(
+    poolId: string,
+    data: { agent_id: string },
+  ): Promise<ApiResponse<{ agent_id: string }>> {
+    return this.request(`/api/v1/pools/${encodeURIComponent(poolId)}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /** Remove a member from a pool. */
+  async removePoolMember(
+    poolId: string,
+    agentId: string,
+  ): Promise<ApiResponse<{ removed: boolean }>> {
+    return this.request(
+      `/api/v1/pools/${encodeURIComponent(poolId)}/members/${encodeURIComponent(agentId)}`,
+      { method: "DELETE" },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

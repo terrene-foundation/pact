@@ -18,7 +18,9 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import PostureBadge from "./PostureBadge";
-import { useApi } from "../../lib/use-api";
+import { useQuery } from "@tanstack/react-query";
+import { getApiClientAsync } from "../../lib/use-api";
+import { queryKeys } from "@/lib/query-keys";
 import type { TrustPosture, AgentDetail } from "../../types/pact";
 
 // ---------------------------------------------------------------------------
@@ -480,12 +482,20 @@ export default function PostureUpgradeWizard({
   // Fetch upgrade evidence from the backend API
   const {
     data: evidenceData,
-    loading: evidenceLoading,
-    error: evidenceError,
-  } = useApi(
-    (client) => client.upgradeEvidence(agent.agent_id),
-    [agent.agent_id, open],
-  );
+    isLoading: evidenceLoading,
+    error: evidenceQueryError,
+  } = useQuery({
+    queryKey: queryKeys.agents.detail(agent.agent_id),
+    queryFn: async () => {
+      const client = await getApiClientAsync();
+      const res = await client.upgradeEvidence(agent.agent_id);
+      if (res.status === "error")
+        throw new Error(res.error ?? "Failed to load evidence");
+      return res.data;
+    },
+    enabled: open,
+  });
+  const evidenceError = evidenceQueryError?.message ?? null;
 
   // Build evidence from API response, with fallback to locally derived data
   const evidence: UpgradeEvidence = useMemo(() => {

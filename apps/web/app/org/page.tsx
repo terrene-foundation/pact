@@ -1,6 +1,6 @@
 "use client";
 
-import { useApi } from "../../lib/use-api";
+import { useAllAgents } from "@/hooks";
 
 interface OrgAgent {
   agent_id: string;
@@ -17,26 +17,29 @@ interface OrgTeamData {
 
 export default function OrgBuilderPage() {
   const {
-    data: teamsData,
-    loading,
-    error,
+    data: agentEntries,
+    isLoading: loading,
+    error: queryError,
     refetch,
-  } = useApi(async (client) => {
-    const teamsRes = await client.listTeams();
-    const teamIds: string[] = teamsRes.data?.teams ?? [];
+  } = useAllAgents();
+  const error = queryError?.message ?? null;
 
-    const orgTeams: OrgTeamData[] = [];
-    for (const teamId of teamIds) {
-      const agentsRes = await client.listAgents(teamId);
-      orgTeams.push({
-        team_id: teamId,
-        agents: (agentsRes.data?.agents ?? []) as OrgAgent[],
-      });
-    }
-    return { status: "ok" as const, data: orgTeams, error: null };
-  }, []);
-
-  const teams: OrgTeamData[] = teamsData ?? [];
+  // Group agents by team
+  const teamMap = new Map<string, OrgAgent[]>();
+  for (const entry of agentEntries ?? []) {
+    const list = teamMap.get(entry.team_id) ?? [];
+    list.push({
+      agent_id: entry.agent_id,
+      name: entry.name,
+      role: entry.role ?? "",
+      posture: entry.posture,
+      status: entry.status,
+    });
+    teamMap.set(entry.team_id, list);
+  }
+  const teams: OrgTeamData[] = Array.from(teamMap.entries()).map(
+    ([team_id, agents]) => ({ team_id, agents }),
+  );
   const totalAgents = teams.reduce((sum, t) => sum + t.agents.length, 0);
 
   return (
@@ -76,7 +79,7 @@ export default function OrgBuilderPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4">
           <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           <button
-            onClick={refetch}
+            onClick={() => refetch()}
             className="mt-2 text-sm text-red-600 underline"
           >
             Retry

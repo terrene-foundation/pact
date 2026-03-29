@@ -40,3 +40,4 @@
 {"timestamp":"2026-03-17T12:30:49.475Z","type":"stop","session_id":"fe2846ff-8678-45a2-a280-aec3cb98e171","reason":"signal","success":true}
 {"id":"obs_1773805247946_983wpgl89","timestamp":"2026-03-18T03:40:47.946Z","type":"test_pattern","data":{"test_tier":"pytest","test_path":"tests/"},"context":{"session_id":"unknown","cwd":"/Users/esperie/repos/terrene/care/apps/web","framework":"unknown"}}
 {"id":"obs_1773805257325_eb4qilea9","timestamp":"2026-03-18T03:40:57.325Z","type":"test_pattern","data":{"test_tier":"pytest","test_path":"tests/"},"context":{"session_id":"unknown","cwd":"/Users/esperie/repos/terrene/care/apps/web","framework":"unknown"}}
+{"timestamp":"2026-03-29T14:33:16.170Z","type":"stop","session_id":"adb7dd7c-9a1d-4464-88e5-66b9383c0b10","reason":"signal","success":true}

@@ -17,9 +17,10 @@
 import { use } from "react";
 import DashboardShell from "../../../components/layout/DashboardShell";
 import DimensionGauge from "../../../components/constraints/DimensionGauge";
-import ErrorAlert from "../../../components/ui/ErrorAlert";
-import { CardSkeleton } from "../../../components/ui/Skeleton";
-import { useApi } from "../../../lib/use-api";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
+import { Skeleton } from "@/components/ui/shadcn/skeleton";
+import { useEnvelopeDetail } from "@/hooks";
+import { AlertCircle } from "lucide-react";
 
 /** SVG icon paths for each dimension. */
 const DIMENSION_ICONS = {
@@ -27,8 +28,7 @@ const DIMENSION_ICONS = {
     "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   operational:
     "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
-  temporal:
-    "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  temporal: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
   dataAccess:
     "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4",
   communication:
@@ -39,13 +39,18 @@ interface EnvelopeDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) {
+export default function EnvelopeDetailPage({
+  params,
+}: EnvelopeDetailPageProps) {
   const { id } = use(params);
 
-  const { data, loading, error, refetch } = useApi(
-    (client) => client.getEnvelope(id),
-    [id]
-  );
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useEnvelopeDetail(id);
+  const error = queryError?.message ?? null;
 
   return (
     <DashboardShell
@@ -62,13 +67,13 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
         {loading && (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <CardSkeleton key={i} />
+              <Skeleton key={i} className="h-48 rounded-lg" />
             ))}
           </div>
         )}
 
         {/* Error state */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (<Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>)}
 
         {/* Envelope details */}
         {data && (
@@ -78,11 +83,15 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
               <div className="flex flex-wrap gap-6 text-sm">
                 <div>
                   <span className="text-gray-500">Envelope ID</span>
-                  <p className="font-medium text-gray-900">{data.envelope_id}</p>
+                  <p className="font-medium text-gray-900">
+                    {data.envelope_id}
+                  </p>
                 </div>
                 <div>
                   <span className="text-gray-500">Description</span>
-                  <p className="font-medium text-gray-900">{data.description}</p>
+                  <p className="font-medium text-gray-900">
+                    {data.description}
+                  </p>
                 </div>
               </div>
             </div>
@@ -116,7 +125,8 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
                 current={data.operational.allowed_actions.length}
                 maximum={
                   data.operational.max_actions_per_day ??
-                  data.operational.allowed_actions.length + data.operational.blocked_actions.length
+                  data.operational.allowed_actions.length +
+                    data.operational.blocked_actions.length
                 }
                 unit="actions"
                 iconPath={DIMENSION_ICONS.operational}
@@ -144,7 +154,8 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
                 current={0}
                 maximum={1}
                 utilization={
-                  data.temporal.active_hours_start && data.temporal.active_hours_end
+                  data.temporal.active_hours_start &&
+                  data.temporal.active_hours_end
                     ? 0.5
                     : 0
                 }
@@ -153,7 +164,8 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
                   {
                     label: "Active Hours",
                     value:
-                      data.temporal.active_hours_start && data.temporal.active_hours_end
+                      data.temporal.active_hours_start &&
+                      data.temporal.active_hours_end
                         ? `${data.temporal.active_hours_start} - ${data.temporal.active_hours_end}`
                         : "24/7",
                   },
@@ -209,11 +221,15 @@ export default function EnvelopeDetailPage({ params }: EnvelopeDetailPageProps) 
                   },
                   {
                     label: "Channels",
-                    value: data.communication.allowed_channels.join(", ") || "None configured",
+                    value:
+                      data.communication.allowed_channels.join(", ") ||
+                      "None configured",
                   },
                   {
                     label: "External Approval",
-                    value: data.communication.external_requires_approval ? "Required" : "Not required",
+                    value: data.communication.external_requires_approval
+                      ? "Required"
+                      : "Not required",
                   },
                 ]}
               />
