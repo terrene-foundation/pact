@@ -14,7 +14,7 @@
 import { useState, useMemo } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
 import StatusBadge from "../../components/ui/StatusBadge";
-import { TableSkeleton } from "../../components/ui/Skeleton";
+
 import { VerdictBadge, PriorityIndicator } from "@/components/pact";
 import { useRequests, useRequestDetail } from "@/hooks";
 import {
@@ -359,7 +359,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Loading */}
-        {isLoading && <TableSkeleton rows={6} />}
+        {isLoading && <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-12 rounded" />)}</div>}
 
         {/* Error */}
         {error && (

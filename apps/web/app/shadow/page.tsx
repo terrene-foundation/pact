@@ -28,14 +28,16 @@
 
 import { useState, useMemo } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
-import ErrorAlert from "../../components/ui/ErrorAlert";
 import ShadowSkeleton from "./elements/ShadowSkeleton";
 import ShadowMetricsCards from "./elements/ShadowMetricsCards";
 import PassRateGauge from "./elements/PassRateGauge";
 import VerificationDistribution from "./elements/VerificationDistribution";
 import DimensionBreakdown from "./elements/DimensionBreakdown";
 import UpgradeEligibility from "./elements/UpgradeEligibility";
-import { useApi } from "../../lib/use-api";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { useAllAgents, useShadowMetrics, useShadowReport } from "@/hooks";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Agent option derived from real API data
@@ -52,75 +54,7 @@ interface AgentOption {
 // Agent List Loader (fetches teams then agents per team)
 // ---------------------------------------------------------------------------
 
-/**
- * Custom hook that loads all agents across all teams.
- * Fetches the team list first, then fetches agents for each team
- * and flattens the results into a single array.
- */
-function useAgentList(): {
-  agents: AgentOption[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => void;
-} {
-  const {
-    data: teamsData,
-    loading: teamsLoading,
-    error: teamsError,
-    refetch: teamsRefetch,
-  } = useApi((client) => client.listTeams(), []);
-
-  // Build a comma-separated team key so we can fetch agents when teams load
-  const teamIds = teamsData?.teams ?? [];
-  const teamKey = teamIds.join(",");
-
-  const {
-    data: agentsData,
-    loading: agentsLoading,
-    error: agentsError,
-    refetch: agentsRefetch,
-  } = useApi(
-    async (client) => {
-      if (teamIds.length === 0) {
-        return { status: "ok" as const, data: { agents: [] }, error: null };
-      }
-
-      const allAgents: AgentOption[] = [];
-      for (const teamId of teamIds) {
-        const response = await client.listAgents(teamId);
-        if (response.status === "ok" && response.data) {
-          for (const agent of response.data.agents) {
-            allAgents.push({
-              agent_id: agent.agent_id,
-              name: agent.name,
-              team_id: teamId,
-              posture: agent.posture,
-            });
-          }
-        }
-      }
-
-      return {
-        status: "ok" as const,
-        data: { agents: allAgents },
-        error: null,
-      };
-    },
-    [teamKey],
-  );
-
-  const agents = agentsData?.agents ?? [];
-
-  return {
-    agents,
-    loading: teamsLoading || agentsLoading,
-    error: teamsError ?? agentsError,
-    refetch: () => {
-      teamsRefetch();
-      agentsRefetch();
-    },
-  };
-}
+// Agent list is now provided by the shared useAllAgents() React Query hook.
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -131,11 +65,22 @@ export default function ShadowPage() {
 
   // Load available agents from teams API
   const {
-    agents,
-    loading: agentsLoading,
+    data: agentEntries,
+    isLoading: agentsLoading,
     error: agentsError,
     refetch: agentsRefetch,
-  } = useAgentList();
+  } = useAllAgents();
+
+  const agents: AgentOption[] = useMemo(
+    () =>
+      (agentEntries ?? []).map((e) => ({
+        agent_id: e.agent_id,
+        name: e.name,
+        team_id: e.team_id,
+        posture: e.posture,
+      })),
+    [agentEntries],
+  );
 
   // Auto-select the first agent once loaded (only if nothing is selected)
   const effectiveAgentId = useMemo(() => {
@@ -148,48 +93,28 @@ export default function ShadowPage() {
   // Fetch shadow metrics for the selected agent
   const {
     data: metricsData,
-    loading: metricsLoading,
+    isLoading: metricsLoading,
     error: metricsError,
     refetch: metricsRefetch,
-  } = useApi(
-    (client) => {
-      if (!effectiveAgentId) {
-        return Promise.resolve({
-          status: "ok" as const,
-          data: null,
-          error: null,
-        });
-      }
-      return client.shadowMetrics(effectiveAgentId);
-    },
-    [effectiveAgentId],
-  );
+  } = useShadowMetrics(effectiveAgentId);
 
   // Fetch shadow report for the selected agent
   const {
     data: reportData,
-    loading: reportLoading,
+    isLoading: reportLoading,
     error: reportError,
     refetch: reportRefetch,
-  } = useApi(
-    (client) => {
-      if (!effectiveAgentId) {
-        return Promise.resolve({
-          status: "ok" as const,
-          data: null,
-          error: null,
-        });
-      }
-      return client.shadowReport(effectiveAgentId);
-    },
-    [effectiveAgentId],
-  );
+  } = useShadowReport(effectiveAgentId);
 
   // Derived state
   const loading = agentsLoading || metricsLoading || reportLoading;
-  const error = agentsError ?? metricsError ?? reportError;
+  const error =
+    agentsError?.message ??
+    metricsError?.message ??
+    reportError?.message ??
+    null;
   const selectedAgent = agents.find((a) => a.agent_id === effectiveAgentId);
-  const hasData = metricsData !== null && reportData !== null;
+  const hasData = metricsData != null && reportData != null;
 
   const handleRefetch = () => {
     agentsRefetch();
@@ -225,7 +150,12 @@ export default function ShadowPage() {
         </p>
 
         {/* Error */}
-        {error && <ErrorAlert message={error} onRetry={handleRefetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Agent selector */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">

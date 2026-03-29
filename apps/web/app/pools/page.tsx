@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import DashboardShell from "../../components/layout/DashboardShell";
-import { CardSkeleton } from "../../components/ui/Skeleton";
 import {
   usePools,
   usePoolDetail,
@@ -705,7 +704,7 @@ export default function PoolsPage() {
         {isLoading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <CardSkeleton key={i} />
+              <Skeleton key={i} className="h-24 rounded-lg" />
             ))}
           </div>
         )}

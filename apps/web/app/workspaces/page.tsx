@@ -11,27 +11,28 @@
 import DashboardShell from "../../components/layout/DashboardShell";
 import WorkspaceCard from "../../components/workspaces/WorkspaceCard";
 import BridgeConnections from "../../components/workspaces/BridgeConnections";
-import ErrorAlert from "../../components/ui/ErrorAlert";
-import { CardSkeleton } from "../../components/ui/Skeleton";
-import { useApi } from "../../lib/use-api";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
+import { Skeleton } from "@/components/ui/shadcn/skeleton";
+import { useWorkspaces, useBridges } from "@/hooks";
+import { AlertCircle } from "lucide-react";
 
 export default function WorkspacesPage() {
   const {
     data: workspacesData,
-    loading: wsLoading,
+    isLoading: wsLoading,
     error: wsError,
     refetch: wsRefetch,
-  } = useApi((client) => client.listWorkspaces(), []);
+  } = useWorkspaces();
 
   const {
     data: bridgesData,
-    loading: brLoading,
+    isLoading: brLoading,
     error: brError,
     refetch: brRefetch,
-  } = useApi((client) => client.listBridges(), []);
+  } = useBridges();
 
   const loading = wsLoading || brLoading;
-  const error = wsError ?? brError;
+  const error = wsError?.message ?? brError?.message ?? null;
 
   const handleRefetch = () => {
     wsRefetch();
@@ -42,10 +43,7 @@ export default function WorkspacesPage() {
     <DashboardShell
       activePath="/workspaces"
       title="Workspaces"
-      breadcrumbs={[
-        { label: "Dashboard", href: "/" },
-        { label: "Workspaces" },
-      ]}
+      breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Workspaces" }]}
     >
       <div className="space-y-8">
         <p className="text-sm text-gray-600">
@@ -55,7 +53,7 @@ export default function WorkspacesPage() {
         </p>
 
         {/* Error */}
-        {error && <ErrorAlert message={error} onRetry={handleRefetch} />}
+        {error && (<Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>)}
 
         {/* Workspace cards */}
         <div>
@@ -66,7 +64,7 @@ export default function WorkspacesPage() {
           {loading && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <CardSkeleton key={i} />
+                <Skeleton key={i} className="h-32 rounded-lg" />
               ))}
             </div>
           )}

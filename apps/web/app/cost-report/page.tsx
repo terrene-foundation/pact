@@ -13,12 +13,18 @@
 
 import { useState } from "react";
 import DashboardShell from "../../components/layout/DashboardShell";
-import ErrorAlert from "../../components/ui/ErrorAlert";
-import Skeleton, {
-  CardSkeleton,
-  TableSkeleton,
-} from "../../components/ui/Skeleton";
-import { useApi } from "../../lib/use-api";
+import { Skeleton } from "@/components/ui/shadcn/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import { useCostReport } from "@/hooks";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 /** Number-of-days options for the period selector. */
 const PERIOD_OPTIONS = [7, 14, 30, 60, 90] as const;
@@ -26,10 +32,13 @@ const PERIOD_OPTIONS = [7, 14, 30, 60, 90] as const;
 export default function CostReportPage() {
   const [days, setDays] = useState<number>(30);
 
-  const { data, loading, error, refetch } = useApi(
-    (client) => client.costReport({ days }),
-    [days],
-  );
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useCostReport({ days });
+  const error = queryError?.message ?? null;
 
   return (
     <DashboardShell
@@ -55,7 +64,7 @@ export default function CostReportPage() {
             ))}
           </select>
           <button
-            onClick={refetch}
+            onClick={() => refetch()}
             disabled={loading}
             className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
@@ -72,13 +81,18 @@ export default function CostReportPage() {
         </p>
 
         {/* Error */}
-        {error && <ErrorAlert message={error} onRetry={refetch} />}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Summary stat cards */}
         {loading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <CardSkeleton key={i} />
+              <Skeleton key={i} className="h-24 rounded-lg" />
             ))}
           </div>
         )}
@@ -86,11 +100,11 @@ export default function CostReportPage() {
         {!loading && data && <SummaryCards data={data} />}
 
         {/* By-agent breakdown */}
-        {loading && <TableSkeleton rows={4} />}
+        {loading && <Skeleton className="h-48 rounded-lg" />}
         {!loading && data && <AgentBreakdown byAgent={data.by_agent} />}
 
         {/* By-model breakdown */}
-        {loading && <TableSkeleton rows={3} />}
+        {loading && <Skeleton className="h-48 rounded-lg" />}
         {!loading && data && <ModelBreakdown byModel={data.by_model} />}
 
         {/* Daily spend trend chart */}

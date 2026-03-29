@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import DashboardShell from "../../components/layout/DashboardShell";
 import StatusBadge from "../../components/ui/StatusBadge";
-import { TableSkeleton } from "../../components/ui/Skeleton";
+
 import { useObjectives, useObjectiveDetail, useCreateObjective } from "@/hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -591,7 +591,7 @@ export default function ObjectivesPage() {
         <CreateObjectiveSheet open={showCreate} onOpenChange={setShowCreate} />
 
         {/* Loading */}
-        {isLoading && <TableSkeleton rows={5} />}
+        {isLoading && <div className="space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={i} className="h-12 rounded" />)}</div>}
 
         {/* Error */}
         {error && (

@@ -16,7 +16,7 @@
 
 import { useState, useCallback } from "react";
 import type { ShadowReport, TrustPosture } from "../../../types/pact";
-import { getApiClient } from "../../../lib/use-api";
+import { useChangePosture } from "@/hooks";
 
 // ---------------------------------------------------------------------------
 // Trust posture progression (ordered from lowest to highest autonomy)
@@ -70,29 +70,25 @@ export default function UpgradeEligibility({
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const [upgradeSuccess, setUpgradeSuccess] = useState(false);
 
+  const changePosture = useChangePosture();
+
   const handleUpgrade = useCallback(async () => {
     if (!next) return;
     setUpgrading(true);
     setUpgradeError(null);
 
     try {
-      const client = getApiClient();
-      const response = await client.changePosture(
+      await changePosture.mutateAsync({
         agentId,
-        next,
-        `ShadowEnforcer upgrade: pass rate ${(report.pass_rate * 100).toFixed(1)}%, eligible for ${postureLabel(next)}`,
-        "governance_officer",
-      );
+        newPosture: next,
+        reason: `ShadowEnforcer upgrade: pass rate ${(report.pass_rate * 100).toFixed(1)}%, eligible for ${postureLabel(next)}`,
+        changedBy: "governance_officer",
+      });
 
-      if (response.status === "ok") {
-        setShowConfirm(false);
-        setUpgradeSuccess(true);
-        onPostureUpgraded();
-        // Clear success toast after a delay
-        setTimeout(() => setUpgradeSuccess(false), 4000);
-      } else {
-        setUpgradeError(response.error ?? "Failed to upgrade posture");
-      }
+      setShowConfirm(false);
+      setUpgradeSuccess(true);
+      onPostureUpgraded();
+      setTimeout(() => setUpgradeSuccess(false), 4000);
     } catch (err: unknown) {
       setUpgradeError(
         err instanceof Error ? err.message : "An unexpected error occurred",

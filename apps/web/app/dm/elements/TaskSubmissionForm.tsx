@@ -13,7 +13,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getApiClient } from "../../../lib/use-api";
+import { useSubmitDmTask } from "@/hooks";
+import { getApiClientAsync } from "../../../lib/use-api";
 import { ApiError, NetworkError } from "../../../lib/api";
 import type { DmAgentSummary, DmTask, DmTaskStatus } from "../../../types/pact";
 
@@ -101,8 +102,8 @@ export default function TaskSubmissionForm({
   }, []);
 
   /** Poll for task status updates until a terminal state is reached. */
-  const pollTaskStatus = useCallback((taskId: string) => {
-    const client = getApiClient();
+  const pollTaskStatus = useCallback(async (taskId: string) => {
+    const client = await getApiClientAsync();
 
     const poll = () => {
       client
@@ -128,7 +129,7 @@ export default function TaskSubmissionForm({
   }, []);
 
   /** Handle form submission. */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const trimmed = description.trim();
@@ -143,7 +144,7 @@ export default function TaskSubmissionForm({
       pollTimerRef.current = null;
     }
 
-    const client = getApiClient();
+    const client = await getApiClientAsync();
     client
       .submitDmTask(trimmed, targetAgent || undefined)
       .then((response) => {
