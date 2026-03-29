@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pact-platform"
-version = "0.3.0"
+version = "0.4.0"
 description = "PACT Platform — human judgment surface for governed AI operations. Org definition, approval UX, work management, dashboard, and deployment on top of kailash-pact governance primitives."
 authors = [
     {name = "Terrene Foundation", email = "info@terrene.foundation"}

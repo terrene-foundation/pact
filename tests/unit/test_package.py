@@ -14,7 +14,7 @@ def test_pact_platform_importable():
     """Verify the pact_platform package is importable."""
     import pact_platform
 
-    assert pact_platform.__version__ == "0.3.0"
+    assert pact_platform.__version__ == "0.4.0"
 
 
 def test_submodules_importable():
