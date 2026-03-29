@@ -41,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import hmac as hmac_mod
 import logging
+import math
 import threading
 import time
 import uuid
@@ -735,14 +736,13 @@ class ExecutionRuntime:
             with self._lock:
                 task.status = TaskStatus.COMPLETED
                 # LC-1: Accumulate spend after successful execution.
-                import math as _math_exec
 
                 raw_cost = task.metadata.get("cost_usd") or task.metadata.get("cost") or 0.0
                 try:
                     action_cost = float(raw_cost)
                 except (TypeError, ValueError):
                     action_cost = 0.0
-                if not _math_exec.isfinite(action_cost) or action_cost < 0:
+                if not math.isfinite(action_cost) or action_cost < 0:
                     action_cost = 0.0
                 _aid = agent.agent_id
                 if (
@@ -1101,7 +1101,6 @@ class ExecutionRuntime:
             return None
 
         try:
-            import math as _math_rl
 
             envelope_config = self._governance_engine.compute_envelope(role_address)
             if envelope_config is None:
@@ -1114,7 +1113,7 @@ class ExecutionRuntime:
                 return None
 
             max_per_day_f = float(max_per_day)
-            if not _math_rl.isfinite(max_per_day_f) or max_per_day_f <= 0:
+            if not math.isfinite(max_per_day_f) or max_per_day_f <= 0:
                 return None
 
             with self._lock:
@@ -1205,7 +1204,6 @@ class ExecutionRuntime:
             # LC-1: Inject cumulative spend so GovernanceEngine can enforce
             # per-agent budget caps across multiple actions.
             # LC-3: Inject rolling 24-hour action count for governance engine.
-            import math as _math
 
             with self._lock:
                 raw_spend = self._cumulative_spend.get(agent.agent_id, 0.0)
@@ -1213,7 +1211,7 @@ class ExecutionRuntime:
                 _cutoff_gov = _now_gov - _RATE_LIMIT_WINDOW_SECONDS
                 _ts_list_gov = self._action_timestamps.get(agent.agent_id, [])
                 action_count_today = sum(1 for ts in _ts_list_gov if ts >= _cutoff_gov)
-            cumulative_spend = raw_spend if _math.isfinite(raw_spend) else 0.0
+            cumulative_spend = raw_spend if math.isfinite(raw_spend) else 0.0
             context["cumulative_spend_usd"] = cumulative_spend
             context["action_count_today"] = action_count_today
 
@@ -1235,7 +1233,7 @@ class ExecutionRuntime:
             )
 
             # Map governance verdict levels to runtime behavior
-            # TODO-13: Attach reasoning trace to HELD/BLOCKED verdicts
+            # Attach reasoning trace to HELD/BLOCKED verdicts
             # so the platform records WHY the constraint triggered.
             if verdict.level in ("held", "blocked"):
                 task.metadata["reasoning_trace"] = {
