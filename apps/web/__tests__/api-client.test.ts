@@ -390,14 +390,16 @@ describe("PactWebSocketClient", () => {
 
   class MockWebSocket {
     url: string;
+    protocols: string | string[] | undefined;
     onopen: ((event: Event) => void) | null = null;
     onclose: ((event: CloseEvent) => void) | null = null;
     onmessage: ((event: MessageEvent) => void) | null = null;
     onerror: ((event: Event) => void) | null = null;
     readyState = 0; // CONNECTING
 
-    constructor(url: string) {
+    constructor(url: string, protocols?: string | string[]) {
       this.url = url;
+      this.protocols = protocols;
       mockWebSocketInstances.push(this);
     }
 
@@ -464,15 +466,16 @@ describe("PactWebSocketClient", () => {
     client.disconnect();
   });
 
-  it("appends token as query parameter", () => {
+  it("sends token via Sec-WebSocket-Protocol header", () => {
     const client = new PactWebSocketClient({
       url: "ws://localhost:8000/ws",
       token: "secret-token",
     });
 
     client.connect();
-    expect(mockWebSocketInstances[0].url).toBe(
-      "ws://localhost:8000/ws?token=secret-token",
+    expect(mockWebSocketInstances[0].url).toBe("ws://localhost:8000/ws");
+    expect(mockWebSocketInstances[0].protocols).toContain(
+      "bearer.secret-token",
     );
 
     client.disconnect();
