@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "type": "coc-project",
+  "variant": "py",
+  "updated": "2026-03-29",
+  "description": "pact project",
+  "upstream": {
+    "template": "kailash-coc-claude-py",
+    "template_version": "1.0.0",
+    "synced_at": "2026-03-29T20:19:44Z"
+  }
+}
