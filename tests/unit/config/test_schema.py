@@ -73,8 +73,11 @@ class TestConstraintEnvelope:
     def test_minimal_envelope(self):
         env = ConstraintEnvelopeConfig(id="test-envelope")
         assert env.id == "test-envelope"
-        assert env.financial.max_spend_usd == 0.0
-        assert env.communication.internal_only is True
+        # financial defaults to None (no financial capability)
+        assert env.financial is None
+        # communication defaults to a CommunicationConstraintConfig
+        assert env.communication is not None
+        assert env.communication.external_requires_approval is True
 
     def test_full_envelope(self):
         env = ConstraintEnvelopeConfig(
