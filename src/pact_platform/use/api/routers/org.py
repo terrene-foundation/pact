@@ -18,21 +18,23 @@ from typing import Any
 import yaml as yaml_lib
 from fastapi import APIRouter, HTTPException, Request
 
+from pact_platform.use.api.governance import set_engine as _set_shared_engine
 from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/org", tags=["org"])
 
-# Module-level engine reference — set by server.py at startup or by deploy.
+# Module-level engine reference — kept in sync with shared governance module.
 _engine: Any = None
 _deploy_lock = threading.Lock()
 
 
 def set_engine(engine: Any) -> None:
-    """Inject the GovernanceEngine reference from server startup."""
+    """Inject the GovernanceEngine reference into both org router and shared governance module."""
     global _engine
     _engine = engine
+    _set_shared_engine(engine)
 
 
 @router.get("/structure")
@@ -52,7 +54,7 @@ async def get_org_structure(request: Request) -> dict:
     try:
         compiled = _engine.get_org()
     except Exception:
-        logger.exception("Failed to get compiled org from engine")
+        logger.warning("Failed to get compiled org from engine — returning 500")
         raise HTTPException(500, detail="Failed to load org structure")
 
     # compiled.nodes is dict[str, OrgNode]
@@ -131,7 +133,6 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
             except Exception:
                 logger.warning(
                     "Audit chain creation failed — governance mutations will not be audited",
-                    exc_info=True,
                 )
 
             engine = GovernanceEngine(loaded.org_definition, audit_chain=audit_chain)
@@ -141,6 +142,7 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
 
             global _engine
             _engine = engine
+            _set_shared_engine(engine)
 
         return {
             "status": "ok",
@@ -153,7 +155,7 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
     except HTTPException:
         raise
     except Exception:
-        logger.exception("Org deployment failed")
+        logger.warning("Org deployment failed for submitted YAML")
         raise HTTPException(400, detail="Org compilation failed")
     finally:
         if tmp_path is not None:
@@ -185,7 +187,7 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
             )
             engine.grant_clearance(node.address, clr)
         except Exception:
-            logger.warning("Skipped clearance for role '%s'", spec.role_id, exc_info=True)
+            logger.warning("Skipped clearance for role '%s'", spec.role_id, exc_info=False)
 
     for spec in loaded.envelopes:
         try:
@@ -219,7 +221,7 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
             )
             engine.set_role_envelope(role_env)
         except Exception:
-            logger.warning("Skipped envelope for target '%s'", spec.target, exc_info=True)
+            logger.warning("Skipped envelope for target '%s'", spec.target, exc_info=False)
 
     for spec in loaded.bridges:
         try:
@@ -240,7 +242,7 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
             )
             engine.create_bridge(bridge)
         except Exception:
-            logger.warning("Skipped bridge '%s'", spec.id, exc_info=True)
+            logger.warning("Skipped bridge '%s'", spec.id, exc_info=False)
 
     for spec in loaded.ksps:
         try:
@@ -255,7 +257,7 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
             )
             engine.create_ksp(ksp)
         except Exception:
-            logger.warning("Skipped KSP '%s'", spec.id, exc_info=True)
+            logger.warning("Skipped KSP '%s'", spec.id, exc_info=False)
 
 
 @router.post("/bridges/approve")
@@ -295,7 +297,7 @@ async def approve_bridge_lca(request: Request, body: dict[str, Any]) -> dict:
     try:
         approval = _engine.approve_bridge(source, target, approver)
     except Exception:
-        logger.exception("Bridge LCA approval failed")
+        logger.warning("Bridge LCA approval failed for source=%s target=%s", source, target)
         raise HTTPException(400, detail="Bridge approval failed — approver may not be the LCA")
 
     return {
@@ -346,7 +348,7 @@ async def designate_acting_occupant(
     try:
         designation = _engine.designate_acting_occupant(role_address, acting, designated_by)
     except Exception:
-        logger.exception("Vacancy designation failed for %s", role_address)
+        logger.warning("Vacancy designation failed for role %s", role_address)
         raise HTTPException(400, detail="Vacancy designation failed")
 
     return {

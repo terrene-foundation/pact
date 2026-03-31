@@ -11,6 +11,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from pact_platform.models import (
     MAX_LONG_STRING,
@@ -18,18 +20,22 @@ from pact_platform.models import (
     MAX_SHORT_STRING,
     db,
     validate_finite,
+    validate_record_id,
     validate_string_length,
 )
+from pact_platform.use.api.governance import governance_gate
 from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 router = APIRouter(prefix="/api/v1/requests", tags=["requests"])
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=None)
 @limiter.limit(RATE_POST)
-async def submit_request(request: Request, body: dict[str, Any]) -> dict:
+async def submit_request(request: Request, body: dict[str, Any]) -> dict | Response:
     """Submit a new request."""
     rid = body.get("id") or uuid4().hex[:12]
+    if body.get("id"):
+        validate_record_id(rid)
     objective_id = body.get("objective_id", "")
     title = body.get("title", "")
     if not objective_id or not title:
@@ -47,6 +53,13 @@ async def submit_request(request: Request, body: dict[str, Any]) -> dict:
     if not isinstance(sequence_order, int):
         raise HTTPException(400, "sequence_order must be an integer")
     validate_finite(sequence_order=sequence_order)
+
+    # Governance gate: resolve org_address from parent objective
+    obj = await db.express.read("AgenticObjective", objective_id)
+    if obj and obj.get("org_address"):
+        held = await governance_gate(obj["org_address"], "submit_request", {"resource": "request"})
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
 
     return await db.express.create(
         "AgenticRequest",
@@ -107,16 +120,27 @@ async def list_requests(
 @limiter.limit(RATE_GET)
 async def get_request(request: Request, request_id: str) -> dict:
     """Get request detail."""
+    validate_record_id(request_id)
     result = await db.express.read("AgenticRequest", request_id)
     if not result or result.get("found") is False:
         raise HTTPException(404, "Request not found")
     return result
 
 
-@router.post("/{request_id}/cancel")
+@router.post("/{request_id}/cancel", response_model=None)
 @limiter.limit(RATE_POST)
-async def cancel_request(request: Request, request_id: str) -> dict:
+async def cancel_request(request: Request, request_id: str) -> dict | Response:
     """Cancel a request."""
+    validate_record_id(request_id)
+    req_rec = await db.express.read("AgenticRequest", request_id)
+    if req_rec and req_rec.get("objective_id"):
+        obj = await db.express.read("AgenticObjective", req_rec["objective_id"])
+        if obj and obj.get("org_address"):
+            held = await governance_gate(
+                obj["org_address"], "cancel_request", {"resource": "request"}
+            )
+            if held is not None:
+                return JSONResponse(content=held, status_code=202)
     return await db.express.update("AgenticRequest", request_id, {"status": "cancelled"})
 
 
@@ -124,6 +148,7 @@ async def cancel_request(request: Request, request_id: str) -> dict:
 @limiter.limit(RATE_GET)
 async def get_request_sessions(request: Request, request_id: str) -> dict:
     """List sessions for a request."""
+    validate_record_id(request_id)
     records = await db.express.list("AgenticWorkSession", {"request_id": request_id})
     return {"records": records, "count": len(records), "limit": 100}
 
@@ -132,5 +157,6 @@ async def get_request_sessions(request: Request, request_id: str) -> dict:
 @limiter.limit(RATE_GET)
 async def get_request_artifacts(request: Request, request_id: str) -> dict:
     """List artifacts for a request."""
+    validate_record_id(request_id)
     records = await db.express.list("AgenticArtifact", {"request_id": request_id})
     return {"records": records, "count": len(records), "limit": 100}

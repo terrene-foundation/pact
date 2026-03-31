@@ -227,7 +227,18 @@ def create_app(
     async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
         return JSONResponse(
             status_code=429,
-            content={"error": "Rate limit exceeded", "detail": str(exc.detail)},
+            content={"error": "Rate limit exceeded", "detail": "Please try again later"},
+        )
+
+    # ValueError handler — validation helpers (validate_finite, validate_string_length,
+    # validate_record_id) raise ValueError. Return 400 with generic message to avoid
+    # leaking internal field names or validation logic.
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+        logger.debug("Input validation failed: %s", exc)
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid input", "detail": "Request contains invalid values"},
         )
 
     # SlowAPI rate limiting middleware
@@ -915,6 +926,11 @@ def create_app(
         shutdown_manager.trigger_shutdown()
         await shutdown_manager.close_all_connections()
         logger.info("PACT API shutdown complete")
+
+    # --- Governance gate dev-mode (allows operations without engine in dev mode) ---
+    from pact_platform.use.api.governance import set_dev_mode
+
+    set_dev_mode(cfg.pact_dev_mode)
 
     # --- Work management routers (M2) ---
     from pact_platform.use.api.routers import (

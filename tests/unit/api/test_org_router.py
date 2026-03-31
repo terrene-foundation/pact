@@ -1,6 +1,6 @@
 # Copyright 2026 Terrene Foundation
 # Licensed under the Apache License, Version 2.0
-"""Tests for the org API router (TODO-16).
+"""Tests for the org API router (implemented, formerly TODO-16).
 
 Covers: GET /api/v1/org/structure, POST /api/v1/org/deploy,
 error handling, and engine lifecycle.
@@ -169,7 +169,7 @@ class TestDeployOrg:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/v1/org/bridges/approve (TODO-10 L3 wiring)
+# POST /api/v1/org/bridges/approve (implemented via bridge LCA approval, formerly TODO-10)
 # ---------------------------------------------------------------------------
 
 
@@ -225,7 +225,7 @@ class TestBridgeLCAApproval:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/v1/org/roles/{role_address}/designate-acting (TODO-11)
+# POST /api/v1/org/roles/{role_address}/designate-acting (implemented, formerly TODO-11)
 # ---------------------------------------------------------------------------
 
 
@@ -275,7 +275,7 @@ class TestVacancyDesignation:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/org/roles/{role_address}/vacancy (TODO-11)
+# GET /api/v1/org/roles/{role_address}/vacancy (implemented, formerly TODO-11)
 # ---------------------------------------------------------------------------
 
 

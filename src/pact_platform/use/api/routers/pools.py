@@ -11,6 +11,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from pact_platform.models import (
     MAX_CONCURRENT_UPPER,
@@ -19,18 +21,22 @@ from pact_platform.models import (
     MAX_SHORT_STRING,
     db,
     safe_sum_finite,
+    validate_record_id,
     validate_string_length,
 )
+from pact_platform.use.api.governance import governance_gate, is_governance_active
 from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 router = APIRouter(prefix="/api/v1/pools", tags=["pools"])
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=None)
 @limiter.limit(RATE_POST)
-async def create_pool(request: Request, body: dict[str, Any]) -> dict:
+async def create_pool(request: Request, body: dict[str, Any]) -> dict | Response:
     """Create a new pool."""
     pid = body.get("id") or uuid4().hex[:12]
+    if body.get("id"):
+        validate_record_id(pid)
     org_id = body.get("org_id", "")
     name = body.get("name", "")
     if not org_id or not name:
@@ -47,6 +53,10 @@ async def create_pool(request: Request, body: dict[str, Any]) -> dict:
         raise HTTPException(400, "max_concurrent must be a positive integer")
     if max_concurrent > MAX_CONCURRENT_UPPER:
         raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
+
+    held = await governance_gate(org_id, "create_pool", {"resource": "pool"})
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
 
     return await db.express.create(
         "AgenticPool",
@@ -86,16 +96,18 @@ async def list_pools(
 @limiter.limit(RATE_GET)
 async def get_pool(request: Request, pool_id: str) -> dict:
     """Get pool detail."""
+    validate_record_id(pool_id)
     result = await db.express.read("AgenticPool", pool_id)
     if not result or result.get("found") is False:
         raise HTTPException(404, "Pool not found")
     return result
 
 
-@router.post("/{pool_id}/members", status_code=201)
+@router.post("/{pool_id}/members", status_code=201, response_model=None)
 @limiter.limit(RATE_POST)
-async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> dict:
+async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> dict | Response:
     """Add a member to a pool."""
+    validate_record_id(pool_id)
     current_count = await db.express.count(
         "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )
@@ -114,6 +126,19 @@ async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> di
         raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
 
     mid = body.get("id") or uuid4().hex[:12]
+    if body.get("id"):
+        validate_record_id(mid)
+
+    pool_rec = await db.express.read("AgenticPool", pool_id)
+    if pool_rec and pool_rec.get("org_id"):
+        held = await governance_gate(
+            pool_rec["org_id"], "add_pool_member", {"resource": "pool_member"}
+        )
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
+    elif is_governance_active():
+        raise HTTPException(403, "Cannot resolve governance context — action blocked")
+
     return await db.express.create(
         "AgenticPoolMembership",
         {
@@ -127,10 +152,21 @@ async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> di
     )
 
 
-@router.delete("/{pool_id}/members/{member_id}")
+@router.delete("/{pool_id}/members/{member_id}", response_model=None)
 @limiter.limit(RATE_POST)
-async def remove_member(request: Request, pool_id: str, member_id: str) -> dict:
+async def remove_member(request: Request, pool_id: str, member_id: str) -> dict | Response:
     """Remove a member from a pool."""
+    validate_record_id(pool_id)
+    validate_record_id(member_id)
+    pool_rec = await db.express.read("AgenticPool", pool_id)
+    if pool_rec and pool_rec.get("org_id"):
+        held = await governance_gate(
+            pool_rec["org_id"], "remove_pool_member", {"resource": "pool_member"}
+        )
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
+    elif is_governance_active():
+        raise HTTPException(403, "Cannot resolve governance context — action blocked")
     deleted = await db.express.delete("AgenticPoolMembership", member_id)
     return {"deleted": deleted, "id": member_id}
 
@@ -139,6 +175,7 @@ async def remove_member(request: Request, pool_id: str, member_id: str) -> dict:
 @limiter.limit(RATE_GET)
 async def get_pool_capacity(request: Request, pool_id: str) -> dict:
     """Get pool capacity info."""
+    validate_record_id(pool_id)
     members = await db.express.list(
         "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )

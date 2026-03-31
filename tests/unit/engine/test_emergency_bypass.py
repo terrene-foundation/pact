@@ -1,6 +1,6 @@
 # Copyright 2026 Terrene Foundation
 # Licensed under the Apache License, Version 2.0
-"""Tests for the EmergencyBypass engine component (TODO-07).
+"""Tests for the EmergencyBypass engine component (implemented, formerly TODO-07).
 
 Covers: tier durations, auto-expiry, manual expiry, audit anchor
 creation, post-incident review scheduling, bounded collection,

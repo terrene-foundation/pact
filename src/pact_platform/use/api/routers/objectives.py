@@ -12,6 +12,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from pact_platform.models import (
     MAX_LONG_STRING,
@@ -20,18 +22,22 @@ from pact_platform.models import (
     db,
     safe_sum_finite,
     validate_finite,
+    validate_record_id,
     validate_string_length,
 )
+from pact_platform.use.api.governance import governance_gate
 from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 router = APIRouter(prefix="/api/v1/objectives", tags=["objectives"])
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=None)
 @limiter.limit(RATE_POST)
-async def create_objective(request: Request, body: dict[str, Any]) -> dict:
+async def create_objective(request: Request, body: dict[str, Any]) -> dict | Response:
     """Create a new objective."""
     oid = body.get("id") or uuid4().hex[:12]
+    if body.get("id"):
+        validate_record_id(oid)
     org_address = body.get("org_address", "")
     title = body.get("title", "")
     if not org_address or not title:
@@ -55,6 +61,13 @@ async def create_objective(request: Request, body: dict[str, Any]) -> dict:
             raise HTTPException(400, f"metadata exceeds maximum size of {MAX_METADATA_SIZE} bytes")
     else:
         metadata = {}
+
+    # Governance gate: verify the submitter's authority to create objectives
+    held = await governance_gate(
+        org_address, "create_objective", {"cost": budget, "resource": "objective"}
+    )
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
 
     return await db.express.create(
         "AgenticObjective",
@@ -99,16 +112,20 @@ async def list_objectives(
 @limiter.limit(RATE_GET)
 async def get_objective(request: Request, objective_id: str) -> dict:
     """Get objective detail."""
+    validate_record_id(objective_id)
     result = await db.express.read("AgenticObjective", objective_id)
     if not result or result.get("found") is False:
         raise HTTPException(404, "Objective not found")
     return result
 
 
-@router.put("/{objective_id}")
+@router.put("/{objective_id}", response_model=None)
 @limiter.limit(RATE_POST)
-async def update_objective(request: Request, objective_id: str, body: dict[str, Any]) -> dict:
+async def update_objective(
+    request: Request, objective_id: str, body: dict[str, Any]
+) -> dict | Response:
     """Update an objective."""
+    validate_record_id(objective_id)
     fields = {k: v for k, v in body.items() if k not in ("id", "created_at", "updated_at")}
     if "budget_usd" in fields:
         validate_finite(budget_usd=float(fields["budget_usd"]))
@@ -117,13 +134,31 @@ async def update_objective(request: Request, objective_id: str, body: dict[str, 
     if "description" in fields:
         validate_string_length(str(fields["description"]), "description", MAX_LONG_STRING)
 
+    # Governance gate: verify authority to modify objectives (especially budget changes)
+    existing = await db.express.read("AgenticObjective", objective_id)
+    if existing and existing.get("org_address"):
+        ctx: dict[str, Any] = {"resource": "objective"}
+        if "budget_usd" in fields:
+            ctx["cost"] = float(fields["budget_usd"])
+        held = await governance_gate(existing["org_address"], "update_objective", ctx)
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
+
     return await db.express.update("AgenticObjective", objective_id, fields)
 
 
-@router.post("/{objective_id}/cancel")
+@router.post("/{objective_id}/cancel", response_model=None)
 @limiter.limit(RATE_POST)
-async def cancel_objective(request: Request, objective_id: str) -> dict:
+async def cancel_objective(request: Request, objective_id: str) -> dict | Response:
     """Cancel an objective."""
+    validate_record_id(objective_id)
+    existing = await db.express.read("AgenticObjective", objective_id)
+    if existing and existing.get("org_address"):
+        held = await governance_gate(
+            existing["org_address"], "cancel_objective", {"resource": "objective"}
+        )
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
     return await db.express.update("AgenticObjective", objective_id, {"status": "cancelled"})
 
 
@@ -131,6 +166,7 @@ async def cancel_objective(request: Request, objective_id: str) -> dict:
 @limiter.limit(RATE_GET)
 async def get_objective_requests(request: Request, objective_id: str) -> dict:
     """List requests for an objective."""
+    validate_record_id(objective_id)
     records = await db.express.list("AgenticRequest", {"objective_id": objective_id})
     records.sort(key=lambda r: r.get("sequence_order", 0))
     return {"records": records, "count": len(records), "limit": 100}
@@ -144,6 +180,7 @@ async def get_objective_cost(request: Request, objective_id: str) -> dict:
     Aggregates cost across all requests belonging to this objective,
     then across all runs belonging to those requests.
     """
+    validate_record_id(objective_id)
     # Step 1: get all request IDs for this objective
     reqs = await db.express.list("AgenticRequest", {"objective_id": objective_id})
     req_ids = [r.get("id") for r in reqs if r.get("id")]

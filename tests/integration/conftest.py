@@ -141,10 +141,12 @@ async def client(platform_api: PactAPI, dev_env_config: EnvConfig) -> AsyncGener
     Uses httpx.AsyncClient with ASGITransport to test FastAPI endpoints
     without running a real server.
     """
+    import pact_platform.use.api.governance as gov_mod
     import pact_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None
+    old_dev_frozen = gov_mod._dev_mode_frozen
 
     app = create_app(platform_api=platform_api, env_config=dev_env_config)
     transport = httpx.ASGITransport(app=app)
@@ -152,6 +154,7 @@ async def client(platform_api: PactAPI, dev_env_config: EnvConfig) -> AsyncGener
         yield ac
 
     server_module._default_api = old_default
+    gov_mod._dev_mode_frozen = old_dev_frozen
 
 
 @pytest_asyncio.fixture()
@@ -161,10 +164,12 @@ async def auth_client(platform_api: PactAPI, auth_env_config: EnvConfig) -> Asyn
     Uses httpx.AsyncClient with ASGITransport. Requests must include
     a valid Bearer token to access protected endpoints.
     """
+    import pact_platform.use.api.governance as gov_mod
     import pact_platform.use.api.server as server_module
 
     old_default = server_module._default_api
     server_module._default_api = None
+    old_dev_frozen = gov_mod._dev_mode_frozen
 
     app = create_app(platform_api=platform_api, env_config=auth_env_config)
     transport = httpx.ASGITransport(app=app)
@@ -172,3 +177,4 @@ async def auth_client(platform_api: PactAPI, auth_env_config: EnvConfig) -> Asyn
         yield ac
 
     server_module._default_api = old_default
+    gov_mod._dev_mode_frozen = old_dev_frozen

@@ -357,15 +357,15 @@ class TestGovernanceVerificationHappyPath:
 
 
 # ---------------------------------------------------------------------------
-# Test: reasoning trace attachment (TODO-13)
+# Test: reasoning trace attachment (implemented, formerly TODO-13)
 # ---------------------------------------------------------------------------
 
 
 class TestReasoningTraceAttachment:
     """Verify that HELD and BLOCKED verdicts attach a reasoning_trace to task metadata.
 
-    TODO-13: When GovernanceEngine.verify_action() returns a HELD or BLOCKED
-    verdict, the platform should attach a reasoning trace dict explaining WHY
+    Implemented (formerly TODO-13): GovernanceEngine.verify_action() returns a HELD or BLOCKED
+    verdict, and the platform attaches a reasoning trace dict explaining WHY
     the constraint triggered.
     """
 
@@ -736,7 +736,7 @@ class TestRateLimitEnforcement:
 
 
 # ---------------------------------------------------------------------------
-# Test: dimension context forwarding (TODO-19 wiring)
+# Test: dimension context forwarding (implemented, formerly TODO-19)
 # ---------------------------------------------------------------------------
 
 

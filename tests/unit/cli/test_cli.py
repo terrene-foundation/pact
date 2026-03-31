@@ -142,7 +142,7 @@ class TestCLIModuleExecutable:
 
 
 class TestBridgeApproveCLI:
-    """Tests for `pact bridge approve` command (TODO-10 L3 wiring)."""
+    """Tests for `pact bridge approve` command (implemented, formerly TODO-10 L3 wiring)."""
 
     def test_bridge_approve_no_engine(self, runner):
         import pact_platform.cli as cli_mod
@@ -189,7 +189,7 @@ class TestBridgeApproveCLI:
 
 
 class TestRoleDesignateActingCLI:
-    """Tests for `pact role designate-acting` command (TODO-11 L3 wiring)."""
+    """Tests for `pact role designate-acting` command (implemented, formerly TODO-11 L3 wiring)."""
 
     def test_designate_acting_no_engine(self, runner):
         import pact_platform.cli as cli_mod
@@ -236,7 +236,7 @@ class TestRoleDesignateActingCLI:
 
 
 class TestRoleVacancyStatusCLI:
-    """Tests for `pact role vacancy-status` command (TODO-11 L3 wiring)."""
+    """Tests for `pact role vacancy-status` command (implemented, formerly TODO-11 L3 wiring)."""
 
     def test_vacancy_status_no_engine(self, runner):
         import pact_platform.cli as cli_mod

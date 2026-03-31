@@ -12,16 +12,19 @@ Usage:
 
 import math
 import os
+import re
 from datetime import datetime
 from typing import Optional
 
 from dataflow import DataFlow
+from fastapi import HTTPException
 
 __all__ = [
     "db",
     "validate_finite",
     "safe_sum_finite",
     "validate_string_length",
+    "validate_record_id",
     "MAX_SHORT_STRING",
     "MAX_LONG_STRING",
     "MAX_POOL_MEMBERS",
@@ -148,6 +151,55 @@ def validate_string_length(
             f"{field_name} exceeds maximum length of {max_length} characters " f"(got {len(value)})"
         )
     return value
+
+
+# ---------------------------------------------------------------------------
+# Path parameter ID validation -- per rules/security.md Rule 3
+# ---------------------------------------------------------------------------
+
+_RECORD_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+
+
+def validate_record_id(record_id: str) -> str:
+    """Validate a path parameter record ID at the API boundary.
+
+    Rejects empty strings, IDs exceeding MAX_SHORT_STRING, and strings
+    containing path traversal characters, SQL injection characters, null
+    bytes, or any character outside the safe set ``[a-zA-Z0-9_\\-\\.]``.
+
+    Args:
+        record_id: The raw path parameter value.
+
+    Returns:
+        The validated record_id (unchanged).
+
+    Raises:
+        HTTPException(400): If the ID is invalid.
+    """
+    if not record_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Record ID must not be empty",
+        )
+    if len(record_id) > MAX_SHORT_STRING:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Record ID exceeds maximum length of {MAX_SHORT_STRING} characters",
+        )
+    if "\x00" in record_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Record ID contains null bytes",
+        )
+    if not _RECORD_ID_PATTERN.match(record_id):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Record ID contains invalid characters. "
+                "Only alphanumeric characters, hyphens, underscores, and dots are allowed."
+            ),
+        )
+    return record_id
 
 
 # ---------------------------------------------------------------------------
