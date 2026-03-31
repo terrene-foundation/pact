@@ -4,22 +4,36 @@
 
 When an operational emergency requires actions beyond a role's normal
 envelope, an authorized party can create an emergency bypass.  Bypasses
-are time-limited across four tiers, auto-expire, and generate audit
-anchors.  After expiry, a post-incident review is scheduled.
+are time-limited across three permitted tiers, auto-expire, and generate
+audit anchors.  After expiry, a post-incident review is scheduled.
 
-Tier structure:
+Permitted tier structure (PACT spec Section 9):
 - TIER_1: 4 hours  (tactical response)
 - TIER_2: 24 hours (extended incident)
 - TIER_3: 72 hours (crisis management)
-- TIER_4: No auto-expiry (requires compliance review to close)
+
+TIER_4 is DEPRECATED for creation.  The PACT spec (Section 9) states
+that emergencies exceeding 72 hours are "not emergency — not permitted
+via bypass."  Such situations must be re-authorized through normal
+governance channels every 72 hours.  The enum value is retained for
+backwards compatibility with existing records.
+
+Additional controls:
+- Expanded envelopes are validated against the approver's effective
+  envelope to prevent privilege escalation (H2).
+- Structural D/T/R authority is validated when addresses are provided
+  to ensure the approver has the correct org-level position (H3).
+- Rate limiting prevents perpetual bypass via sequential creation:
+  MAX_BYPASSES_PER_WEEK per role with a COOLDOWN_HOURS gap (M4).
 """
 
 from __future__ import annotations
 
 import copy
 import logging
+import math
 import threading
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from types import MappingProxyType
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -31,13 +45,19 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "AuthorityLevel",
+    "COOLDOWN_HOURS",
     "EmergencyBypass",
     "BypassRecord",
     "BypassTier",
+    "MAX_BYPASSES_PER_WEEK",
 ]
 
 MAX_BYPASS_RECORDS = 10_000
 _REVIEW_WINDOW_DAYS = 7
+
+# M4: Rate limiting constants
+MAX_BYPASSES_PER_WEEK = 3
+COOLDOWN_HOURS = 4
 
 
 class BypassTier(str, Enum):
@@ -46,7 +66,7 @@ class BypassTier(str, Enum):
     TIER_1 = "tier_1"  # 4 hours
     TIER_2 = "tier_2"  # 24 hours
     TIER_3 = "tier_3"  # 72 hours
-    TIER_4 = "tier_4"  # No auto-expiry, requires compliance review
+    TIER_4 = "tier_4"  # DEPRECATED for creation — retained for backwards compat only
 
 
 class AuthorityLevel(str, Enum):
@@ -66,12 +86,12 @@ class AuthorityLevel(str, Enum):
 
 
 # Minimum authority level required per tier (immutable).
+# TIER_4 is excluded — it is not permitted for creation (PACT spec Section 9).
 _TIER_MIN_AUTHORITY = MappingProxyType(
     {
         BypassTier.TIER_1: AuthorityLevel.SUPERVISOR,
         BypassTier.TIER_2: AuthorityLevel.DEPARTMENT_HEAD,
         BypassTier.TIER_3: AuthorityLevel.EXECUTIVE,
-        BypassTier.TIER_4: AuthorityLevel.COMPLIANCE,
     }
 )
 
@@ -181,6 +201,238 @@ class EmergencyBypass:
         # OrderedDict preserves insertion order for FIFO eviction.
         self._bypasses: OrderedDict[str, BypassRecord] = OrderedDict()
         self._audit_callback = audit_callback
+        # M4: Per-role bypass creation history for rate limiting.
+        # Maps role_address -> deque of creation timestamps (bounded).
+        self._bypass_history: dict[str, deque[datetime]] = {}
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _validate_expanded_envelope(
+        self,
+        expanded_envelope: dict[str, Any],
+        approver_envelope: dict[str, Any],
+    ) -> None:
+        """Validate that expanded_envelope does not exceed approver_envelope.
+
+        Checks four constraint dimensions:
+        - financial.max_spend_usd: expanded must be <= approver's
+        - operational.allowed_actions: expanded must be a subset
+        - data_access.read_paths: expanded must be a subset
+        - communication.allowed_channels: expanded must be a subset
+
+        Also validates that all numeric values in the expanded envelope are
+        finite (not NaN or Inf).
+
+        Args:
+            expanded_envelope: The temporary envelope override.
+            approver_envelope: The approver's effective envelope.
+
+        Raises:
+            ValueError: If a numeric field contains NaN or Inf.
+            PermissionError: If any dimension exceeds the approver's bounds.
+        """
+        # Financial dimension
+        exp_financial = expanded_envelope.get("financial", {})
+        app_financial = approver_envelope.get("financial", {})
+        exp_max_spend = exp_financial.get("max_spend_usd")
+        if exp_max_spend is not None:
+            if not isinstance(exp_max_spend, (int, float)):
+                raise ValueError(
+                    f"financial.max_spend_usd must be numeric, got {type(exp_max_spend).__name__}"
+                )
+            if not math.isfinite(exp_max_spend):
+                raise ValueError(f"financial.max_spend_usd must be finite, got {exp_max_spend}")
+            app_max_spend = app_financial.get("max_spend_usd")
+            if app_max_spend is not None:
+                if not math.isfinite(app_max_spend):
+                    raise ValueError(
+                        f"approver financial.max_spend_usd must be finite, got {app_max_spend}"
+                    )
+                if exp_max_spend > app_max_spend:
+                    raise PermissionError(
+                        f"Expanded envelope exceeds approver's bounds on "
+                        f"financial.max_spend_usd: {exp_max_spend} > {app_max_spend}"
+                    )
+
+        # Operational dimension
+        exp_operational = expanded_envelope.get("operational", {})
+        app_operational = approver_envelope.get("operational", {})
+        exp_actions = exp_operational.get("allowed_actions")
+        if exp_actions is not None:
+            app_actions = app_operational.get("allowed_actions")
+            if app_actions is not None:
+                exp_set = set(exp_actions)
+                app_set = set(app_actions)
+                excess = exp_set - app_set
+                if excess:
+                    raise PermissionError(
+                        f"Expanded envelope exceeds approver's bounds on "
+                        f"operational.allowed_actions: {sorted(excess)} not in approver's set"
+                    )
+
+        # Data access dimension
+        exp_data = expanded_envelope.get("data_access", {})
+        app_data = approver_envelope.get("data_access", {})
+        exp_paths = exp_data.get("read_paths")
+        if exp_paths is not None:
+            app_paths = app_data.get("read_paths")
+            if app_paths is not None:
+                exp_set = set(exp_paths)
+                app_set = set(app_paths)
+                excess = exp_set - app_set
+                if excess:
+                    raise PermissionError(
+                        f"Expanded envelope exceeds approver's bounds on "
+                        f"data_access.read_paths: {sorted(excess)} not in approver's set"
+                    )
+
+        # Communication dimension
+        exp_comm = expanded_envelope.get("communication", {})
+        app_comm = approver_envelope.get("communication", {})
+        exp_channels = exp_comm.get("allowed_channels")
+        if exp_channels is not None:
+            app_channels = app_comm.get("allowed_channels")
+            if app_channels is not None:
+                exp_set = set(exp_channels)
+                app_set = set(app_channels)
+                excess = exp_set - app_set
+                if excess:
+                    raise PermissionError(
+                        f"Expanded envelope exceeds approver's bounds on "
+                        f"communication.allowed_channels: {sorted(excess)} not in approver's set"
+                    )
+
+    def _validate_structural_authority(
+        self,
+        approver_address: str,
+        target_address: str,
+        tier: BypassTier,
+    ) -> None:
+        """Validate D/T/R structural relationship for bypass approval.
+
+        Uses the accountability chain to determine the approver's position
+        relative to the target.
+
+        Args:
+            approver_address: D/T/R address of the approver.
+            target_address: D/T/R address of the target role.
+            tier: Requested bypass tier.
+
+        Raises:
+            PermissionError: If structural authority is insufficient for the tier.
+        """
+        from kailash.trust.pact.addressing import Address
+
+        approver = Address.parse(approver_address)
+        target = Address.parse(target_address)
+
+        target_chain = target.accountability_chain
+
+        # Find the approver's position in the target's accountability chain
+        approver_str = str(approver)
+        approver_index: int | None = None
+        for idx, chain_addr in enumerate(target_chain):
+            if str(chain_addr) == approver_str:
+                approver_index = idx
+                break
+
+        if approver_index is None:
+            raise PermissionError(
+                f"Insufficient structural authority: approver '{approver_address}' "
+                f"is not in the accountability chain of target '{target_address}'"
+            )
+
+        target_index = len(target_chain) - 1
+        levels_above = target_index - approver_index
+
+        if tier == BypassTier.TIER_1:
+            # Tier 1: approver must be the immediate parent R (1 level above)
+            if levels_above < 1:
+                raise PermissionError(
+                    f"Insufficient structural authority for {tier.value}: "
+                    f"approver '{approver_address}' must be at least 1 level above "
+                    f"target '{target_address}' in the accountability chain "
+                    f"(found {levels_above} levels)"
+                )
+        elif tier == BypassTier.TIER_2:
+            # Tier 2: approver must be 2+ levels up in the accountability chain
+            if levels_above < 2:
+                raise PermissionError(
+                    f"Insufficient structural authority for {tier.value}: "
+                    f"approver '{approver_address}' must be at least 2 levels above "
+                    f"target '{target_address}' in the accountability chain "
+                    f"(found {levels_above} levels)"
+                )
+        elif tier == BypassTier.TIER_3:
+            # Tier 3: approver must be at index 0 or 1 in the chain (top-level, C-Suite)
+            if approver_index > 1:
+                raise PermissionError(
+                    f"Insufficient structural authority for {tier.value}: "
+                    f"approver '{approver_address}' must be at position 0 or 1 "
+                    f"in the accountability chain (found position {approver_index})"
+                )
+
+    def _check_rate_limits(self, role_address: str, now: datetime) -> None:
+        """Check rate limits for bypass creation on a specific role.
+
+        Enforces:
+        - Maximum ``MAX_BYPASSES_PER_WEEK`` bypasses per 7-day rolling window.
+        - Minimum ``COOLDOWN_HOURS`` gap between consecutive bypasses.
+
+        Also cleans up stale entries (>7 days) to prevent unbounded growth.
+
+        Args:
+            role_address: D/T/R address to check.
+            now: Current time.
+
+        Raises:
+            ValueError: If rate limit or cooldown is violated.
+        """
+        history = self._bypass_history.get(role_address)
+        if history is None:
+            return
+
+        # Clean up entries older than 7 days
+        cutoff = now - timedelta(days=7)
+        while history and history[0] < cutoff:
+            history.popleft()
+
+        if not history:
+            return
+
+        # Check cooldown period
+        last_creation = history[-1]
+        hours_since_last = (now - last_creation).total_seconds() / 3600
+        if hours_since_last < COOLDOWN_HOURS:
+            remaining = COOLDOWN_HOURS - hours_since_last
+            raise ValueError(
+                f"Bypass cooldown period active for role '{role_address}': "
+                f"{remaining:.1f} hours remaining. Minimum gap between bypasses "
+                f"is {COOLDOWN_HOURS} hours."
+            )
+
+        # Check weekly frequency limit
+        if len(history) >= MAX_BYPASSES_PER_WEEK:
+            raise ValueError(
+                f"Bypass rate limit exceeded for role '{role_address}': "
+                f"{len(history)} bypasses in the last 7 days (maximum "
+                f"is {MAX_BYPASSES_PER_WEEK} per week). Higher-tier authority "
+                f"or re-authorization through normal governance channels is required."
+            )
+
+    def _record_bypass_creation(self, role_address: str, now: datetime) -> None:
+        """Record a bypass creation for rate limiting purposes.
+
+        Args:
+            role_address: D/T/R address of the role.
+            now: Creation time.
+        """
+        if role_address not in self._bypass_history:
+            # Bounded deque: max 2x the weekly limit to handle cleanup correctly
+            self._bypass_history[role_address] = deque(maxlen=MAX_BYPASSES_PER_WEEK * 2)
+        self._bypass_history[role_address].append(now)
 
     # ------------------------------------------------------------------
     # Public API
@@ -195,12 +447,17 @@ class EmergencyBypass:
         expanded_envelope: dict[str, Any] | None = None,
         *,
         authority_level: AuthorityLevel | None = None,
+        approver_envelope: dict[str, Any] | None = None,
+        approver_address: str | None = None,
+        target_address: str | None = None,
     ) -> BypassRecord:
         """Create and store a new emergency bypass.
 
         Args:
             role_address: D/T/R address of the role to expand.
-            tier: Bypass tier (determines duration).
+            tier: Bypass tier (determines duration).  TIER_4 is rejected
+                per PACT spec Section 9 — emergencies over 72 hours must
+                be re-authorized through normal governance channels.
             reason: Justification for the emergency bypass.
             approved_by: Identity of the authorizing party.
             expanded_envelope: Temporary envelope override dict.
@@ -208,14 +465,37 @@ class EmergencyBypass:
                 provided, the level is validated against the tier
                 requirement (PACT thesis Section 9).  When ``None``,
                 authorization is not enforced (backwards-compatible).
+            approver_envelope: The approver's effective envelope for scope
+                validation (H2).  When provided, the expanded_envelope is
+                validated to ensure it does not exceed the approver's
+                bounds.  When ``None``, scope validation is skipped with
+                a deprecation warning.
+            approver_address: D/T/R address of the approver for structural
+                authority validation (H3).  Used together with
+                ``target_address``.
+            target_address: D/T/R address of the target role for structural
+                authority validation (H3).  Used together with
+                ``approver_address``.
 
         Returns:
             The newly created ``BypassRecord``.
 
         Raises:
-            ValueError: If role_address, reason, or approved_by is empty.
-            PermissionError: If authority_level is insufficient for the tier.
+            ValueError: If role_address, reason, or approved_by is empty;
+                if tier is TIER_4; if rate limits are exceeded; if
+                numeric values in expanded_envelope are non-finite.
+            PermissionError: If authority_level is insufficient for the
+                tier; if expanded_envelope exceeds approver's bounds; if
+                structural authority is insufficient.
         """
+        # C2: Reject Tier 4 creation (PACT spec Section 9)
+        if tier == BypassTier.TIER_4:
+            raise ValueError(
+                "Tier 4 (>72h) is not permitted — emergencies over 72 hours "
+                "must be re-authorized through normal governance channels "
+                "every 72 hours (PACT spec Section 9)"
+            )
+
         if not role_address:
             raise ValueError("role_address must not be empty")
         if not reason:
@@ -241,14 +521,38 @@ class EmergencyBypass:
                 stacklevel=2,
             )
 
+        # H2: Validate expanded_envelope against approver's envelope
+        effective_envelope = expanded_envelope if expanded_envelope is not None else {}
+        if approver_envelope is not None:
+            self._validate_expanded_envelope(effective_envelope, approver_envelope)
+        elif effective_envelope:
+            import warnings
+
+            warnings.warn(
+                "approver_envelope=None skips scope validation — "
+                "this will become required in a future version when "
+                "expanded_envelope is provided",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        # H3: Validate structural D/T/R authority
+        if approver_address is not None and target_address is not None:
+            self._validate_structural_authority(approver_address, target_address, tier)
+
         now = datetime.now(UTC)
+
+        # M4: Rate limiting — check before committing
+        with self._lock:
+            self._check_rate_limits(role_address, now)
+
         bypass_id = f"eb-{uuid4().hex[:12]}"
 
         # Compute expiry
         duration = _TIER_DURATION.get(tier)
         expires_at = (now + duration) if duration is not None else None
 
-        # Compute review_due_by: 7 days after expiry (or 7 days after creation for TIER_4)
+        # Compute review_due_by: 7 days after expiry
         review_anchor = expires_at if expires_at is not None else now
         review_due_by = review_anchor + timedelta(days=_REVIEW_WINDOW_DAYS)
 
@@ -285,7 +589,7 @@ class EmergencyBypass:
             tier=tier,
             reason=reason,
             approved_by=approved_by,
-            expanded_envelope=expanded_envelope if expanded_envelope is not None else {},
+            expanded_envelope=effective_envelope,
             created_at=now,
             expires_at=expires_at,
             expired_manually=False,
@@ -298,6 +602,8 @@ class EmergencyBypass:
             while len(self._bypasses) >= MAX_BYPASS_RECORDS:
                 self._bypasses.popitem(last=False)  # Evict oldest
             self._bypasses[bypass_id] = record
+            # M4: Record creation for rate limiting
+            self._record_bypass_creation(role_address, now)
 
         logger.info(
             "Emergency bypass created: id=%s role=%s tier=%s expires=%s approved_by=%s",

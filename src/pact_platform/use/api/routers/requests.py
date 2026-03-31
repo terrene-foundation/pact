@@ -54,6 +54,18 @@ async def submit_request(request: Request, body: dict[str, Any]) -> dict | Respo
         raise HTTPException(400, "sequence_order must be an integer")
     validate_finite(sequence_order=sequence_order)
 
+    # H5 fix: validate enum-typed fields
+    _VALID_PRIORITIES = ("low", "normal", "high", "critical")
+    priority = body.get("priority", "normal")
+    if priority not in _VALID_PRIORITIES:
+        raise HTTPException(400, f"priority must be one of: {', '.join(_VALID_PRIORITIES)}")
+    _VALID_ASSIGNED_TYPES = ("unassigned", "pool", "agent")
+    assigned_type = body.get("assigned_type", "unassigned")
+    if assigned_type not in _VALID_ASSIGNED_TYPES:
+        raise HTTPException(
+            400, f"assigned_type must be one of: {', '.join(_VALID_ASSIGNED_TYPES)}"
+        )
+
     # Governance gate: resolve org_address from parent objective
     obj = await db.express.read("AgenticObjective", objective_id)
     if obj and obj.get("org_address"):
@@ -69,9 +81,9 @@ async def submit_request(request: Request, body: dict[str, Any]) -> dict | Respo
             "title": title,
             "description": description,
             "assigned_to": body.get("assigned_to"),
-            "assigned_type": body.get("assigned_type", "unassigned"),
+            "assigned_type": assigned_type,
             "status": "pending",
-            "priority": body.get("priority", "normal"),
+            "priority": priority,
             "sequence_order": sequence_order,
             "depends_on": body.get("depends_on", {}),
             "envelope_id": body.get("envelope_id"),

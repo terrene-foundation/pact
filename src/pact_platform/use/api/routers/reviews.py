@@ -98,13 +98,20 @@ async def add_finding(request: Request, review_id: str, body: dict[str, Any]) ->
         val = body.get(field_name, "")
         if val:
             validate_string_length(str(val), field_name, MAX_LONG_STRING)
+
+    # H5 fix: validate severity enum
+    _VALID_SEVERITIES = ("info", "low", "medium", "high", "critical")
+    severity = body.get("severity", "info")
+    if severity not in _VALID_SEVERITIES:
+        raise HTTPException(400, f"severity must be one of: {', '.join(_VALID_SEVERITIES)}")
+
     return await db.express.create(
         "AgenticFinding",
         {
             "id": fid,
             "review_id": review_id,
             "request_id": body.get("request_id"),
-            "severity": body.get("severity", "info"),
+            "severity": severity,
             "category": body.get("category", ""),
             "title": body.get("title", ""),
             "description": body.get("description", ""),

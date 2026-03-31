@@ -1291,6 +1291,228 @@ def audit_export(output_format: str, output: str | None) -> None:
         error_console.print("\n  [dim]No org loaded. Load an org for a full audit trail.[/dim]")
 
 
+@audit.command("toctou")
+def audit_toctou() -> None:
+    """Run a post-execution TOCTOU comparison.
+
+    Compares envelope version hashes recorded in recent governance verdicts
+    against the current org state. Reports divergences where the envelope
+    changed after a verdict was issued (Time-of-Check / Time-of-Use gap).
+    """
+    engine = _get_engine()
+    if engine is None:
+        error_console.print(
+            "[bold red]No org loaded.[/bold red] Load an org first.\n\n"
+            "  [cyan]pact quickstart --example university[/cyan]\n"
+            "  [cyan]pact org create org.yaml[/cyan]"
+        )
+        sys.exit(1)
+
+    from pact_platform.use.audit.toctou import audit_toctou_check
+
+    # Gather recent verdicts from the audit chain
+    audit_chain = _audit_chain
+    recent_verdicts: list[Any] = []
+
+    if audit_chain is not None:
+        anchors = getattr(audit_chain, "anchors", None)
+        if anchors is not None:
+            for anchor in anchors:
+                # Collect objects that look like GovernanceVerdict
+                if hasattr(anchor, "envelope_version") and hasattr(anchor, "role_address"):
+                    recent_verdicts.append(anchor)
+
+    if not recent_verdicts:
+        console.print()
+        console.print(
+            Panel(
+                "[green]No recent governance verdicts found.[/green]\n\n"
+                "TOCTOU comparison requires recorded verdicts from "
+                "``verify_action()`` calls.\n"
+                "0 divergences found.",
+                title="PACT — TOCTOU Audit",
+                border_style="green",
+            )
+        )
+        return
+
+    divergences = audit_toctou_check(engine, recent_verdicts)
+
+    console.print()
+    if not divergences:
+        console.print(
+            Panel(
+                f"[green]No TOCTOU divergences found[/green] across "
+                f"{len(recent_verdicts)} verdict(s).\n\n"
+                f"All recorded envelope versions match the current org state.",
+                title="PACT — TOCTOU Audit",
+                border_style="green",
+            )
+        )
+    else:
+        table = Table(
+            title=f"TOCTOU Divergences ({len(divergences)} found)",
+            show_header=True,
+            header_style="bold red",
+        )
+        table.add_column("Role Address", style="cyan")
+        table.add_column("Action")
+        table.add_column("Recorded Version", style="dim")
+        table.add_column("Current Version", style="dim")
+        table.add_column("Timestamp")
+
+        for div in divergences:
+            table.add_row(
+                div["role_address"],
+                div.get("action", "—"),
+                div["recorded_version"][:16] + "..." if div["recorded_version"] else "—",
+                (
+                    (div["current_version"][:16] + "...")
+                    if div.get("current_version")
+                    else "[red]REMOVED[/red]"
+                ),
+                str(div.get("timestamp", "—")),
+            )
+
+        console.print(table)
+        console.print()
+        console.print(
+            Panel(
+                f"[bold yellow]Warning:[/bold yellow] {len(divergences)} "
+                f"TOCTOU divergence(s) detected.\n\n"
+                f"These verdicts were issued under a different governance "
+                f"envelope than the current org state. Review each divergence "
+                f"to determine if the original decision is still valid.",
+                title="PACT — TOCTOU Audit",
+                border_style="yellow",
+            )
+        )
+
+
+# ---------------------------------------------------------------------------
+# mcp group
+# ---------------------------------------------------------------------------
+
+
+@main.group()
+def mcp() -> None:
+    """MCP governance — status and tool call evaluation."""
+
+
+@mcp.command("status")
+def mcp_status() -> None:
+    """Show MCP governance configuration status.
+
+    Reports whether MCP governance is configured, the number of registered
+    tool policies, and the associated org name.
+    """
+    engine = _get_engine()
+
+    console.print()
+    if engine is None:
+        console.print(
+            Panel(
+                "[dim]MCP governance not configured — no org loaded.[/dim]\n\n"
+                "Load an org to enable MCP governance:\n"
+                "  [cyan]pact quickstart --example university[/cyan]\n"
+                "  [cyan]pact org create org.yaml[/cyan]",
+                title="PACT — MCP Status",
+                border_style="yellow",
+            )
+        )
+    else:
+        table = Table(show_header=True, header_style="bold cyan")
+        table.add_column("Property", style="dim")
+        table.add_column("Value")
+        table.add_row("Org Name", getattr(engine, "org_name", "unknown"))
+        table.add_row("Engine Loaded", "[green]Yes[/green]")
+        table.add_row(
+            "Default Policy",
+            "[bold]DENY[/bold] (default-deny: unregistered tools are blocked)",
+        )
+
+        console.print(
+            Panel(
+                "[bold green]MCP governance is available.[/bold green]\n\n"
+                "Use [cyan]pact mcp evaluate --tool <name> --agent <address>[/cyan] "
+                "to test a tool call against governance.",
+                title="PACT — MCP Status",
+                border_style="green",
+            )
+        )
+        console.print(table)
+
+
+@mcp.command("evaluate")
+@click.option("--tool", required=True, help="MCP tool name to evaluate.")
+@click.option("--agent", required=True, help="D/T/R agent address.")
+@click.option("--args", "tool_args", default="{}", help="JSON args for the tool call.")
+def mcp_evaluate(tool: str, agent: str, tool_args: str) -> None:
+    """Evaluate an MCP tool call against governance.
+
+    Tests whether an agent at the given address is permitted to invoke the
+    specified tool. Uses default-deny policy.
+
+    Example:
+        pact mcp evaluate --tool web_search --agent D1-R1-T1-R1
+    """
+    engine = _get_engine()
+    if engine is None:
+        error_console.print(
+            "[bold red]No org loaded.[/bold red] Load an org first.\n\n"
+            "  [cyan]pact quickstart --example university[/cyan]\n"
+            "  [cyan]pact org create org.yaml[/cyan]"
+        )
+        sys.exit(1)
+
+    # Parse tool args
+    try:
+        parsed_args = json.loads(tool_args)
+    except json.JSONDecodeError as exc:
+        error_console.print(f"[bold red]Invalid JSON args:[/bold red] {exc}")
+        sys.exit(1)
+
+    from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+    # Create a bridge with no pre-registered tools (default-deny)
+    gov = PlatformMcpGovernance(engine=engine, tool_policies=[])
+
+    result = gov.evaluate_tool_call(
+        tool_name=tool,
+        args=parsed_args,
+        agent_address=agent,
+    )
+
+    # Display result
+    level = result["level"]
+    level_colors = {
+        "auto_approved": "green",
+        "flagged": "yellow",
+        "held": "yellow",
+        "blocked": "red",
+    }
+    color = level_colors.get(level, "white")
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Property", style="dim")
+    table.add_column("Value")
+    table.add_row("Tool", tool)
+    table.add_row("Agent", agent)
+    table.add_row("Verdict", f"[bold {color}]{level}[/bold {color}]")
+    table.add_row("Reason", result["reason"])
+    table.add_row("Timestamp", result["timestamp"])
+
+    console.print()
+    console.print(
+        Panel(
+            f"MCP tool call evaluation: [{color}]{level}[/{color}]",
+            title="PACT — MCP Evaluate",
+            border_style=color,
+        )
+    )
+    console.print(table)
+
+
 # ---------------------------------------------------------------------------
 # validate — import from existing build CLI
 # ---------------------------------------------------------------------------
@@ -1307,6 +1529,284 @@ main.add_command(_build_validate, "validate")
 from pact_platform.build.cli import status as _build_status
 
 main.add_command(_build_status, "status")
+
+
+# ---------------------------------------------------------------------------
+# config group (TODO-23)
+# ---------------------------------------------------------------------------
+
+
+@main.group()
+def config() -> None:
+    """Platform configuration — show and manage runtime settings."""
+
+
+@config.command("show")
+def config_show() -> None:
+    """Show current platform configuration settings.
+
+    Displays the enforcement mode and other runtime settings.
+    """
+    from pact_platform.engine.settings import get_platform_settings
+
+    settings = get_platform_settings()
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Setting", style="dim")
+    table.add_column("Value")
+    table.add_column("Description")
+
+    table.add_row(
+        "Enforcement Mode",
+        f"[bold]{settings.enforcement_mode.value}[/bold]",
+        {
+            "enforce": "Governance blocks/holds actions (production)",
+            "shadow": "Governance observes only, never blocks",
+            "disabled": "Governance bypassed entirely (development)",
+        }.get(settings.enforcement_mode.value, ""),
+    )
+
+    engine = _get_engine()
+    table.add_row(
+        "Governance Engine",
+        "[green]loaded[/green]" if engine is not None else "[dim]not loaded[/dim]",
+        "GovernanceEngine in-memory state",
+    )
+
+    console.print()
+    console.print(
+        Panel(
+            "[bold cyan]Platform Configuration[/bold cyan]",
+            border_style="blue",
+        )
+    )
+    console.print(table)
+
+    if settings.enforcement_mode.value == "disabled":
+        console.print(
+            "\n  [bold yellow]Warning:[/bold yellow] Governance is disabled. "
+            "All actions will bypass governance verification."
+        )
+
+
+# ---------------------------------------------------------------------------
+# calibrate command (TODO-24)
+# ---------------------------------------------------------------------------
+
+
+@main.command()
+@click.argument("org_file", type=click.Path(exists=True))
+def calibrate(org_file: str) -> None:
+    """Run shadow calibration on an org definition.
+
+    Takes an org YAML file, generates synthetic actions for each role,
+    runs them through governance in shadow mode, and reports per-supervisor
+    held ratios.
+
+    Flags:
+    - Below 10% held: potential constraint theater (too permissive)
+    - Above 50% held: potential over-restriction
+
+    Usage:
+        pact calibrate org.yaml
+    """
+    from pact.governance import GovernanceEngine, load_org_yaml
+
+    from pact_platform.trust.shadow_enforcer import ShadowEnforcer
+
+    # --- Load the org ---
+    console.print()
+    with console.status(f"[bold green]Loading org from {org_file}..."):
+        try:
+            loaded = load_org_yaml(org_file)
+        except Exception as exc:
+            error_console.print(f"[bold red]Failed to load org:[/bold red] {exc}")
+            sys.exit(1)
+
+        audit_chain = _make_audit_chain()
+        engine = GovernanceEngine(loaded.org_definition, audit_chain=audit_chain)
+        compiled_org = engine.get_org()
+
+    console.print(f"  [green]Compiled[/green] {len(compiled_org.nodes)} nodes from {org_file}")
+
+    # --- Apply envelopes from YAML ---
+    for spec in loaded.envelopes:
+        from pact.governance import RoleEnvelope
+        from pact_platform.build.config.schema import (
+            CommunicationConstraintConfig,
+            ConstraintEnvelopeConfig,
+            DataAccessConstraintConfig,
+            FinancialConstraintConfig,
+            OperationalConstraintConfig,
+            TemporalConstraintConfig,
+        )
+
+        target_node = compiled_org.get_node_by_role_id(spec.target)
+        definer_node = compiled_org.get_node_by_role_id(spec.defined_by)
+        if target_node is None or definer_node is None:
+            continue
+
+        env_config = ConstraintEnvelopeConfig(
+            id=f"env-{spec.target}",
+            financial=FinancialConstraintConfig(**(spec.financial or {})),
+            operational=OperationalConstraintConfig(**(spec.operational or {})),
+            temporal=TemporalConstraintConfig(**(spec.temporal or {})),
+            data_access=DataAccessConstraintConfig(**(spec.data_access or {})),
+            communication=CommunicationConstraintConfig(**(spec.communication or {})),
+        )
+        role_env = RoleEnvelope(
+            id=f"env-{spec.target}",
+            defining_role_address=definer_node.address,
+            target_role_address=target_node.address,
+            envelope=env_config,
+        )
+        engine.set_role_envelope(role_env)
+
+    # --- Identify supervisors and roles ---
+    from pact.governance import OrgNode
+
+    supervisors: dict[str, list[str]] = {}  # supervisor_addr -> [role_addrs]
+    all_roles: list[str] = []
+
+    for addr, node in compiled_org.nodes.items():
+        all_roles.append(addr)
+        node_type = getattr(node, "node_type", None)
+        type_val = node_type.value if hasattr(node_type, "value") else str(node_type)
+        if type_val in ("supervisor", "department_head"):
+            supervisors[addr] = []
+
+    # Map roles to their parent supervisors (approximate via address prefix)
+    for addr in all_roles:
+        for sup_addr in supervisors:
+            if addr != sup_addr and addr.startswith(sup_addr):
+                supervisors[sup_addr].append(addr)
+                break
+        else:
+            # If not under any supervisor, it may be a top-level supervisor itself
+            pass
+
+    if not supervisors:
+        # Treat all addresses as one group under a synthetic supervisor
+        supervisors["(org-root)"] = all_roles
+
+    # --- Synthetic actions for calibration ---
+    # Generate one action per gradient zone per role
+    _SYNTHETIC_ACTIONS = [
+        "read_data",
+        "write_data",
+        "execute_task",
+        "approve_request",
+        "deploy_change",
+        "send_external_message",
+        "access_confidential_data",
+        "high_cost_operation",
+    ]
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold cyan]Shadow Calibration[/bold cyan] -- "
+            f"{len(supervisors)} supervisor(s), {len(all_roles)} role(s), "
+            f"{len(_SYNTHETIC_ACTIONS)} synthetic actions each",
+            border_style="blue",
+        )
+    )
+
+    # --- Run shadow evaluation ---
+    supervisor_metrics: dict[str, dict[str, int]] = {}
+
+    for sup_addr, subordinate_addrs in supervisors.items():
+        role_addrs = subordinate_addrs if subordinate_addrs else [sup_addr]
+        totals = {"total": 0, "auto_approved": 0, "flagged": 0, "held": 0, "blocked": 0}
+
+        for role_addr in role_addrs:
+            shadow = ShadowEnforcer(
+                governance_engine=engine,
+                role_address=role_addr,
+            )
+            for action in _SYNTHETIC_ACTIONS:
+                result = shadow.evaluate(
+                    action=action,
+                    agent_id=f"calibration-{role_addr}",
+                )
+                totals["total"] += 1
+                if result.would_be_auto_approved:
+                    totals["auto_approved"] += 1
+                elif result.would_be_flagged:
+                    totals["flagged"] += 1
+                elif result.would_be_held:
+                    totals["held"] += 1
+                elif result.would_be_blocked:
+                    totals["blocked"] += 1
+
+        supervisor_metrics[sup_addr] = totals
+
+    # --- Report results ---
+    results_table = Table(
+        title="Shadow Calibration Results",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    results_table.add_column("Supervisor", style="bold")
+    results_table.add_column("Total", justify="right")
+    results_table.add_column("Auto-Approved", justify="right")
+    results_table.add_column("Flagged", justify="right")
+    results_table.add_column("Held", justify="right")
+    results_table.add_column("Blocked", justify="right")
+    results_table.add_column("Held Ratio", justify="right")
+    results_table.add_column("Assessment")
+
+    for sup_addr, metrics in sorted(supervisor_metrics.items()):
+        total = metrics["total"]
+        held = metrics["held"]
+        held_ratio = held / total if total > 0 else 0.0
+
+        if held_ratio < 0.10:
+            assessment = "[yellow]Under-restriction (constraint theater)[/yellow]"
+        elif held_ratio > 0.50:
+            assessment = "[red]Over-restriction[/red]"
+        else:
+            assessment = "[green]Healthy[/green]"
+
+        results_table.add_row(
+            sup_addr,
+            str(total),
+            str(metrics["auto_approved"]),
+            str(metrics["flagged"]),
+            str(held),
+            str(metrics["blocked"]),
+            f"{held_ratio:.0%}",
+            assessment,
+        )
+
+    console.print()
+    console.print(results_table)
+
+    # --- Summary ---
+    under_restriction = [
+        s for s, m in supervisor_metrics.items() if m["total"] > 0 and m["held"] / m["total"] < 0.10
+    ]
+    over_restriction = [
+        s for s, m in supervisor_metrics.items() if m["total"] > 0 and m["held"] / m["total"] > 0.50
+    ]
+
+    console.print()
+    if under_restriction:
+        console.print(
+            f"  [yellow]Constraint theater warning:[/yellow] "
+            f"{len(under_restriction)} supervisor(s) below 10% held ratio: "
+            f"{', '.join(under_restriction)}"
+        )
+    if over_restriction:
+        console.print(
+            f"  [red]Over-restriction warning:[/red] "
+            f"{len(over_restriction)} supervisor(s) above 50% held ratio: "
+            f"{', '.join(over_restriction)}"
+        )
+    if not under_restriction and not over_restriction:
+        console.print("  [green]All supervisors within healthy held ratio range (10-50%).[/green]")
+
+    console.print()
 
 
 # ---------------------------------------------------------------------------

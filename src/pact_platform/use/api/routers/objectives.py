@@ -53,6 +53,16 @@ async def create_objective(request: Request, body: dict[str, Any]) -> dict | Res
     budget = float(body.get("budget_usd", 0.0))
     validate_finite(budget_usd=budget)
 
+    # H5 fix: validate enum-typed fields
+    _VALID_STATUSES = ("draft", "active", "completed", "cancelled")
+    _VALID_PRIORITIES = ("low", "normal", "high", "critical")
+    status = body.get("status", "draft")
+    if status not in _VALID_STATUSES:
+        raise HTTPException(400, f"status must be one of: {', '.join(_VALID_STATUSES)}")
+    priority = body.get("priority", "normal")
+    if priority not in _VALID_PRIORITIES:
+        raise HTTPException(400, f"priority must be one of: {', '.join(_VALID_PRIORITIES)}")
+
     metadata = body.get("metadata", {})
     if isinstance(metadata, dict):
         import json as _json
@@ -77,8 +87,8 @@ async def create_objective(request: Request, body: dict[str, Any]) -> dict | Res
             "title": title,
             "description": description,
             "submitted_by": body.get("submitted_by", ""),
-            "status": body.get("status", "draft"),
-            "priority": body.get("priority", "normal"),
+            "status": status,
+            "priority": priority,
             "budget_usd": budget,
             "deadline": body.get("deadline"),
             "parent_objective_id": body.get("parent_objective_id"),

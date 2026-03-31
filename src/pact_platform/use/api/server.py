@@ -33,6 +33,7 @@ from pact_platform.build.config.env import EnvConfig, load_env_config
 from pact_platform.build.workspace.bridge import BridgeManager
 from pact_platform.build.workspace.models import WorkspaceRegistry
 from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.models import validate_record_id
 from pact_platform.use.api.endpoints import ApiResponse, PactAPI
 from pact_platform.use.api.events import event_bus
 from pact_platform.use.api.shutdown import ShutdownManager
@@ -433,6 +434,7 @@ def create_app(
         request: Request, team_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """List agents in a team. Requires authentication."""
+        validate_record_id(team_id)
         return api.list_agents(team_id)
 
     @app.get("/api/v1/agents/{agent_id}/status")
@@ -441,6 +443,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get agent status and posture. Requires authentication."""
+        validate_record_id(agent_id)
         return api.agent_status(agent_id)
 
     @app.post("/api/v1/agents/{agent_id}/approve/{action_id}")
@@ -454,6 +457,8 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Approve a held action. Requires authentication."""
+        validate_record_id(agent_id)
+        validate_record_id(action_id)
         return api.approve_action(agent_id, action_id, approver_id, reason)
 
     @app.post("/api/v1/agents/{agent_id}/reject/{action_id}")
@@ -467,6 +472,8 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Reject a held action. Requires authentication."""
+        validate_record_id(agent_id)
+        validate_record_id(action_id)
         return api.reject_action(agent_id, action_id, approver_id, reason)
 
     @app.get("/api/v1/held-actions")
@@ -505,6 +512,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get trust chain detail for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.get_trust_chain_detail(agent_id)
 
     @app.get("/api/v1/envelopes/{envelope_id}")
@@ -513,6 +521,7 @@ def create_app(
         request: Request, envelope_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get constraint envelope with all five CARE dimensions. Requires authentication."""
+        validate_record_id(envelope_id)
         return api.get_envelope(envelope_id)
 
     @app.get("/api/v1/workspaces")
@@ -549,6 +558,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get posture change history for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.posture_history(agent_id)
 
     # ------------------------------------------------------------------
@@ -561,6 +571,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get upgrade evidence for posture upgrade evaluation. Requires authentication."""
+        validate_record_id(agent_id)
         return api.upgrade_evidence(agent_id)
 
     # ------------------------------------------------------------------
@@ -585,6 +596,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """List bridges for a specific team. Requires authentication."""
+        validate_record_id(team_id)
         return api.list_bridges_by_team(team_id)
 
     @app.get("/api/v1/bridges/{bridge_id}/audit")
@@ -599,6 +611,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Get bridge audit trail. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.bridge_audit(
             bridge_id,
             start_date=start_date,
@@ -615,6 +628,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Get bridge detail by ID. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.get_bridge(bridge_id)
 
     @app.put("/api/v1/bridges/{bridge_id}/approve")
@@ -627,6 +641,12 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Approve a bridge on source or target side. Requires authentication."""
+        validate_record_id(bridge_id)
+        if side not in ("source", "target"):
+            raise HTTPException(
+                status_code=400,
+                detail="side must be 'source' or 'target'",
+            )
         return api.approve_bridge(bridge_id, side, approver_id)
 
     @app.post("/api/v1/bridges/{bridge_id}/suspend")
@@ -638,6 +658,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Suspend an active bridge. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.suspend_bridge_action(bridge_id, reason)
 
     @app.post("/api/v1/bridges/{bridge_id}/close")
@@ -649,6 +670,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Close a bridge. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.close_bridge_action(bridge_id, reason)
 
     # ------------------------------------------------------------------
@@ -661,6 +683,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get shadow enforcement metrics for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.shadow_metrics(agent_id)
 
     @app.get("/api/v1/shadow/{agent_id}/report")
@@ -669,6 +692,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get shadow enforcement posture upgrade report. Requires authentication."""
+        validate_record_id(agent_id)
         return api.shadow_report(agent_id)
 
     # ------------------------------------------------------------------
@@ -823,6 +847,7 @@ def create_app(
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get DM task result and lifecycle by task_id."""
+            validate_record_id(task_id)
             result = team_runner.get_task_result(task_id)
             if result is None:
                 return ApiResponse(
@@ -885,6 +910,7 @@ def create_app(
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get posture upgrade recommendation for an agent."""
+            validate_record_id(agent_id)
             try:
                 rec = team_runner.get_upgrade_recommendation(agent_id)
                 return ApiResponse(status="ok", data=rec)

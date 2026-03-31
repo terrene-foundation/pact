@@ -54,6 +54,22 @@ async def create_pool(request: Request, body: dict[str, Any]) -> dict | Response
     if max_concurrent > MAX_CONCURRENT_UPPER:
         raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
 
+    # H5 fix: validate enum-typed fields
+    _VALID_POOL_TYPES = ("agent", "human", "mixed")
+    _VALID_ROUTING_STRATEGIES = ("round_robin", "least_busy", "capability_match")
+    pool_type = body.get("pool_type", "agent")
+    if pool_type not in _VALID_POOL_TYPES:
+        raise HTTPException(
+            400,
+            f"pool_type must be one of: {', '.join(_VALID_POOL_TYPES)}",
+        )
+    routing_strategy = body.get("routing_strategy", "round_robin")
+    if routing_strategy not in _VALID_ROUTING_STRATEGIES:
+        raise HTTPException(
+            400,
+            f"routing_strategy must be one of: {', '.join(_VALID_ROUTING_STRATEGIES)}",
+        )
+
     held = await governance_gate(org_id, "create_pool", {"resource": "pool"})
     if held is not None:
         return JSONResponse(content=held, status_code=202)
@@ -65,8 +81,8 @@ async def create_pool(request: Request, body: dict[str, Any]) -> dict | Response
             "org_id": org_id,
             "name": name,
             "description": description,
-            "pool_type": body.get("pool_type", "agent"),
-            "routing_strategy": body.get("routing_strategy", "round_robin"),
+            "pool_type": pool_type,
+            "routing_strategy": routing_strategy,
             "max_concurrent": max_concurrent,
         },
     )
@@ -124,6 +140,15 @@ async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> di
         raise HTTPException(400, "max_concurrent must be a positive integer")
     if max_concurrent > MAX_CONCURRENT_UPPER:
         raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
+
+    # H5 fix: validate member_type enum
+    _VALID_MEMBER_TYPES = ("agent", "human")
+    member_type = body.get("member_type", "agent")
+    if member_type not in _VALID_MEMBER_TYPES:
+        raise HTTPException(
+            400,
+            f"member_type must be one of: {', '.join(_VALID_MEMBER_TYPES)}",
+        )
 
     mid = body.get("id") or uuid4().hex[:12]
     if body.get("id"):

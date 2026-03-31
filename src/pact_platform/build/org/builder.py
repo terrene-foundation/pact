@@ -870,6 +870,28 @@ class OrgDefinition(BaseModel):
                     )
                 )
 
+        # --- Degenerate envelope detection (TODO-21) ---
+        # Uses L1 check_degenerate_envelope() to detect envelopes so tight
+        # that no meaningful action is possible. These are WARNINGs, not ERRORs.
+        try:
+            from pact.governance import check_degenerate_envelope
+
+            for env in self.envelopes:
+                warnings = check_degenerate_envelope(env)
+                for warning_msg in warnings:
+                    results.append(
+                        ValidationResult(
+                            severity=ValidationSeverity.WARNING,
+                            message=f"Envelope '{env.id}': {warning_msg}",
+                            code="DEGENERATE_ENVELOPE",
+                        )
+                    )
+        except ImportError:
+            logger.debug(
+                "pact.governance.check_degenerate_envelope not available; "
+                "skipping degenerate envelope detection"
+            )
+
         return results
 
 

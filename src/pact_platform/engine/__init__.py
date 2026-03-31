@@ -20,6 +20,12 @@ from pact_platform.engine.envelope_adapter import PlatformEnvelopeAdapter
 from pact_platform.engine.event_bridge import EventBridge
 from pact_platform.engine.orchestrator import SupervisorOrchestrator
 from pact_platform.engine.seed import seed_demo_data, seed_if_empty
+from pact_platform.engine.settings import (
+    EnforcementMode,
+    PlatformSettings,
+    get_platform_settings,
+    set_platform_settings,
+)
 
 __all__ = [
     "PlatformEnvelopeAdapter",
@@ -32,4 +38,8 @@ __all__ = [
     "SupervisorOrchestrator",
     "seed_demo_data",
     "seed_if_empty",
+    "EnforcementMode",
+    "PlatformSettings",
+    "get_platform_settings",
+    "set_platform_settings",
 ]
