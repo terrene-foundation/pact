@@ -18,6 +18,23 @@ def pytest_configure(config):
         _load_env(env_path)
 
 
+def pytest_runtest_setup(item):
+    """Reset shared rate limiter before each test to prevent cross-test pollution.
+
+    SlowAPI's in-memory storage accumulates counters per time window.
+    We must both reset storage AND create a fresh limiter to ensure
+    clean state across tests.
+    """
+    try:
+        import pact_platform.use.api.rate_limit as rl
+        from slowapi import Limiter
+        from slowapi.util import get_remote_address
+
+        rl.limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
+    except ImportError:
+        pass
+
+
 def _load_env(env_path: Path):
     """Parse .env and inject into os.environ (lightweight, no dependencies)."""
     for line in env_path.read_text().splitlines():

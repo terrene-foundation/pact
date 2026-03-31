@@ -22,10 +22,8 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -178,7 +176,7 @@ def create_app(
     platform_api: PactAPI | None = None,
     env_config: EnvConfig | None = None,
     trust_store: Any | None = None,
-    dm_runner: Any | None = None,
+    team_runner: Any | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -188,9 +186,9 @@ def create_app(
         env_config: Optional EnvConfig. When None, loaded from environment.
         trust_store: Optional trust store for readiness probe. When
             provided, the ``/ready`` endpoint checks store health.
-        dm_runner: Optional DMTeamRunner instance for DM team endpoints.
-            When provided, mounts POST/GET /api/v1/dm/tasks and
-            GET /api/v1/dm/status endpoints.
+        team_runner: Optional governed team runner for team task endpoints.
+            When provided, mounts POST/GET /api/v1/teams/tasks and
+            GET /api/v1/teams/status endpoints.
 
     Returns:
         Configured FastAPI application with all routes mounted.
@@ -209,8 +207,8 @@ def create_app(
     # Shutdown manager for graceful connection cleanup (I8)
     shutdown_manager = ShutdownManager()
 
-    # Rate limiter (M35-3503) — key by remote IP address
-    limiter = Limiter(key_func=get_remote_address)
+    # Rate limiter (M35-3503) — shared singleton from rate_limit module
+    from pact_platform.use.api.rate_limit import limiter
 
     app = FastAPI(
         title="PACT API",
@@ -353,7 +351,7 @@ def create_app(
     # ------------------------------------------------------------------
 
     @app.get("/health")
-    @limiter.limit(_rate_get)
+    @limiter.exempt
     async def health(request: Request) -> dict[str, Any]:
         """Health check endpoint for load balancers and monitoring.
 
@@ -375,7 +373,7 @@ def create_app(
     # ------------------------------------------------------------------
 
     @app.get("/ready")
-    @limiter.limit(_rate_get)
+    @limiter.exempt
     async def readiness(request: Request) -> JSONResponse:
         """Readiness probe — checks whether the platform is ready to serve.
 
@@ -739,15 +737,15 @@ def create_app(
     # M23 DM Team endpoints (Task 5052)
     # ------------------------------------------------------------------
 
-    if dm_runner is not None:
+    if team_runner is not None:
 
-        @app.post("/api/v1/dm/tasks")
+        @app.post("/api/v1/teams/tasks")
         @limiter.limit(_rate_post)
         async def dm_submit_task(
             request: Request,
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
-            """Submit a DM team task. Auto-routes by keyword matching."""
+            """Submit a governed team task. Auto-routes by keyword matching."""
             body: dict[str, Any] = await request.json()
             description = body.get("description", "")
             target_agent = body.get("target_agent")
@@ -766,16 +764,16 @@ def create_app(
                 )
 
             # Validate target agent if specified
-            if target_agent and target_agent not in dm_runner.registered_agents:
+            if target_agent and target_agent not in team_runner.registered_agents:
                 return ApiResponse(
                     status="error",
                     error=(
-                        f"Agent '{target_agent}' is not a valid DM team agent. "
-                        f"Available: {dm_runner.registered_agents}"
+                        f"Agent '{target_agent}' is not a valid governed team agent. "
+                        f"Available: {team_runner.registered_agents}"
                     ),
                 )
 
-            result = dm_runner.submit_task(
+            result = team_runner.submit_task(
                 description=description,
                 target_agent=target_agent,
             )
@@ -806,7 +804,7 @@ def create_app(
                 },
             )
 
-        @app.get("/api/v1/dm/tasks/{task_id}")
+        @app.get("/api/v1/teams/tasks/{task_id}")
         @limiter.limit(_rate_get)
         async def dm_get_task(
             request: Request,
@@ -814,7 +812,7 @@ def create_app(
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get DM task result and lifecycle by task_id."""
-            result = dm_runner.get_task_result(task_id)
+            result = team_runner.get_task_result(task_id)
             if result is None:
                 return ApiResponse(
                     status="error",
@@ -833,17 +831,17 @@ def create_app(
                 },
             )
 
-        @app.get("/api/v1/dm/status")
+        @app.get("/api/v1/teams/status")
         @limiter.limit(_rate_get)
         async def dm_status(
             request: Request,
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get all 5 DM agents' postures and task stats."""
-            stats = dm_runner.get_agent_stats()
+            stats = team_runner.get_agent_stats()
             agents_data = []
-            for agent_id in dm_runner.registered_agents:
-                record = dm_runner.get_agent_record(agent_id)
+            for agent_id in team_runner.registered_agents:
+                record = team_runner.get_agent_record(agent_id)
                 agent_stats = stats.get(agent_id, {})
                 agents_data.append(
                     {
@@ -862,7 +860,7 @@ def create_app(
             return ApiResponse(
                 status="ok",
                 data={
-                    "team_id": "dm-team",
+                    "team_id": "governed-team",
                     "agents": agents_data,
                     "total_agents": len(agents_data),
                 },
@@ -877,7 +875,7 @@ def create_app(
         ) -> ApiResponse:
             """Get posture upgrade recommendation for an agent."""
             try:
-                rec = dm_runner.get_upgrade_recommendation(agent_id)
+                rec = team_runner.get_upgrade_recommendation(agent_id)
                 return ApiResponse(status="ok", data=rec)
             except KeyError as exc:
                 logger.exception("get_upgrade_recommendation failed for agent_id=%s", agent_id)

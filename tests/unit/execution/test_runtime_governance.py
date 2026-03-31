@@ -1052,7 +1052,9 @@ class TestGovernanceContextValidation:
         )
         rt.set_agent_role_address("agent-1", "D1-R1")
 
-        # /data/../secrets/keys normalizes to /secrets/keys (no traversal after normpath)
+        # /data/../secrets/keys contains ".." — blocked by path traversal guard.
+        # normalize_resource_path preserves ".." (doesn't collapse it),
+        # and the traversal check correctly blocks the path.
         rt.submit(
             "action",
             agent_id="agent-1",
@@ -1062,7 +1064,7 @@ class TestGovernanceContextValidation:
 
         ctx = engine.last_context
         assert ctx is not None
-        assert ctx["resource_path"] == "/secrets/keys"  # Normalized, not raw
+        assert "resource_path" not in ctx  # Blocked — contains ".."
 
     def test_leading_traversal_blocked(
         self,

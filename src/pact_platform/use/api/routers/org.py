@@ -16,7 +16,9 @@ import threading
 from typing import Any
 
 import yaml as yaml_lib
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+
+from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,8 @@ def set_engine(engine: Any) -> None:
 
 
 @router.get("/structure")
-def get_org_structure() -> dict:
+@limiter.limit(RATE_GET)
+async def get_org_structure(request: Request) -> dict:
     """Return the compiled org tree for the org-builder frontend.
 
     Returns the org name, departments, teams, and roles in a shape
@@ -76,7 +79,8 @@ def get_org_structure() -> dict:
 
 
 @router.post("/deploy")
-def deploy_org(body: dict[str, Any]) -> dict:
+@limiter.limit(RATE_POST)
+async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
     """Deploy an org definition from YAML.
 
     Accepts a YAML string, parses it, compiles via GovernanceEngine,
@@ -255,7 +259,8 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
 
 
 @router.post("/bridges/approve")
-def approve_bridge_lca(body: dict[str, Any]) -> dict:
+@limiter.limit(RATE_POST)
+async def approve_bridge_lca(request: Request, body: dict[str, Any]) -> dict:
     """Pre-approve a bridge via lowest-common-ancestor (LCA) check.
 
     The approver must be the LCA of both roles in the org tree.
@@ -306,7 +311,10 @@ def approve_bridge_lca(body: dict[str, Any]) -> dict:
 
 
 @router.post("/roles/{role_address}/designate-acting")
-def designate_acting_occupant(role_address: str, body: dict[str, Any]) -> dict:
+@limiter.limit(RATE_POST)
+async def designate_acting_occupant(
+    request: Request, role_address: str, body: dict[str, Any]
+) -> dict:
     """Designate an acting occupant for a vacant role.
 
     When a role becomes vacant, the parent role must designate an acting
@@ -354,7 +362,8 @@ def designate_acting_occupant(role_address: str, body: dict[str, Any]) -> dict:
 
 
 @router.get("/roles/{role_address}/vacancy")
-def get_vacancy_status(role_address: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_vacancy_status(request: Request, role_address: str) -> dict:
     """Get vacancy designation status for a role.
 
     Returns the current acting occupant designation, or 404 if no

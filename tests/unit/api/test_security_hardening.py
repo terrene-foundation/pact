@@ -141,23 +141,25 @@ class TestRateLimiting:
         assert response.status_code == 200
 
     def test_rate_limit_exceeded_returns_429(self, strict_client):
-        """Exceeding the rate limit should return HTTP 429."""
+        """Exceeding the rate limit should return HTTP 429.
+
+        Uses /api/v1/teams (rate-limited) not /health (exempt — LB probes).
+        """
         # Rate limit is 2/minute for GET — send 3 requests
         for _ in range(2):
-            resp = strict_client.get("/health")
+            resp = strict_client.get("/api/v1/teams")
             assert resp.status_code == 200
 
         # Third request should be rate limited
-        resp = strict_client.get("/health")
+        resp = strict_client.get("/api/v1/teams")
         assert resp.status_code == 429
 
     def test_rate_limit_429_body_is_json(self, strict_client):
         """429 response should contain a JSON body with error details."""
-        # Exhaust the rate limit
         for _ in range(2):
-            strict_client.get("/health")
+            strict_client.get("/api/v1/teams")
 
-        resp = strict_client.get("/health")
+        resp = strict_client.get("/api/v1/teams")
         assert resp.status_code == 429
         body = resp.json()
         assert "error" in body

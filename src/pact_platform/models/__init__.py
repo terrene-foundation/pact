@@ -116,6 +116,14 @@ MAX_POOL_MEMBERS: int = 1_000
 MAX_CONCURRENT_UPPER: int = 1_000
 """Maximum allowed value for max_concurrent fields."""
 
+MAX_METADATA_SIZE: int = 50_000
+"""Maximum serialized size for metadata dict fields (50KB)."""
+
+ALL_CONSTRAINT_DIMENSIONS: frozenset[str] = frozenset(
+    {"financial", "operational", "temporal", "data_access", "communication"}
+)
+"""The five CARE constraint dimensions."""
+
 
 def validate_string_length(
     value: str,

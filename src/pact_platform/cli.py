@@ -1102,9 +1102,8 @@ def envelope_show(address: str) -> None:
 
     # Dimension scope (from delegation record, if applicable)
     dimension_scope = getattr(envelope_config, "dimension_scope", None)
-    if dimension_scope and dimension_scope != frozenset(
-        {"financial", "operational", "temporal", "data_access", "communication"}
-    ):
+    _ALL_DIMS = frozenset({"financial", "operational", "temporal", "data_access", "communication"})
+    if dimension_scope and dimension_scope != _ALL_DIMS:
         scope_table = Table(
             title="Dimension Scope",
             show_header=True,

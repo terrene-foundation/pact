@@ -10,21 +10,24 @@ from __future__ import annotations
 from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from pact_platform.models import (
     MAX_LONG_STRING,
+    MAX_METADATA_SIZE,
     MAX_SHORT_STRING,
     db,
     validate_finite,
     validate_string_length,
 )
+from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 router = APIRouter(prefix="/api/v1/requests", tags=["requests"])
 
 
 @router.post("", status_code=201)
-async def submit_request(body: dict[str, Any]) -> dict:
+@limiter.limit(RATE_POST)
+async def submit_request(request: Request, body: dict[str, Any]) -> dict:
     """Submit a new request."""
     rid = body.get("id") or uuid4().hex[:12]
     objective_id = body.get("objective_id", "")
@@ -60,17 +63,31 @@ async def submit_request(body: dict[str, Any]) -> dict:
             "depends_on": body.get("depends_on", {}),
             "envelope_id": body.get("envelope_id"),
             "deadline": body.get("deadline"),
-            "metadata": body.get("metadata", {}),
+            "metadata": _validate_metadata(body.get("metadata", {})),
         },
     )
 
 
+def _validate_metadata(metadata: Any) -> dict:
+    """Validate metadata dict size."""
+    if not isinstance(metadata, dict):
+        return {}
+    import json as _json
+
+    if len(_json.dumps(metadata)) > MAX_METADATA_SIZE:
+        raise HTTPException(400, f"metadata exceeds maximum size of {MAX_METADATA_SIZE} bytes")
+    return metadata
+
+
 @router.get("")
+@limiter.limit(RATE_GET)
 async def list_requests(
+    request: Request,
     status: Optional[str] = Query(None),
     objective_id: Optional[str] = Query(None),
     assigned_to: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
 ) -> dict:
     """List requests with optional filters."""
     filt: dict[str, Any] = {}
@@ -81,35 +98,39 @@ async def list_requests(
     if assigned_to:
         filt["assigned_to"] = assigned_to
 
-    records = await db.express.list("AgenticRequest", filt, limit=limit)
+    records = await db.express.list("AgenticRequest", filt, limit=limit, offset=offset)
     records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    return {"records": records, "count": len(records), "limit": limit}
+    return {"records": records, "count": len(records), "limit": limit, "offset": offset}
 
 
 @router.get("/{request_id}")
-async def get_request(request_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_request(request: Request, request_id: str) -> dict:
     """Get request detail."""
     result = await db.express.read("AgenticRequest", request_id)
     if not result or result.get("found") is False:
-        raise HTTPException(404, f"Request {request_id} not found")
+        raise HTTPException(404, "Request not found")
     return result
 
 
 @router.post("/{request_id}/cancel")
-async def cancel_request(request_id: str) -> dict:
+@limiter.limit(RATE_POST)
+async def cancel_request(request: Request, request_id: str) -> dict:
     """Cancel a request."""
     return await db.express.update("AgenticRequest", request_id, {"status": "cancelled"})
 
 
 @router.get("/{request_id}/sessions")
-async def get_request_sessions(request_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_request_sessions(request: Request, request_id: str) -> dict:
     """List sessions for a request."""
     records = await db.express.list("AgenticWorkSession", {"request_id": request_id})
     return {"records": records, "count": len(records), "limit": 100}
 
 
 @router.get("/{request_id}/artifacts")
-async def get_request_artifacts(request_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_request_artifacts(request: Request, request_id: str) -> dict:
     """List artifacts for a request."""
     records = await db.express.list("AgenticArtifact", {"request_id": request_id})
     return {"records": records, "count": len(records), "limit": 100}

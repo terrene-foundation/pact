@@ -82,6 +82,11 @@ _RATE_LIMIT_WINDOW_SECONDS: float = 86_400.0
 # cyclic delegation graphs and bounds stack usage).
 _MAX_CHAIN_DEPTH: int = 50
 
+# All five CARE constraint dimensions — used for dimension_scope comparison.
+_ALL_DIMS: frozenset[str] = frozenset(
+    {"financial", "operational", "temporal", "data_access", "communication"}
+)
+
 # Dimension context keys forwarded from task.metadata to verify_action()
 # so the L1 engine can enforce data-access and communication constraints.
 _DIMENSION_CONTEXT_KEYS: tuple[str, ...] = (
@@ -1252,9 +1257,9 @@ class ExecutionRuntime:
             # H2: Validate and normalize values before forwarding to L1.
             _rp = task.metadata.get("resource_path")
             if _rp is not None:
-                import posixpath
+                from kailash.trust.pathutils import normalize_resource_path
 
-                _rp = posixpath.normpath(str(_rp))
+                _rp = normalize_resource_path(str(_rp))
                 if ".." in _rp.split("/"):
                     logger.warning(
                         "Path traversal in resource_path %r for task '%s' — blocked",
@@ -1290,13 +1295,7 @@ class ExecutionRuntime:
                     inbound = [d for d in delegations if d.get("delegatee_id") == agent.agent_id]
                     if inbound:
                         ds = inbound[0].get("dimension_scope")
-                        if ds and ds != {
-                            "financial",
-                            "operational",
-                            "temporal",
-                            "data_access",
-                            "communication",
-                        }:
+                        if ds and set(ds) != _ALL_DIMS:
                             context["dimension_scope"] = (
                                 sorted(ds) if isinstance(ds, (set, frozenset, list)) else ds
                             )

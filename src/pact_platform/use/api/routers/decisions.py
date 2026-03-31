@@ -11,9 +11,10 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from pact_platform.models import db
+from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +22,14 @@ router = APIRouter(prefix="/api/v1/decisions", tags=["decisions"])
 
 
 @router.get("")
+@limiter.limit(RATE_GET)
 async def list_decisions(
+    request: Request,
     status: Optional[str] = Query(None),
     urgency: Optional[str] = Query(None),
     decision_type: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
 ) -> dict:
     """List decisions with optional filters."""
     filt: dict[str, Any] = {}
@@ -36,13 +40,14 @@ async def list_decisions(
     if decision_type:
         filt["decision_type"] = decision_type
 
-    records = await db.express.list("AgenticDecision", filt, limit=limit)
+    records = await db.express.list("AgenticDecision", filt, limit=limit, offset=offset)
     records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    return {"records": records, "count": len(records), "limit": limit}
+    return {"records": records, "count": len(records), "limit": limit, "offset": offset}
 
 
 @router.get("/stats")
-async def get_decision_stats() -> dict:
+@limiter.limit(RATE_GET)
+async def get_decision_stats(request: Request) -> dict:
     """Get decision statistics."""
     stats = {}
     for status in ("pending", "approved", "rejected", "expired"):
@@ -51,20 +56,17 @@ async def get_decision_stats() -> dict:
 
 
 @router.get("/{decision_id}")
-async def get_decision(decision_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_decision(request: Request, decision_id: str) -> dict:
     """Get decision detail."""
     result = await db.express.read("AgenticDecision", decision_id)
     if not result or result.get("found") is False:
-        raise HTTPException(404, f"Decision {decision_id} not found")
+        raise HTTPException(404, "Decision not found")
     return result
 
 
 async def _read_and_validate_pending(decision_id: str) -> dict:
     """Read a decision and verify it is in pending status.
-
-    This prevents the approval queue bypass where an already-resolved
-    decision (approved, rejected, expired) could be re-approved or
-    re-rejected via a direct API call.
 
     Raises:
         HTTPException 404: If decision is not found.
@@ -73,28 +75,22 @@ async def _read_and_validate_pending(decision_id: str) -> dict:
     result = await db.express.read("AgenticDecision", decision_id)
 
     if not result or result.get("found") is False:
-        raise HTTPException(404, f"Decision {decision_id} not found")
+        raise HTTPException(404, "Decision not found")
 
     current_status = result.get("status", "")
     if current_status != "pending":
         raise HTTPException(
             409,
-            f"Decision {decision_id} is not pending "
-            f"(current status: {current_status}). "
-            f"Only pending decisions can be approved or rejected.",
+            "Decision is not pending. Only pending decisions can be approved or rejected.",
         )
 
     return result
 
 
 @router.post("/{decision_id}/approve")
-async def approve_decision(decision_id: str, body: dict[str, Any]) -> dict:
-    """Approve a pending decision.
-
-    Reads the decision first to verify it is still in pending status,
-    preventing the approval queue bypass (TOCTOU defense).
-    """
-    # C2 fix: verify pending status before allowing state transition
+@limiter.limit(RATE_POST)
+async def approve_decision(request: Request, decision_id: str, body: dict[str, Any]) -> dict:
+    """Approve a pending decision."""
     await _read_and_validate_pending(decision_id)
 
     decided_by = body.get("decided_by", "")
@@ -116,13 +112,9 @@ async def approve_decision(decision_id: str, body: dict[str, Any]) -> dict:
 
 
 @router.post("/{decision_id}/reject")
-async def reject_decision(decision_id: str, body: dict[str, Any]) -> dict:
-    """Reject a pending decision.
-
-    Reads the decision first to verify it is still in pending status,
-    preventing the approval queue bypass (TOCTOU defense).
-    """
-    # C2 fix: verify pending status before allowing state transition
+@limiter.limit(RATE_POST)
+async def reject_decision(request: Request, decision_id: str, body: dict[str, Any]) -> dict:
+    """Reject a pending decision."""
     await _read_and_validate_pending(decision_id)
 
     decided_by = body.get("decided_by", "")
