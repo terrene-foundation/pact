@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Query, Request
 
-from pact_platform.models import db, safe_sum_finite
+from pact_platform.models import db, safe_sum_finite, validate_record_id
 from pact_platform.use.api.rate_limit import RATE_GET, limiter
 
 router = APIRouter(prefix="/api/v1/platform/metrics", tags=["metrics"])
@@ -27,6 +27,7 @@ async def get_cost_metrics(
     """Get cost metrics."""
     filt: dict[str, Any] = {}
     if agent_address:
+        validate_record_id(agent_address)
         filt["agent_address"] = agent_address
 
     runs = await db.express.list("Run", filt, limit=10000)

@@ -34,10 +34,25 @@ class TestEnforcementMode:
         settings = PlatformSettings(enforcement_mode=EnforcementMode.SHADOW)
         assert settings.enforcement_mode == EnforcementMode.SHADOW
 
-    def test_platform_settings_set_disabled(self):
-        """Can set enforcement_mode to disabled."""
-        settings = PlatformSettings(enforcement_mode=EnforcementMode.DISABLED)
-        assert settings.enforcement_mode == EnforcementMode.DISABLED
+    def test_platform_settings_set_disabled_requires_env_guard(self):
+        """Disabled mode requires PACT_ALLOW_DISABLED_MODE=true env var."""
+        import os
+
+        # Without guard, disabled mode is rejected
+        os.environ.pop("PACT_ALLOW_DISABLED_MODE", None)
+        with pytest.raises(ValueError, match="PACT_ALLOW_DISABLED_MODE"):
+            PlatformSettings(enforcement_mode="disabled")
+
+    def test_platform_settings_set_disabled_with_guard(self):
+        """Can set enforcement_mode to disabled when env guard is set."""
+        import os
+
+        os.environ["PACT_ALLOW_DISABLED_MODE"] = "true"
+        try:
+            settings = PlatformSettings(enforcement_mode=EnforcementMode.DISABLED)
+            assert settings.enforcement_mode == EnforcementMode.DISABLED
+        finally:
+            os.environ.pop("PACT_ALLOW_DISABLED_MODE", None)
 
     def test_platform_settings_from_string(self):
         """Enforcement mode should be constructible from string."""

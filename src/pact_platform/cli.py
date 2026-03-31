@@ -1389,6 +1389,80 @@ def audit_toctou() -> None:
         )
 
 
+@audit.command("bypass-reviews")
+def audit_bypass_reviews() -> None:
+    """Check for overdue post-incident bypass reviews.
+
+    Per PACT spec Section 9, post-incident review is mandatory within
+    7 days of bypass expiry. This command surfaces bypasses where the
+    review deadline has passed.
+    """
+    from pact_platform.engine.emergency_bypass import EmergencyBypass
+
+    bypass_mgr = EmergencyBypass()
+
+    # Try to get bypass manager from engine if available
+    engine = _get_engine()
+    if engine is not None:
+        mgr = getattr(engine, "_bypass_manager", None)
+        if mgr is not None:
+            bypass_mgr = mgr
+
+    overdue = bypass_mgr.check_overdue_reviews()
+
+    console.print()
+    if not overdue:
+        console.print(
+            Panel(
+                "[green]No overdue bypass reviews.[/green]\n\n"
+                "All emergency bypasses have been reviewed within the "
+                "7-day post-incident deadline.",
+                title="PACT — Bypass Review Audit",
+                border_style="green",
+            )
+        )
+        return
+
+    table = Table(
+        title=f"Overdue Bypass Reviews ({len(overdue)})",
+        show_header=True,
+        header_style="bold red",
+    )
+    table.add_column("Bypass ID", style="cyan")
+    table.add_column("Role Address")
+    table.add_column("Tier")
+    table.add_column("Review Due By", style="red")
+    table.add_column("Days Overdue", style="bold red")
+    table.add_column("Approved By")
+
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC)
+    for record in overdue:
+        days_overdue = (now - record.review_due_by).days if record.review_due_by else 0
+        table.add_row(
+            record.bypass_id,
+            record.role_address,
+            record.tier.value,
+            str(record.review_due_by.date()) if record.review_due_by else "—",
+            str(days_overdue),
+            record.approved_by,
+        )
+
+    console.print(table)
+    console.print()
+    console.print(
+        Panel(
+            f"[bold red]{len(overdue)} bypass review(s) overdue.[/bold red]\n\n"
+            f"Post-incident review is mandatory within 7 days of bypass "
+            f"expiry (PACT spec Section 9). Contact the approver to "
+            f"complete each review.",
+            title="PACT — Bypass Review Audit",
+            border_style="red",
+        )
+    )
+
+
 # ---------------------------------------------------------------------------
 # mcp group
 # ---------------------------------------------------------------------------

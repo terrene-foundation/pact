@@ -230,3 +230,75 @@ class TestStatus:
         assert status["tool_count"] == 2
         assert "org_name" in status
         assert status["org_name"] == "Test Org"
+
+
+# ---------------------------------------------------------------------------
+# Tests: Tool name format validation (F5 / TODO-01 of RT27)
+# ---------------------------------------------------------------------------
+
+
+class TestToolNameValidation:
+    """Validate tool_name format in PlatformMcpGovernance registration."""
+
+    def test_rejects_empty_tool_name(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        with pytest.raises(ValueError, match="Invalid MCP tool name"):
+            PlatformMcpGovernance(
+                engine=mock_engine,
+                tool_policies=[{"tool_name": ""}],
+            )
+
+    def test_rejects_tool_name_with_path_separator(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        with pytest.raises(ValueError, match="Invalid MCP tool name"):
+            PlatformMcpGovernance(
+                engine=mock_engine,
+                tool_policies=[{"tool_name": "../etc/passwd"}],
+            )
+
+    def test_rejects_tool_name_with_spaces(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        with pytest.raises(ValueError, match="Invalid MCP tool name"):
+            PlatformMcpGovernance(
+                engine=mock_engine,
+                tool_policies=[{"tool_name": "my tool"}],
+            )
+
+    def test_rejects_tool_name_with_null_byte(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        with pytest.raises(ValueError, match="Invalid MCP tool name"):
+            PlatformMcpGovernance(
+                engine=mock_engine,
+                tool_policies=[{"tool_name": "tool\x00name"}],
+            )
+
+    def test_accepts_valid_tool_name_with_dots(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        gov = PlatformMcpGovernance(
+            engine=mock_engine,
+            tool_policies=[{"tool_name": "my.tool.v2"}],
+        )
+        assert gov.is_configured()
+
+    def test_accepts_valid_tool_name_with_hyphens(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        gov = PlatformMcpGovernance(
+            engine=mock_engine,
+            tool_policies=[{"tool_name": "web-search-v2"}],
+        )
+        assert gov.is_configured()
+
+    def test_accepts_valid_tool_name_with_underscores(self, mock_engine):
+        from pact_platform.use.mcp.bridge import PlatformMcpGovernance
+
+        gov = PlatformMcpGovernance(
+            engine=mock_engine,
+            tool_policies=[{"tool_name": "db_write_node"}],
+        )
+        assert gov.is_configured()

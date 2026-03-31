@@ -100,9 +100,22 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
         raise HTTPException(413, detail="YAML payload exceeds 1MB limit")
 
     try:
-        yaml_lib.safe_load(yaml_str)
+        parsed = yaml_lib.safe_load(yaml_str)
     except yaml_lib.YAMLError:
         raise HTTPException(400, detail="Invalid YAML syntax")
+
+    # F6: Check nesting depth to prevent resource exhaustion
+    def _max_depth(obj: Any, depth: int = 0) -> int:
+        if depth > 50:
+            return depth
+        if isinstance(obj, dict):
+            return max((_max_depth(v, depth + 1) for v in obj.values()), default=depth)
+        if isinstance(obj, list):
+            return max((_max_depth(v, depth + 1) for v in obj), default=depth)
+        return depth
+
+    if parsed is not None and _max_depth(parsed) > 50:
+        raise HTTPException(400, detail="YAML nesting depth exceeds limit (max 50)")
 
     try:
         from pact.governance import GovernanceEngine, load_org_yaml

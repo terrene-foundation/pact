@@ -1301,3 +1301,90 @@ class TestBypassRateLimiting:
                     reason=f"new-{i}",
                     approved_by="admin",
                 )
+
+
+# ---------------------------------------------------------------------------
+# Tests: check_overdue_reviews (F7 / TODO-03 of RT27)
+# ---------------------------------------------------------------------------
+
+
+class TestOverdueReviews:
+    """Test check_overdue_reviews() for post-incident review enforcement."""
+
+    def test_no_bypasses_returns_empty(self):
+        mgr = EmergencyBypass()
+        assert mgr.check_overdue_reviews() == []
+
+    def test_active_bypass_not_overdue(self):
+        """Active (non-expired) bypasses should not appear as overdue."""
+        mgr = EmergencyBypass()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        with freeze_time(now):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="active",
+                approved_by="admin",
+            )
+        # Still within the 4h tier_1 window
+        with freeze_time(now + timedelta(hours=2)):
+            assert mgr.check_overdue_reviews(as_of=now + timedelta(hours=2)) == []
+
+    def test_expired_within_review_window_not_overdue(self):
+        """Expired bypass still within 7-day review window is not overdue."""
+        mgr = EmergencyBypass()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        with freeze_time(now):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="expired-in-window",
+                approved_by="admin",
+            )
+        # 3 days after expiry — within the 7-day review window
+        check_time = now + timedelta(hours=4) + timedelta(days=3)
+        assert mgr.check_overdue_reviews(as_of=check_time) == []
+
+    def test_expired_past_review_deadline_is_overdue(self):
+        """Bypass past the review_due_by deadline should be returned."""
+        mgr = EmergencyBypass()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        with freeze_time(now):
+            record = mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="overdue",
+                approved_by="admin",
+            )
+        # 10 days after expiry — past the 7-day review window
+        check_time = now + timedelta(hours=4) + timedelta(days=10)
+        overdue = mgr.check_overdue_reviews(as_of=check_time)
+        assert len(overdue) == 1
+        assert overdue[0].bypass_id == record.bypass_id
+
+    def test_multiple_overdue_sorted_oldest_first(self):
+        """Multiple overdue reviews should be sorted oldest-first."""
+        mgr = EmergencyBypass()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+
+        with freeze_time(now):
+            r1 = mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="first",
+                approved_by="admin",
+            )
+        with freeze_time(now + timedelta(hours=COOLDOWN_HOURS)):
+            r2 = mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="second",
+                approved_by="admin",
+            )
+
+        # Both past review deadline
+        check_time = now + timedelta(days=20)
+        overdue = mgr.check_overdue_reviews(as_of=check_time)
+        assert len(overdue) == 2
+        assert overdue[0].bypass_id == r1.bypass_id
+        assert overdue[1].bypass_id == r2.bypass_id

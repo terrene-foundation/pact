@@ -288,6 +288,43 @@ class EmergencyBypass:
                         f"data_access.read_paths: {sorted(excess)} not in approver's set"
                     )
 
+        # Temporal dimension
+        exp_temporal = expanded_envelope.get("temporal", {})
+        app_temporal = approver_envelope.get("temporal", {})
+        exp_active_hours = exp_temporal.get("active_hours")
+        if exp_active_hours is not None:
+            app_active_hours = app_temporal.get("active_hours")
+            if app_active_hours is not None:
+                exp_set = (
+                    set(exp_active_hours)
+                    if isinstance(exp_active_hours, list)
+                    else {exp_active_hours}
+                )
+                app_set = (
+                    set(app_active_hours)
+                    if isinstance(app_active_hours, list)
+                    else {app_active_hours}
+                )
+                excess = exp_set - app_set
+                if excess:
+                    raise PermissionError(
+                        f"Expanded envelope exceeds approver's bounds on "
+                        f"temporal.active_hours: {sorted(excess)} not in approver's set"
+                    )
+        exp_blackout = exp_temporal.get("blackout_periods")
+        if exp_blackout is not None:
+            app_blackout = app_temporal.get("blackout_periods")
+            if app_blackout is not None:
+                # Child blackout must be superset of parent's (more restrictive)
+                exp_set = set(exp_blackout) if isinstance(exp_blackout, list) else set()
+                app_set = set(app_blackout) if isinstance(app_blackout, list) else set()
+                missing = app_set - exp_set
+                if missing:
+                    raise PermissionError(
+                        f"Expanded envelope must include all approver's "
+                        f"temporal.blackout_periods: missing {sorted(missing)}"
+                    )
+
         # Communication dimension
         exp_comm = expanded_envelope.get("communication", {})
         app_comm = approver_envelope.get("communication", {})
@@ -713,3 +750,28 @@ class EmergencyBypass:
                 for r in self._bypasses.values()
                 if r.is_expired(as_of) and r.review_due_by is not None and as_of <= r.review_due_by
             ]
+
+    def check_overdue_reviews(self, as_of: datetime | None = None) -> list[BypassRecord]:
+        """Return bypass records whose post-incident review deadline has passed.
+
+        Per PACT spec Section 9, post-incident review is mandatory within
+        7 days. This method surfaces bypasses where the review deadline
+        has passed without resolution.
+
+        Args:
+            as_of: Reference time.  Defaults to ``datetime.now(UTC)``.
+
+        Returns:
+            List of ``BypassRecord`` instances with overdue reviews,
+            sorted oldest-first.
+        """
+        if as_of is None:
+            as_of = datetime.now(UTC)
+        with self._lock:
+            overdue = [
+                r
+                for r in self._bypasses.values()
+                if (r.is_expired(as_of) and r.review_due_by is not None and as_of > r.review_due_by)
+            ]
+        overdue.sort(key=lambda r: r.review_due_by or r.created_at)
+        return overdue

@@ -38,10 +38,13 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from pact.mcp import McpAuditTrail, McpGovernanceConfig, McpGovernanceEnforcer, McpToolPolicy
 from pact.mcp.enforcer import DefaultPolicy, McpActionContext
+
+_TOOL_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-]+$")
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +88,11 @@ class PlatformMcpGovernance:
         # Register tool policies from org config
         for policy_dict in tool_policies:
             tool_name = policy_dict["tool_name"]
+            if not tool_name or not _TOOL_NAME_RE.match(tool_name):
+                raise ValueError(
+                    f"Invalid MCP tool name '{tool_name}': must match "
+                    f"[a-zA-Z0-9_.-]+ (no path separators, spaces, or special characters)"
+                )
             policy = McpToolPolicy(
                 tool_name=tool_name,
                 clearance_required=policy_dict.get("clearance_required"),

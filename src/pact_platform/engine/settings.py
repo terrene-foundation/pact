@@ -57,16 +57,29 @@ class PlatformSettings(BaseModel):
     @field_validator("enforcement_mode", mode="before")
     @classmethod
     def _coerce_enforcement_mode(cls, v: object) -> object:
-        """Accept string values and convert to EnforcementMode."""
+        """Accept string values and convert to EnforcementMode.
+
+        The ``disabled`` mode requires ``PACT_ALLOW_DISABLED_MODE=true``
+        in the environment to prevent accidental production use.
+        """
+        mode = v
         if isinstance(v, str):
             try:
-                return EnforcementMode(v.lower())
+                mode = EnforcementMode(v.lower())
             except ValueError:
                 valid = ", ".join(m.value for m in EnforcementMode)
                 raise ValueError(
                     f"Invalid enforcement_mode '{v}'. Must be one of: {valid}"
                 ) from None
-        return v
+        if isinstance(mode, EnforcementMode) and mode == EnforcementMode.DISABLED:
+            guard = os.environ.get("PACT_ALLOW_DISABLED_MODE", "").lower()
+            if guard != "true":
+                raise ValueError(
+                    "enforcement_mode='disabled' requires environment variable "
+                    "PACT_ALLOW_DISABLED_MODE=true to be set. This prevents "
+                    "accidental production deployment with governance disabled."
+                )
+        return mode
 
     @classmethod
     def from_env(cls) -> PlatformSettings:
