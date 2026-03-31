@@ -3,191 +3,179 @@
 Based on RT25 Quartet compliance audit. 7 MISSING + 9 PARTIAL findings.
 Organized by priority (dependency order), estimated in autonomous sessions.
 
----
-
-## M0: Dimension Enforcement (L1 — kailash-pact engine)
-
-The single highest-impact fix: 3 of 5 constraint dimensions are defined in schema but not enforced at runtime. This is an L1 fix in `GovernanceEngine._evaluate_against_envelope()`.
-
-### TODO-01: Enforce Temporal dimension in verify_action()
-
-- **File**: `kailash-py/src/kailash/trust/pact/engine.py` → `_evaluate_against_envelope()`
-- **What**: Check `active_hours_start/end` against current time. Check `blackout_periods`. BLOCK outside hours, FLAG near boundary.
-- **Schema**: `TemporalConstraintConfig` has `active_hours_start`, `active_hours_end`, `timezone`, `blackout_periods`
-- **Tests**: Agent action outside active hours → BLOCKED. Agent action during blackout → BLOCKED. Agent action within hours → passes.
-- **Scope**: L1 (kailash-pact)
-
-### TODO-02: Enforce Communication dimension in verify_action()
-
-- **File**: Same as TODO-01
-- **What**: Check `internal_only` (block external), `allowed_channels` (block if channel not in set), `external_requires_approval` (HELD for external).
-- **Schema**: `CommunicationConstraintConfig` has `internal_only`, `allowed_channels`, `external_requires_approval`
-- **Context**: Action context must include `channel` and `is_external` fields for this to work. Define the context contract.
-- **Tests**: Internal-only agent sending external message → BLOCKED. Agent using forbidden channel → BLOCKED. External with requires_approval → HELD.
-- **Scope**: L1 (kailash-pact)
-
-### TODO-03: Enforce Data Access paths in verify_action()
-
-- **File**: Same as TODO-01
-- **What**: Check `read_paths` and `write_paths` from `DataAccessConstraintConfig`. BLOCK if action's resource path is not in allowed set.
-- **Schema**: `DataAccessConstraintConfig` has `read_paths`, `write_paths`, `denied_paths`
-- **Context**: Action context must include `resource_path` and `access_type` (read/write) fields.
-- **Note**: Classification-based access (`can_access()`) already works. This adds path-level constraints.
-- **Tests**: Read from allowed path → passes. Write to denied path → BLOCKED. Read from unlisted path → BLOCKED.
-- **Scope**: L1 (kailash-pact)
+**Last updated**: 2026-03-30 — TODOs 01-09, 13-14 completed.
 
 ---
 
-## M1: EATP Record Mapping (L1 + L3)
+## M0: Dimension Enforcement (L1 — kailash-pact engine) — DONE
 
-Section 5.7 of the PACT thesis says this mapping is normative. Currently only 3/9 actions produce proper EATP records.
+All 5 constraint dimensions now enforced in kailash-pact 0.4.1 GovernanceEngine.\_evaluate_against_envelope().
 
-### TODO-04: Wire set_role_envelope() to create EATP DelegationRecord
+### ~~TODO-01: Enforce Temporal dimension in verify_action()~~ — DONE (kailash-pact 0.4.1)
 
-- **File**: L1 `engine.py` → `set_role_envelope()`
-- **What**: After saving envelope, create a `DelegationRecord` with `constraint_subset` referencing the envelope dimensions. This is the "authority delegates constrained capability" record.
-- **Scope**: L1 (kailash-pact)
+Implemented in `kailash.trust.pact.engine` lines 492-540. Checks active_hours_start/end, blackout_periods (with overnight range support), timezone-aware.
 
-### TODO-05: Wire grant_clearance() to create EATP CapabilityAttestation
+### ~~TODO-02: Enforce Communication dimension in verify_action()~~ — DONE (kailash-pact 0.4.1)
 
-- **File**: L1 `engine.py` → `grant_clearance()`
-- **What**: After granting clearance, create a `CapabilityAttestation` with `scope` set to the clearance level and compartments.
-- **Scope**: L1 (kailash-pact)
+Implemented in `kailash.trust.pact.engine` lines 584-614. Checks internal_only, external_requires_approval (→HELD), allowed_channels. Context keys: `is_external`, `channel`.
 
-### TODO-06: Wire create_bridge() to create two cross-referencing DelegationRecords
+### ~~TODO-03: Enforce Data Access paths in verify_action()~~ — DONE (kailash-pact 0.4.1)
 
-- **File**: L1 `engine.py` → `create_bridge()`
-- **What**: For bilateral bridges, create two DelegationRecords (A→B and B→A) with cross-references. For unilateral, create one.
-- **Scope**: L1 (kailash-pact)
+Implemented in `kailash.trust.pact.engine` lines 542-582. Checks read_paths, write_paths, denied_paths, blocked_data_types. Path traversal protection. Context keys: `resource_path`, `access_type`, `data_type`.
 
 ---
 
-## M2: Emergency Bypass (L3)
+## M1: EATP Record Mapping (L1 + L3) — DONE
 
-PACT thesis Section 9. No implementation exists.
+### ~~TODO-04: Wire set_role_envelope() to create EATP DelegationRecord~~ — DONE (kailash-pact 0.4.1)
 
-### TODO-07: Implement EmergencyBypass with 4 tiers
+Engine emits EATP audit anchor with PactAuditAction.ENVELOPE_CREATED (lines 863-897). Audit chain converts to DelegationRecord.
 
-- **File**: New `src/pact_platform/engine/emergency_bypass.py`
-- **What**: Create `EmergencyBypass` class with 4 tiers:
-  - Tier 1 (4h): Direct supervisor approval, auto-expires
-  - Tier 2 (24h): Department head approval
-  - Tier 3 (72h): BOD/executive approval
-  - Tier 4 (not-emergency): Full governance override (requires compliance review)
-- Each bypass: temporarily expands envelope, has hard auto-expiry timer, creates audit anchor
-- **Tests**: Bypass creation, auto-expiry, post-expiry action → BLOCKED, audit trail
-- **Scope**: L3 (pact-platform)
+### ~~TODO-05: Wire grant_clearance() to create EATP CapabilityAttestation~~ — DONE (kailash-pact 0.4.1)
 
-### TODO-08: Implement post-incident review scheduling
+Engine emits EATP audit anchor with PactAuditAction.CLEARANCE_GRANTED (lines 782-801). Audit chain converts to CapabilityAttestation.
 
-- **File**: Same as TODO-07 or new `src/pact_platform/engine/incident_review.py`
-- **What**: After any bypass expires, schedule a mandatory review within 7 days. Track review status.
-- **Scope**: L3 (pact-platform)
+### ~~TODO-06: Wire create_bridge() to create two cross-referencing DelegationRecords~~ — DONE (kailash-pact 0.4.1)
+
+Engine emits EATP audit anchor with PactAuditAction.BRIDGE_ESTABLISHED (lines 821-840). Supports bilateral and unilateral bridges.
 
 ---
 
-## M3: HELD Timeout (L3)
+## M2: Emergency Bypass (L3) — DONE
 
-EATP says HELD actions should auto-deny, never auto-approve.
+### ~~TODO-07: Implement EmergencyBypass with 4 tiers~~ — DONE (v0.3.0)
 
-### TODO-09: Add configurable timeout to ApprovalQueue
+Implemented in `src/pact_platform/engine/emergency_bypass.py`. 4-tier bypass with auto-expiry timers and audit anchors.
 
-- **File**: `src/pact_platform/use/execution/approval.py`
-- **What**: Add `timeout_seconds` config (default: 24h). HELD actions that exceed timeout are auto-denied with reason "Timeout — auto-denied per EATP guidance". Create audit anchor for timeout events.
-- **Tests**: Submit HELD action, advance time past timeout, verify auto-denied.
-- **Scope**: L3 (pact-platform)
+### ~~TODO-08: Implement post-incident review scheduling~~ — DONE (v0.3.0)
+
+Implemented in emergency_bypass.py — review scheduling on bypass expiry.
 
 ---
 
-## M4: Bridge LCA Approval (L1)
+## M3: HELD Timeout (L3) — DONE
+
+### ~~TODO-09: Add configurable timeout to ApprovalQueue~~ — DONE (v0.3.0)
+
+Implemented in approval.py — configurable timeout (default 24h), auto-deny on expiry.
+
+---
+
+## M4: Bridge LCA Approval (L1 + L3) — DONE
 
 PACT thesis Section 4.4 property (4).
 
-### TODO-10: Add lowest-common-ancestor approval check to create_bridge()
+### ~~TODO-10: Add lowest-common-ancestor approval check to create_bridge()~~ — DONE
 
-- **File**: L1 `engine.py` → `create_bridge()`
-- **What**: Before creating a bridge, compute the lowest common ancestor of source and target teams in the D/T/R tree. Require approval from that ancestor's role (or a designated compliance role). If no approval, the bridge is created in PENDING state.
-- **Scope**: L1 (kailash-pact)
+- **L1**: `GovernanceEngine.approve_bridge()` implemented in kailash 2.3.1 (kailash-py#168 closed)
+- **L3 wiring**: CLI `pact bridge approve` command + `POST /api/v1/org/bridges/approve` endpoint
+- **Files**: `cli.py` (bridge approve command), `routers/org.py` (approve endpoint), `endpoints.py` (existing approve_bridge wiring)
+- **Tests**: `test_cli.py` (TestBridgeApproveCLI), `test_org_router.py` (TestBridgeLCAApproval)
 
 ---
 
-## M5: Vacancy Handling (L1 + L3)
+## M5: Vacancy Handling (L1 + L3) — DONE
 
 PACT thesis Section 5.5.
 
-### TODO-11: Implement vacancy handling rules
+### ~~TODO-11: Implement vacancy handling rules~~ — DONE
 
-- **File**: L1 `engine.py` or new `src/pact_platform/engine/vacancy.py`
-- **What**: When a role becomes vacant:
-  1. Parent role must designate acting occupant within 24h
-  2. If no designation within 24h, all downstream agents are auto-suspended
-  3. Acting occupant inherits the role's envelope but NOT clearance upgrades
-- **Tests**: Role vacancy → 24h deadline → auto-suspension cascade
-- **Scope**: L1 + L3
+- **L1**: `GovernanceEngine.designate_acting_occupant()` + `get_vacancy_designation()` + `_check_vacancy()` in verify_action() — all implemented in kailash 2.3.1 (kailash-py#169 closed)
+- **L3 wiring**: CLI `pact role designate-acting` + `pact role vacancy-status` commands + `POST /api/v1/org/roles/{role}/designate-acting` + `GET /api/v1/org/roles/{role}/vacancy` endpoints
+- **Files**: `cli.py` (2 commands), `routers/org.py` (2 endpoints)
+- **Tests**: `test_cli.py` (TestRoleDesignateActingCLI, TestRoleVacancyStatusCLI), `test_org_router.py` (TestVacancyDesignation, TestVacancyStatus)
 
 ---
 
 ## M6: Remaining EATP Items (L1 + L3)
 
-### TODO-12: Implement chain-level cascade revocation
+### ~~TODO-12: Implement chain-level cascade revocation~~ — DONE (v0.3.0, verified)
 
-- **File**: `src/pact_platform/use/execution/runtime.py`
-- **What**: The `revoke_delegation_chain()` method exists but RT25 found it partial. Verify it recursively walks ALL downstream delegates (not just direct children) and revokes each with individual audit anchors.
-- **Scope**: L3 (pact-platform) — may already be done, verify
+Cascade revocation walks all downstream delegates with individual audit anchors.
 
-### TODO-13: Populate reasoning traces on governance decisions
+### ~~TODO-13: Populate reasoning traces on governance decisions~~ — DONE (v0.3.0)
 
-- **File**: L1 `engine.py` → `verify_action()`, L3 `bootstrap.py`
-- **What**: Attach `ReasoningTrace` to audit anchors for HELD/BLOCKED decisions (explaining why the constraint triggered). Attach to DelegationRecords during bootstrap.
-- **Scope**: L1 + L3
+Reasoning traces attached to HELD/BLOCKED verdicts in runtime.py (lines 1238-1246).
 
-### TODO-14: Implement trust scoring with 5-factor weights
+### ~~TODO-14: Implement trust scoring with 5-factor weights~~ — DONE (v0.3.0)
 
-- **File**: New `src/pact_platform/trust/scoring.py`
-- **What**: Compute trust score across: chain completeness (30%), delegation depth (15%), constraint coverage (25%), posture level (20%), chain recency (10%). Map to letter grades A-F.
-- **Scope**: L3 (pact-platform)
+Implemented in `src/pact_platform/trust/scoring.py`. 5-factor scoring (A-F grades).
 
-### TODO-15: Implement dimension-scoped delegation
+### ~~TODO-15: Implement dimension-scoped delegation~~ — DONE
 
-- **File**: L1 `DelegationRecord` / `engine.py`
-- **What**: Add `dimension_scope: list[str]` to delegation. A delegation scoped to ["financial", "temporal"] only delegates authority over those two dimensions.
-- **Scope**: L1 (kailash-pact)
+- **L1**: `DelegationRecord.dimension_scope: frozenset[str]` + `intersect_envelopes(dimension_scope=...)` implemented in kailash 2.3.1 (kailash-py#170 closed)
+- **L3 wiring**: Runtime extracts `dimension_scope` from delegation records and passes to verify_action() context. CLI `envelope show` displays dimension scope when present.
+- **Files**: `runtime.py` (dimension_scope context injection), `cli.py` (envelope show display)
+- **Tests**: Existing governance tests cover L1; L3 integration verified via test suite (2079 pass)
 
 ---
 
-## M7: Frontend Gaps (L3 — apps/web)
+## M7: Frontend Gaps (L3 — apps/web) — DONE
 
-### TODO-16: Connect Org Builder to backend API
+### ~~TODO-16: Connect Org Builder to backend API~~ — DONE
 
-- **File**: `apps/web/app/org-builder/page.tsx`
-- **What**: Load existing org from API. Save to API. "Deploy Org" button that POSTs to org compilation endpoint.
-- **Scope**: L3 (frontend)
+Frontend: `useOrgStructure()` (GET) + `useDeployOrg()` (POST) with full tree builder UI already existed.
+Backend: New `routers/org.py` implements `GET /api/v1/org/structure` and `POST /api/v1/org/deploy` with GovernanceEngine integration, YAML compilation, and governance spec application.
 
-### TODO-17: Add verification drill-down (link to filtered audit)
+### ~~TODO-17: Add verification drill-down (link to filtered audit)~~ — DONE (already implemented)
 
-- **File**: `apps/web/app/verification/page.tsx`
-- **What**: Each gradient zone count should link to `/audit?level=blocked` (or flagged/held) for drill-down.
-- **Scope**: L3 (frontend)
+GradientChart component already links each zone (bar + summary card) to `/audit?level=...`. Verified in code review.
 
-### TODO-18: Add envelope inline editing
+### ~~TODO-18: Add envelope inline editing~~ — DONE (already implemented)
 
-- **File**: `apps/web/app/envelopes/[id]/page.tsx`
-- **What**: Add edit mode for each constraint dimension. Save via API.
-- **Scope**: L3 (frontend)
+EnvelopeEditSheet component with all 5 constraint dimensions, Zod validation, `useUpdateEnvelope()` mutation, and query cache invalidation. Verified in code review.
 
 ---
 
-## Estimation
+## M8: L3 Wiring — NEW (post kailash-pact 0.4.1)
 
-| Group                    | Todos | Sessions    | Dependency              |
-| ------------------------ | ----- | ----------- | ----------------------- |
-| M0 Dimension Enforcement | 01-03 | 1 session   | None — highest priority |
-| M1 EATP Record Mapping   | 04-06 | 1 session   | After M0                |
-| M2 Emergency Bypass      | 07-08 | 1 session   | Independent             |
-| M3 HELD Timeout          | 09    | 0.5 session | Independent             |
-| M4 Bridge LCA            | 10    | 0.5 session | Independent             |
-| M5 Vacancy Handling      | 11    | 1 session   | Independent             |
-| M6 EATP Items            | 12-15 | 1 session   | After M1                |
-| M7 Frontend              | 16-18 | 1 session   | After M0                |
+### ~~TODO-19: Wire dimension context keys into runtime verify_action()~~ — DONE
 
-**Total: ~6 autonomous sessions** to reach full Quartet conformance.
+Implemented in `runtime.py:1218-1228`. Forwards `resource_path`, `access_type`, `data_type`, `is_external`, `channel` from task.metadata into governance context dict.
+
+### ~~TODO-20: Wire audit_chain into GovernanceEngine construction~~ — DONE
+
+Implemented in `cli.py:62-73`. `_make_audit_chain()` creates AuditChain and passes to `GovernanceEngine(audit_chain=...)`.
+
+---
+
+## M9: Hardening Fixes (H5/H6/M1-M3) — DONE
+
+### ~~H5: Tier-based authorization for emergency bypass~~ — DONE
+
+Added `AuthorityLevel` enum and `_authority_sufficient()` check in `emergency_bypass.py`. Tier 1=Supervisor, 2=Dept Head, 3=Executive, 4=Compliance. Backwards-compatible (authority_level=None skips check).
+
+### ~~H6: Envelope snapshot redaction in reasoning traces~~ — DONE
+
+Added `_redact_envelope_snapshot()` in `runtime.py`. Redacts sensitive fields (max_budget, paths, allowed_channels) before persisting in task metadata. Structure preserved.
+
+### ~~M1: Chain recency sort~~ — DONE
+
+Fixed `_score_chain_recency()` in `scoring.py` to sort inbound delegations by timestamp descending before picking the most recent.
+
+### ~~M2: Immutable weights~~ — DONE
+
+Changed `FACTOR_WEIGHTS` and `POSTURE_SCORES` in `scoring.py` from mutable `dict` to `MappingProxyType` — runtime mutation now raises `TypeError`.
+
+### ~~M3: Deep-copy mutable dict in frozen BypassRecord~~ — DONE
+
+Added `__post_init__` to `BypassRecord` that deep-copies `expanded_envelope` via `object.__setattr__`. External mutation of source dict no longer affects the record.
+
+---
+
+## Summary
+
+| Group                    | Todos | Status                          |
+| ------------------------ | ----- | ------------------------------- |
+| M0 Dimension Enforcement | 01-03 | **DONE** (kailash-pact 0.4.1)   |
+| M1 EATP Record Mapping   | 04-06 | **DONE** (kailash-pact 0.4.1)   |
+| M2 Emergency Bypass      | 07-08 | **DONE** (pact-platform v0.3.0) |
+| M3 HELD Timeout          | 09    | **DONE** (pact-platform v0.3.0) |
+| M4 Bridge LCA            | 10    | **DONE** (kailash 2.3.1 + L3)   |
+| M5 Vacancy Handling      | 11    | **DONE** (kailash 2.3.1 + L3)   |
+| M6 EATP Items            | 12-15 | **DONE** (kailash 2.3.1 + L3)   |
+| M7 Frontend              | 16-18 | **DONE**                        |
+| M8 L3 Wiring             | 19-20 | **DONE**                        |
+| M9 Hardening             | H5-M3 | **DONE**                        |
+
+**Completed**: 25/25 — ALL DONE (kailash 2.3.1 L1 + pact-platform L3)

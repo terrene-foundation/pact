@@ -1,6 +1,9 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Decisions API router -- /api/v1/decisions."""
+"""Decisions API router -- /api/v1/decisions.
+
+Uses DataFlow Express API for all CRUD operations.
+"""
 
 from __future__ import annotations
 
@@ -17,13 +20,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/decisions", tags=["decisions"])
 
 
-def _exec(wf) -> dict:
-    results, _ = db.execute_workflow(wf)
-    return results
-
-
 @router.get("")
-def list_decisions(
+async def list_decisions(
     status: Optional[str] = Query(None),
     urgency: Optional[str] = Query(None),
     decision_type: Optional[str] = Query(None),
@@ -38,50 +36,30 @@ def list_decisions(
     if decision_type:
         filt["decision_type"] = decision_type
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticDecisionListNode",
-        "list",
-        {
-            "filter": filt,
-            "limit": limit,
-            "order_by": ["-created_at"],
-        },
-    )
-    return _exec(wf)["list"]
+    records = await db.express.list("AgenticDecision", filt, limit=limit)
+    records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return {"records": records, "count": len(records), "limit": limit}
 
 
 @router.get("/stats")
-def get_decision_stats() -> dict:
+async def get_decision_stats() -> dict:
     """Get decision statistics."""
     stats = {}
     for status in ("pending", "approved", "rejected", "expired"):
-        wf = db.create_workflow()
-        wf.add_node(
-            "AgenticDecisionListNode",
-            "list",
-            {
-                "filter": {"status": status},
-                "limit": 0,
-            },
-        )
-        result = _exec(wf)["list"]
-        stats[status] = result.get("total", len(result.get("records", [])))
+        stats[status] = await db.express.count("AgenticDecision", {"status": status})
     return {"stats": stats}
 
 
 @router.get("/{decision_id}")
-def get_decision(decision_id: str) -> dict:
+async def get_decision(decision_id: str) -> dict:
     """Get decision detail."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticDecisionReadNode", "read", {"id": decision_id})
-    result = _exec(wf)["read"]
-    if not result or result.get("found") is False or result.get("failed"):
+    result = await db.express.read("AgenticDecision", decision_id)
+    if not result or result.get("found") is False:
         raise HTTPException(404, f"Decision {decision_id} not found")
     return result
 
 
-def _read_and_validate_pending(decision_id: str) -> dict:
+async def _read_and_validate_pending(decision_id: str) -> dict:
     """Read a decision and verify it is in pending status.
 
     This prevents the approval queue bypass where an already-resolved
@@ -92,11 +70,9 @@ def _read_and_validate_pending(decision_id: str) -> dict:
         HTTPException 404: If decision is not found.
         HTTPException 409: If decision is not in pending status.
     """
-    wf = db.create_workflow()
-    wf.add_node("AgenticDecisionReadNode", "read", {"id": decision_id})
-    result = _exec(wf)["read"]
+    result = await db.express.read("AgenticDecision", decision_id)
 
-    if not result or result.get("found") is False or result.get("failed"):
+    if not result or result.get("found") is False:
         raise HTTPException(404, f"Decision {decision_id} not found")
 
     current_status = result.get("status", "")
@@ -112,14 +88,14 @@ def _read_and_validate_pending(decision_id: str) -> dict:
 
 
 @router.post("/{decision_id}/approve")
-def approve_decision(decision_id: str, body: dict[str, Any]) -> dict:
+async def approve_decision(decision_id: str, body: dict[str, Any]) -> dict:
     """Approve a pending decision.
 
     Reads the decision first to verify it is still in pending status,
     preventing the approval queue bypass (TOCTOU defense).
     """
     # C2 fix: verify pending status before allowing state transition
-    _read_and_validate_pending(decision_id)
+    await _read_and_validate_pending(decision_id)
 
     decided_by = body.get("decided_by", "")
     reason = body.get("reason", "")
@@ -127,32 +103,27 @@ def approve_decision(decision_id: str, body: dict[str, Any]) -> dict:
     if not decided_by:
         raise HTTPException(400, "decided_by is required")
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticDecisionUpdateNode",
-        "update",
+    return await db.express.update(
+        "AgenticDecision",
+        decision_id,
         {
-            "filter": {"id": decision_id},
-            "fields": {
-                "status": "approved",
-                "decided_by": decided_by,
-                "decision_reason": reason,
-                "decided_at": datetime.now(UTC).isoformat(),
-            },
+            "status": "approved",
+            "decided_by": decided_by,
+            "decision_reason": reason,
+            "decided_at": datetime.now(UTC).isoformat(),
         },
     )
-    return _exec(wf)["update"]
 
 
 @router.post("/{decision_id}/reject")
-def reject_decision(decision_id: str, body: dict[str, Any]) -> dict:
+async def reject_decision(decision_id: str, body: dict[str, Any]) -> dict:
     """Reject a pending decision.
 
     Reads the decision first to verify it is still in pending status,
     preventing the approval queue bypass (TOCTOU defense).
     """
     # C2 fix: verify pending status before allowing state transition
-    _read_and_validate_pending(decision_id)
+    await _read_and_validate_pending(decision_id)
 
     decided_by = body.get("decided_by", "")
     reason = body.get("reason", "")
@@ -160,18 +131,13 @@ def reject_decision(decision_id: str, body: dict[str, Any]) -> dict:
     if not decided_by:
         raise HTTPException(400, "decided_by is required")
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticDecisionUpdateNode",
-        "update",
+    return await db.express.update(
+        "AgenticDecision",
+        decision_id,
         {
-            "filter": {"id": decision_id},
-            "fields": {
-                "status": "rejected",
-                "decided_by": decided_by,
-                "decision_reason": reason,
-                "decided_at": datetime.now(UTC).isoformat(),
-            },
+            "status": "rejected",
+            "decided_by": decided_by,
+            "decision_reason": reason,
+            "decided_at": datetime.now(UTC).isoformat(),
         },
     )
-    return _exec(wf)["update"]

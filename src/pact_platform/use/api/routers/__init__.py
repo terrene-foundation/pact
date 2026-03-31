@@ -11,6 +11,7 @@ from __future__ import annotations
 from pact_platform.use.api.routers.decisions import router as decisions_router
 from pact_platform.use.api.routers.metrics import router as metrics_router
 from pact_platform.use.api.routers.objectives import router as objectives_router
+from pact_platform.use.api.routers.org import router as org_router
 from pact_platform.use.api.routers.pools import router as pools_router
 from pact_platform.use.api.routers.requests import router as requests_router
 from pact_platform.use.api.routers.reviews import router as reviews_router
@@ -24,4 +25,5 @@ __all__ = [
     "pools_router",
     "reviews_router",
     "metrics_router",
+    "org_router",
 ]

@@ -923,6 +923,7 @@ def create_app(
         decisions_router,
         metrics_router,
         objectives_router,
+        org_router,
         pools_router,
         requests_router,
         reviews_router,
@@ -937,6 +938,7 @@ def create_app(
     app.include_router(pools_router, dependencies=_auth_deps)
     app.include_router(reviews_router, dependencies=_auth_deps)
     app.include_router(metrics_router, dependencies=_auth_deps)
+    app.include_router(org_router, dependencies=_auth_deps)
 
     return app
 

@@ -16,6 +16,7 @@ from freezegun import freeze_time
 
 from pact_platform.engine.emergency_bypass import (
     MAX_BYPASS_RECORDS,
+    AuthorityLevel,
     BypassRecord,
     BypassTier,
     EmergencyBypass,
@@ -63,6 +64,22 @@ class TestBypassRecord:
         )
         with pytest.raises(AttributeError):
             record.reason = "changed"  # type: ignore[misc]
+
+    def test_expanded_envelope_deep_copied(self):
+        """M3: external mutation of the source dict must not affect the record."""
+        source_envelope = {"financial": {"max_budget": 5000.0}}
+        record = BypassRecord(
+            bypass_id="eb-test",
+            role_address="D1-R1",
+            tier=BypassTier.TIER_1,
+            reason="test",
+            approved_by="admin",
+            expanded_envelope=source_envelope,
+        )
+        # Mutate the original dict
+        source_envelope["financial"]["max_budget"] = 99999.0
+        # Record should be unaffected
+        assert record.expanded_envelope["financial"]["max_budget"] == 5000.0
 
     def test_is_expired_when_manually_expired(self):
         record = BypassRecord(
@@ -459,19 +476,20 @@ class TestAuditAnchor:
         assert details["approved_by"] == "admin"
         assert record.audit_anchor_id == "anchor-1"
 
-    def test_audit_callback_failure_does_not_block_creation(self):
+    def test_audit_callback_failure_blocks_creation(self):
+        """C3 fix: audit failure must abort bypass creation (fail-closed)."""
+
         def bad_cb(event: str, details: dict) -> str:
             raise RuntimeError("Audit system down")
 
         mgr = EmergencyBypass(audit_callback=bad_cb)
-        # Should not raise
-        record = mgr.create_bypass(
-            role_address="D1-R1",
-            tier=BypassTier.TIER_1,
-            reason="test",
-            approved_by="admin",
-        )
-        assert record.audit_anchor_id == ""
+        with pytest.raises(RuntimeError, match="audit anchor creation failed"):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_1,
+                reason="test",
+                approved_by="admin",
+            )
 
     def test_no_callback_means_empty_anchor_id(self):
         mgr = EmergencyBypass()
@@ -591,3 +609,125 @@ class TestFailClosed:
         mgr._bypasses = None  # type: ignore[assignment]
         result = mgr.check_bypass("D1-R1")
         assert result is None
+
+
+# ------------------------------------------------------------------
+# H5: Authority level validation
+# ------------------------------------------------------------------
+
+
+class TestAuthorityLevelValidation:
+    """Verify that tier-based authorization checks enforce PACT Section 9."""
+
+    def test_supervisor_can_approve_tier_1(self):
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_1,
+            reason="incident",
+            approved_by="supervisor-1",
+            authority_level=AuthorityLevel.SUPERVISOR,
+        )
+        assert record.tier == BypassTier.TIER_1
+
+    def test_supervisor_cannot_approve_tier_2(self):
+        mgr = EmergencyBypass()
+        with pytest.raises(PermissionError, match="insufficient"):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_2,
+                reason="incident",
+                approved_by="supervisor-1",
+                authority_level=AuthorityLevel.SUPERVISOR,
+            )
+
+    def test_department_head_can_approve_tier_2(self):
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_2,
+            reason="extended incident",
+            approved_by="dept-head-1",
+            authority_level=AuthorityLevel.DEPARTMENT_HEAD,
+        )
+        assert record.tier == BypassTier.TIER_2
+
+    def test_department_head_can_approve_tier_1(self):
+        """Higher authority can approve lower tiers."""
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_1,
+            reason="minor incident",
+            approved_by="dept-head-1",
+            authority_level=AuthorityLevel.DEPARTMENT_HEAD,
+        )
+        assert record.tier == BypassTier.TIER_1
+
+    def test_department_head_cannot_approve_tier_3(self):
+        mgr = EmergencyBypass()
+        with pytest.raises(PermissionError, match="insufficient"):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_3,
+                reason="crisis",
+                approved_by="dept-head-1",
+                authority_level=AuthorityLevel.DEPARTMENT_HEAD,
+            )
+
+    def test_executive_can_approve_tier_3(self):
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_3,
+            reason="crisis management",
+            approved_by="executive-1",
+            authority_level=AuthorityLevel.EXECUTIVE,
+        )
+        assert record.tier == BypassTier.TIER_3
+
+    def test_executive_cannot_approve_tier_4(self):
+        mgr = EmergencyBypass()
+        with pytest.raises(PermissionError, match="insufficient"):
+            mgr.create_bypass(
+                role_address="D1-R1",
+                tier=BypassTier.TIER_4,
+                reason="full override",
+                approved_by="executive-1",
+                authority_level=AuthorityLevel.EXECUTIVE,
+            )
+
+    def test_compliance_can_approve_tier_4(self):
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_4,
+            reason="full compliance override",
+            approved_by="compliance-officer",
+            authority_level=AuthorityLevel.COMPLIANCE,
+        )
+        assert record.tier == BypassTier.TIER_4
+
+    def test_compliance_can_approve_any_tier(self):
+        """Compliance (highest authority) can approve all tiers."""
+        mgr = EmergencyBypass()
+        for tier in BypassTier:
+            record = mgr.create_bypass(
+                role_address="D1-R1",
+                tier=tier,
+                reason=f"testing {tier.value}",
+                approved_by="compliance-officer",
+                authority_level=AuthorityLevel.COMPLIANCE,
+            )
+            assert record.tier == tier
+
+    def test_no_authority_level_is_backwards_compatible(self):
+        """When authority_level is None, no authorization check is performed."""
+        mgr = EmergencyBypass()
+        record = mgr.create_bypass(
+            role_address="D1-R1",
+            tier=BypassTier.TIER_4,
+            reason="no auth check",
+            approved_by="anyone",
+        )
+        assert record.tier == BypassTier.TIER_4

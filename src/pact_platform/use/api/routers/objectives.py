@@ -1,10 +1,13 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Objectives API router -- /api/v1/objectives."""
+"""Objectives API router -- /api/v1/objectives.
+
+Uses DataFlow Express API for all CRUD operations (23x faster than
+workflow primitives for single-operation endpoints).
+"""
 
 from __future__ import annotations
 
-import math
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -22,13 +25,8 @@ from pact_platform.models import (
 router = APIRouter(prefix="/api/v1/objectives", tags=["objectives"])
 
 
-def _exec(wf) -> dict:
-    results, _ = db.execute_workflow(wf)
-    return results
-
-
 @router.post("", status_code=201)
-def create_objective(body: dict[str, Any]) -> dict:
+async def create_objective(body: dict[str, Any]) -> dict:
     """Create a new objective."""
     oid = body.get("id") or uuid4().hex[:12]
     org_address = body.get("org_address", "")
@@ -46,10 +44,8 @@ def create_objective(body: dict[str, Any]) -> dict:
     budget = float(body.get("budget_usd", 0.0))
     validate_finite(budget_usd=budget)
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticObjectiveCreateNode",
-        "create",
+    return await db.express.create(
+        "AgenticObjective",
         {
             "id": oid,
             "org_address": org_address,
@@ -64,11 +60,10 @@ def create_objective(body: dict[str, Any]) -> dict:
             "metadata": body.get("metadata", {}),
         },
     )
-    return _exec(wf)["create"]
 
 
 @router.get("")
-def list_objectives(
+async def list_objectives(
     status: Optional[str] = Query(None),
     org_address: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
@@ -80,32 +75,22 @@ def list_objectives(
     if org_address:
         filt["org_address"] = org_address
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticObjectiveListNode",
-        "list",
-        {
-            "filter": filt,
-            "limit": limit,
-            "order_by": ["-created_at"],
-        },
-    )
-    return _exec(wf)["list"]
+    records = await db.express.list("AgenticObjective", filt, limit=limit)
+    records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return {"records": records, "count": len(records), "limit": limit}
 
 
 @router.get("/{objective_id}")
-def get_objective(objective_id: str) -> dict:
+async def get_objective(objective_id: str) -> dict:
     """Get objective detail."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticObjectiveReadNode", "read", {"id": objective_id})
-    result = _exec(wf)["read"]
-    if not result or result.get("found") is False or result.get("failed"):
+    result = await db.express.read("AgenticObjective", objective_id)
+    if not result or result.get("found") is False:
         raise HTTPException(404, f"Objective {objective_id} not found")
     return result
 
 
 @router.put("/{objective_id}")
-def update_objective(objective_id: str, body: dict[str, Any]) -> dict:
+async def update_objective(objective_id: str, body: dict[str, Any]) -> dict:
     """Update an objective."""
     fields = {k: v for k, v in body.items() if k not in ("id", "created_at", "updated_at")}
     if "budget_usd" in fields:
@@ -116,61 +101,27 @@ def update_objective(objective_id: str, body: dict[str, Any]) -> dict:
     if "description" in fields:
         validate_string_length(str(fields["description"]), "description", MAX_LONG_STRING)
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticObjectiveUpdateNode",
-        "update",
-        {
-            "filter": {"id": objective_id},
-            "fields": fields,
-        },
-    )
-    return _exec(wf)["update"]
+    return await db.express.update("AgenticObjective", objective_id, fields)
 
 
 @router.post("/{objective_id}/cancel")
-def cancel_objective(objective_id: str) -> dict:
+async def cancel_objective(objective_id: str) -> dict:
     """Cancel an objective."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticObjectiveUpdateNode",
-        "update",
-        {
-            "filter": {"id": objective_id},
-            "fields": {"status": "cancelled"},
-        },
-    )
-    return _exec(wf)["update"]
+    return await db.express.update("AgenticObjective", objective_id, {"status": "cancelled"})
 
 
 @router.get("/{objective_id}/requests")
-def get_objective_requests(objective_id: str) -> dict:
+async def get_objective_requests(objective_id: str) -> dict:
     """List requests for an objective."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticRequestListNode",
-        "list",
-        {
-            "filter": {"objective_id": objective_id},
-            "order_by": ["sequence_order"],
-        },
-    )
-    return _exec(wf)["list"]
+    records = await db.express.list("AgenticRequest", {"objective_id": objective_id})
+    records.sort(key=lambda r: r.get("sequence_order", 0))
+    return {"records": records, "count": len(records), "limit": 100}
 
 
 @router.get("/{objective_id}/cost")
-def get_objective_cost(objective_id: str) -> dict:
+async def get_objective_cost(objective_id: str) -> dict:
     """Get cost summary for an objective."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "RunListNode",
-        "runs",
-        {
-            "filter": {"request_id": objective_id},
-        },
-    )
-    results = _exec(wf)
-    runs = results["runs"].get("records", [])
+    runs = await db.express.list("Run", {"request_id": objective_id})
     # C3 fix: NaN-safe summation -- corrupted DB values don't poison totals
     total = safe_sum_finite([r.get("cost_usd", 0.0) for r in runs])
     return {

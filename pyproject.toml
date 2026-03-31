@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     # Kailash SDK ecosystem (aligned with kailash-coc-claude-py template)
-    "kailash[trust,pact]>=2.2.0",
+    "kailash[trust,pact]>=2.3.1",
     "kailash-pact>=0.4.0",
     "kailash-dataflow>=1.2.0",
     "kailash-kaizen>=2.3.0",

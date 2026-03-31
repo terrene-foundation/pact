@@ -1,6 +1,9 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Pools API router -- /api/v1/pools."""
+"""Pools API router -- /api/v1/pools.
+
+Uses DataFlow Express API for all CRUD operations.
+"""
 
 from __future__ import annotations
 
@@ -22,13 +25,8 @@ from pact_platform.models import (
 router = APIRouter(prefix="/api/v1/pools", tags=["pools"])
 
 
-def _exec(wf) -> dict:
-    results, _ = db.execute_workflow(wf)
-    return results
-
-
 @router.post("", status_code=201)
-def create_pool(body: dict[str, Any]) -> dict:
+async def create_pool(body: dict[str, Any]) -> dict:
     """Create a new pool."""
     pid = body.get("id") or uuid4().hex[:12]
     org_id = body.get("org_id", "")
@@ -53,10 +51,8 @@ def create_pool(body: dict[str, Any]) -> dict:
             f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}",
         )
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolCreateNode",
-        "create",
+    return await db.express.create(
+        "AgenticPool",
         {
             "id": pid,
             "org_id": org_id,
@@ -67,11 +63,10 @@ def create_pool(body: dict[str, Any]) -> dict:
             "max_concurrent": max_concurrent,
         },
     )
-    return _exec(wf)["create"]
 
 
 @router.get("")
-def list_pools(
+async def list_pools(
     org_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
@@ -83,47 +78,29 @@ def list_pools(
     if status:
         filt["status"] = status
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolListNode",
-        "list",
-        {
-            "filter": filt,
-            "limit": limit,
-        },
-    )
-    return _exec(wf)["list"]
+    records = await db.express.list("AgenticPool", filt, limit=limit)
+    return {"records": records, "count": len(records), "limit": limit}
 
 
 @router.get("/{pool_id}")
-def get_pool(pool_id: str) -> dict:
+async def get_pool(pool_id: str) -> dict:
     """Get pool detail."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticPoolReadNode", "read", {"id": pool_id})
-    result = _exec(wf)["read"]
-    if not result or result.get("found") is False or result.get("failed"):
+    result = await db.express.read("AgenticPool", pool_id)
+    if not result or result.get("found") is False:
         raise HTTPException(404, f"Pool {pool_id} not found")
     return result
 
 
 @router.post("/{pool_id}/members", status_code=201)
-def add_member(pool_id: str, body: dict[str, Any]) -> dict:
+async def add_member(pool_id: str, body: dict[str, Any]) -> dict:
     """Add a member to a pool.
 
     Enforces MAX_POOL_MEMBERS to prevent pool flooding (DoS).
     """
     # M1 fix: check current member count before adding
-    wf_count = db.create_workflow()
-    wf_count.add_node(
-        "AgenticPoolMembershipListNode",
-        "count_members",
-        {
-            "filter": {"pool_id": pool_id, "status": "active"},
-            "limit": 0,
-        },
+    current_count = await db.express.count(
+        "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )
-    count_result = _exec(wf_count)["count_members"]
-    current_count = count_result.get("total", len(count_result.get("records", [])))
     if current_count >= MAX_POOL_MEMBERS:
         raise HTTPException(
             429,
@@ -146,10 +123,8 @@ def add_member(pool_id: str, body: dict[str, Any]) -> dict:
         )
 
     mid = body.get("id") or uuid4().hex[:12]
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolMembershipCreateNode",
-        "create",
+    return await db.express.create(
+        "AgenticPoolMembership",
         {
             "id": mid,
             "pool_id": pool_id,
@@ -159,30 +134,21 @@ def add_member(pool_id: str, body: dict[str, Any]) -> dict:
             "max_concurrent": max_concurrent,
         },
     )
-    return _exec(wf)["create"]
 
 
 @router.delete("/{pool_id}/members/{member_id}")
-def remove_member(pool_id: str, member_id: str) -> dict:
+async def remove_member(pool_id: str, member_id: str) -> dict:
     """Remove a member from a pool."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticPoolMembershipDeleteNode", "delete", {"id": member_id})
-    return _exec(wf)["delete"]
+    deleted = await db.express.delete("AgenticPoolMembership", member_id)
+    return {"deleted": deleted, "id": member_id}
 
 
 @router.get("/{pool_id}/capacity")
-def get_pool_capacity(pool_id: str) -> dict:
+async def get_pool_capacity(pool_id: str) -> dict:
     """Get pool capacity info."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolMembershipListNode",
-        "list",
-        {
-            "filter": {"pool_id": pool_id, "status": "active"},
-        },
+    members = await db.express.list(
+        "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )
-    result = _exec(wf)["list"]
-    members = result.get("records", [])
     # C3 fix: NaN-safe summation for read-back values
     total_capacity = safe_sum_finite([m.get("max_concurrent", 0) for m in members])
     total_active = safe_sum_finite([m.get("active_count", 0) for m in members])

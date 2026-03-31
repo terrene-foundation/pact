@@ -16,9 +16,11 @@ Tier structure:
 
 from __future__ import annotations
 
+import copy
 import logging
 import threading
 from collections import OrderedDict
+from types import MappingProxyType
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -28,6 +30,7 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "AuthorityLevel",
     "EmergencyBypass",
     "BypassRecord",
     "BypassTier",
@@ -44,6 +47,46 @@ class BypassTier(str, Enum):
     TIER_2 = "tier_2"  # 24 hours
     TIER_3 = "tier_3"  # 72 hours
     TIER_4 = "tier_4"  # No auto-expiry, requires compliance review
+
+
+class AuthorityLevel(str, Enum):
+    """Authority level of the approver.  Higher levels can approve higher tiers.
+
+    Per PACT thesis Section 9:
+    - SUPERVISOR may approve TIER_1 (tactical, 4h).
+    - DEPARTMENT_HEAD may approve TIER_1 and TIER_2 (extended, 24h).
+    - EXECUTIVE may approve TIER_1 through TIER_3 (crisis, 72h).
+    - COMPLIANCE may approve any tier including TIER_4 (full override).
+    """
+
+    SUPERVISOR = "supervisor"
+    DEPARTMENT_HEAD = "department_head"
+    EXECUTIVE = "executive"
+    COMPLIANCE = "compliance"
+
+
+# Minimum authority level required per tier (immutable).
+_TIER_MIN_AUTHORITY = MappingProxyType(
+    {
+        BypassTier.TIER_1: AuthorityLevel.SUPERVISOR,
+        BypassTier.TIER_2: AuthorityLevel.DEPARTMENT_HEAD,
+        BypassTier.TIER_3: AuthorityLevel.EXECUTIVE,
+        BypassTier.TIER_4: AuthorityLevel.COMPLIANCE,
+    }
+)
+
+# Ordered authority levels (lowest to highest, immutable).
+_AUTHORITY_ORDER: tuple[AuthorityLevel, ...] = (
+    AuthorityLevel.SUPERVISOR,
+    AuthorityLevel.DEPARTMENT_HEAD,
+    AuthorityLevel.EXECUTIVE,
+    AuthorityLevel.COMPLIANCE,
+)
+
+
+def _authority_sufficient(approver_level: AuthorityLevel, required_level: AuthorityLevel) -> bool:
+    """Return True if approver_level >= required_level in the authority ordering."""
+    return _AUTHORITY_ORDER.index(approver_level) >= _AUTHORITY_ORDER.index(required_level)
 
 
 # Duration per tier.  TIER_4 has no auto-expiry so it is absent.
@@ -83,6 +126,10 @@ class BypassRecord:
     expired_manually: bool = False
     review_due_by: datetime | None = None
     audit_anchor_id: str = ""
+
+    def __post_init__(self) -> None:
+        """Deep-copy mutable fields to prevent mutation via external references (M3 fix)."""
+        object.__setattr__(self, "expanded_envelope", copy.deepcopy(self.expanded_envelope))
 
     def is_expired(self, now: datetime | None = None) -> bool:
         """Check whether this bypass has expired.
@@ -146,6 +193,8 @@ class EmergencyBypass:
         reason: str,
         approved_by: str,
         expanded_envelope: dict[str, Any] | None = None,
+        *,
+        authority_level: AuthorityLevel | None = None,
     ) -> BypassRecord:
         """Create and store a new emergency bypass.
 
@@ -155,12 +204,17 @@ class EmergencyBypass:
             reason: Justification for the emergency bypass.
             approved_by: Identity of the authorizing party.
             expanded_envelope: Temporary envelope override dict.
+            authority_level: Authority level of the approver.  When
+                provided, the level is validated against the tier
+                requirement (PACT thesis Section 9).  When ``None``,
+                authorization is not enforced (backwards-compatible).
 
         Returns:
             The newly created ``BypassRecord``.
 
         Raises:
             ValueError: If role_address, reason, or approved_by is empty.
+            PermissionError: If authority_level is insufficient for the tier.
         """
         if not role_address:
             raise ValueError("role_address must not be empty")
@@ -168,6 +222,24 @@ class EmergencyBypass:
             raise ValueError("reason must not be empty")
         if not approved_by:
             raise ValueError("approved_by must not be empty")
+
+        # H5: Validate authority level against tier requirement
+        if authority_level is not None:
+            required = _TIER_MIN_AUTHORITY[tier]
+            if not _authority_sufficient(authority_level, required):
+                raise PermissionError(
+                    f"Authority level '{authority_level.value}' is insufficient "
+                    f"for {tier.value} — requires at least '{required.value}'"
+                )
+        else:
+            import warnings
+
+            warnings.warn(
+                "authority_level=None skips tier authorization — "
+                "this will become required in a future version",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         now = datetime.now(UTC)
         bypass_id = f"eb-{uuid4().hex[:12]}"
@@ -199,8 +271,12 @@ class EmergencyBypass:
                 )
             except Exception:
                 logger.exception(
-                    "Audit callback failed for bypass '%s' — bypass still created",
+                    "Audit callback failed for bypass '%s' — aborting bypass creation (fail-closed)",
                     bypass_id,
+                )
+                raise RuntimeError(
+                    f"Cannot create emergency bypass '{bypass_id}': "
+                    f"audit anchor creation failed — governance mutations require audit trail"
                 )
 
         record = BypassRecord(

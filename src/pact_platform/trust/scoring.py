@@ -26,7 +26,8 @@ import logging
 import math
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -50,23 +51,27 @@ __all__ = [
 MAX_DELEGATION_DEPTH: int = 50
 """Maximum delegation depth for normalization. Matches _MAX_CHAIN_DEPTH in runtime."""
 
-FACTOR_WEIGHTS: dict[str, float] = {
-    "chain_completeness": 0.30,
-    "delegation_depth": 0.15,
-    "constraint_coverage": 0.25,
-    "posture_level": 0.20,
-    "chain_recency": 0.10,
-}
-"""Weight for each trust factor. Must sum to 1.0."""
+FACTOR_WEIGHTS: Mapping[str, float] = MappingProxyType(
+    {
+        "chain_completeness": 0.30,
+        "delegation_depth": 0.15,
+        "constraint_coverage": 0.25,
+        "posture_level": 0.20,
+        "chain_recency": 0.10,
+    }
+)
+"""Weight for each trust factor. Must sum to 1.0. Immutable (M2 fix)."""
 
-POSTURE_SCORES: dict[str, float] = {
-    "pseudo_agent": 0.0,
-    "supervised": 0.25,
-    "shared_planning": 0.5,
-    "continuous_insight": 0.75,
-    "delegated": 1.0,
-}
-"""Trust score mapped to each posture level (by .value string)."""
+POSTURE_SCORES: Mapping[str, float] = MappingProxyType(
+    {
+        "pseudo_agent": 0.0,
+        "supervised": 0.25,
+        "shared_planning": 0.5,
+        "continuous_insight": 0.75,
+        "delegated": 1.0,
+    }
+)
+"""Trust score mapped to each posture level (by .value string). Immutable (M2 fix)."""
 
 # Recency thresholds (in days)
 _RECENCY_FULL_SCORE_DAYS: int = 30
@@ -101,13 +106,15 @@ class TrustScore:
     factors: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Validate that total is finite and in range."""
+        """Validate that total is finite and in range.  Freeze mutable factors dict."""
         if not math.isfinite(self.total):
             raise ValueError(f"total must be finite, got {self.total}")
         if self.total < 0.0 or self.total > 1.0:
             raise ValueError(f"total must be in [0.0, 1.0], got {self.total}")
         if self.grade not in ("A", "B", "C", "D", "F"):
             raise ValueError(f"grade must be A/B/C/D/F, got {self.grade!r}")
+        # C1 fix: freeze mutable factors dict to prevent post-construction mutation
+        object.__setattr__(self, "factors", MappingProxyType(dict(self.factors)))
 
 
 # ---------------------------------------------------------------------------
@@ -307,8 +314,15 @@ def _score_chain_recency(
                     return _recency_score_from_timestamp(timestamp_str)
             return 0.0
 
-        # Use the most recent inbound delegation's timestamp
-        timestamp_str = inbound[0].get("timestamp") or inbound[0].get("created_at")
+        # Sort inbound by timestamp descending to pick the most recent delegation.
+        # Without sorting, list order is store-dependent — the wrong delegation
+        # could be used for the recency score (M1 fix).
+        def _ts_key(d: dict[str, Any]) -> str:
+            return d.get("timestamp") or d.get("created_at") or ""
+
+        inbound.sort(key=_ts_key, reverse=True)
+
+        timestamp_str = _ts_key(inbound[0])
         if not timestamp_str:
             return 0.0
 

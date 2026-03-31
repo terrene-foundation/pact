@@ -733,3 +733,434 @@ class TestRateLimitEnforcement:
             task = rt.process_next()
             assert task is not None
             assert task.status == TaskStatus.COMPLETED
+
+
+# ---------------------------------------------------------------------------
+# Test: dimension context forwarding (TODO-19 wiring)
+# ---------------------------------------------------------------------------
+
+
+class TestDimensionContextForwarding:
+    """Verify that dimension-specific context keys from task.metadata are
+    forwarded to GovernanceEngine.verify_action().
+
+    kailash-pact 0.4.1 enforces temporal, data-access, and communication
+    dimensions in _evaluate_against_envelope(). The runtime must forward
+    the relevant context keys so the engine can evaluate them.
+    """
+
+    def test_data_access_keys_forwarded(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """resource_path, access_type, data_type must reach verify_action context."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "read_file",
+            agent_id="agent-1",
+            metadata={
+                "resource_path": "/data/reports/q1",
+                "access_type": "read",
+                "data_type": "financial",
+            },
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["resource_path"] == "/data/reports/q1"
+        assert ctx["access_type"] == "read"
+        assert ctx["data_type"] == "financial"
+
+    def test_communication_keys_forwarded(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """is_external and channel must reach verify_action context."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "send_message",
+            agent_id="agent-1",
+            metadata={
+                "is_external": True,
+                "channel": "slack",
+            },
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["is_external"] is True
+        assert ctx["channel"] == "slack"
+
+    def test_dimension_keys_absent_when_not_in_metadata(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """When task.metadata omits dimension keys, they must not appear in context."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit("simple_action", agent_id="agent-1")
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert "resource_path" not in ctx
+        assert "access_type" not in ctx
+        assert "is_external" not in ctx
+        assert "channel" not in ctx
+
+    def test_is_external_false_forwarded(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """is_external=False must be forwarded (engine checks 'is not False')."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "internal_call",
+            agent_id="agent-1",
+            metadata={"is_external": False, "channel": "internal"},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["is_external"] is False
+        assert ctx["channel"] == "internal"
+
+    def test_all_dimension_keys_together(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """All five dimension keys can be forwarded simultaneously."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "complex_action",
+            agent_id="agent-1",
+            metadata={
+                "cost": 100.0,
+                "resource_path": "/data/sensitive",
+                "access_type": "write",
+                "data_type": "pii",
+                "is_external": True,
+                "channel": "email",
+            },
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["cost"] == 100.0
+        assert ctx["resource_path"] == "/data/sensitive"
+        assert ctx["access_type"] == "write"
+        assert ctx["data_type"] == "pii"
+        assert ctx["is_external"] is True
+        assert ctx["channel"] == "email"
+        # Financial/operational keys also present
+        assert "cumulative_spend_usd" in ctx
+        assert "action_count_today" in ctx
+
+
+# ---------------------------------------------------------------------------
+# Test: envelope snapshot redaction (H6)
+# ---------------------------------------------------------------------------
+
+
+class TestEnvelopeSnapshotRedaction:
+    """Verify that envelope snapshots in reasoning traces are redacted."""
+
+    def test_redaction_function_redacts_sensitive_keys(self):
+        from pact_platform.use.execution.runtime import _redact_envelope_snapshot
+
+        snapshot = {
+            "financial": {
+                "max_budget": 10000.0,
+                "max_cost_per_action": 500.0,
+                "currency": "USD",
+            },
+            "data_access": {
+                "read_paths": ["/data/public", "/data/internal"],
+                "write_paths": ["/data/public"],
+                "denied_paths": ["/data/secret"],
+                "blocked_data_types": ["pii", "phi"],
+            },
+            "communication": {
+                "internal_only": True,
+                "allowed_channels": ["slack", "email"],
+            },
+            "operational": {
+                "max_actions_per_day": 100,
+            },
+        }
+
+        redacted = _redact_envelope_snapshot(snapshot)
+        assert redacted is not None
+
+        # Sensitive fields are redacted
+        assert redacted["financial"]["max_budget"] == "[REDACTED]"
+        assert redacted["financial"]["max_cost_per_action"] == "[REDACTED]"
+        assert redacted["data_access"]["read_paths"] == "[REDACTED]"
+        assert redacted["data_access"]["write_paths"] == "[REDACTED]"
+        assert redacted["data_access"]["denied_paths"] == "[REDACTED]"
+        assert redacted["data_access"]["blocked_data_types"] == "[REDACTED]"
+        assert redacted["communication"]["allowed_channels"] == "[REDACTED]"
+
+        # Non-sensitive fields are preserved
+        assert redacted["financial"]["currency"] == "USD"
+        assert redacted["communication"]["internal_only"] is True
+        assert redacted["operational"]["max_actions_per_day"] == 100
+
+    def test_redaction_function_returns_none_for_none(self):
+        from pact_platform.use.execution.runtime import _redact_envelope_snapshot
+
+        assert _redact_envelope_snapshot(None) is None
+
+    def test_blocked_verdict_has_redacted_snapshot(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """BLOCKED verdicts must have redacted envelope snapshots in reasoning traces."""
+        envelope_snapshot = {
+            "financial": {"max_budget": 5000.0},
+            "operational": {"max_actions_per_day": 50},
+        }
+        engine = _MockGovernanceEngine(
+            verdict=_MockVerdict(
+                "blocked",
+                reason="Budget exceeded",
+                effective_envelope_snapshot=envelope_snapshot,
+            ),
+        )
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit("expensive_action", agent_id="agent-1", metadata={"cost": 10000.0})
+        task = rt.process_next()
+
+        assert task is not None
+        trace = task.metadata.get("reasoning_trace")
+        assert trace is not None
+        assert trace["envelope_snapshot"]["financial"]["max_budget"] == "[REDACTED]"
+        # Non-sensitive field preserved
+        assert trace["envelope_snapshot"]["operational"]["max_actions_per_day"] == 50
+
+
+# ---------------------------------------------------------------------------
+# Test: H1/H2 input validation on governance context
+# ---------------------------------------------------------------------------
+
+
+class TestGovernanceContextValidation:
+    """Verify that dimension context values are validated before L1 forwarding."""
+
+    def test_nan_cost_sanitized(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """NaN cost must be replaced with 0.0, not forwarded to engine."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit("action", agent_id="agent-1", metadata={"cost": float("nan")})
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["cost"] == 0.0
+
+    def test_negative_cost_sanitized(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit("action", agent_id="agent-1", metadata={"cost": -100.0})
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["cost"] == 0.0
+
+    def test_path_traversal_normalized(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """resource_path with '../' is normalized (posixpath.normpath resolves it)."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        # /data/../secrets/keys normalizes to /secrets/keys (no traversal after normpath)
+        rt.submit(
+            "action",
+            agent_id="agent-1",
+            metadata={"resource_path": "/data/../secrets/keys", "access_type": "read"},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["resource_path"] == "/secrets/keys"  # Normalized, not raw
+
+    def test_leading_traversal_blocked(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """resource_path with leading '../' that escapes root must be blocked."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "action",
+            agent_id="agent-1",
+            metadata={"resource_path": "../../../etc/passwd", "access_type": "read"},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert "resource_path" not in ctx  # Blocked — still has '..' after normpath
+
+    def test_invalid_access_type_dropped(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """access_type must be 'read' or 'write' — other values dropped."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "action",
+            agent_id="agent-1",
+            metadata={"access_type": "admin"},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert "access_type" not in ctx
+
+    def test_is_external_coerced_to_bool(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """is_external must be coerced to bool."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "action",
+            agent_id="agent-1",
+            metadata={"is_external": "true"},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert ctx["is_external"] is True  # coerced from string
+        assert isinstance(ctx["is_external"], bool)
+
+    def test_channel_truncated(
+        self,
+        registry: AgentRegistry,
+        audit_chain: AuditChain,
+    ) -> None:
+        """Channel strings must be truncated to 256 chars."""
+        engine = _MockGovernanceEngine(verdict=_MockVerdict("auto_approved"))
+        rt = ExecutionRuntime(
+            registry=registry,
+            audit_chain=audit_chain,
+            governance_engine=engine,
+        )
+        rt.set_agent_role_address("agent-1", "D1-R1")
+
+        rt.submit(
+            "action",
+            agent_id="agent-1",
+            metadata={"channel": "x" * 500},
+        )
+        rt.process_next()
+
+        ctx = engine.last_context
+        assert ctx is not None
+        assert len(ctx["channel"]) == 256

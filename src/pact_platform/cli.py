@@ -51,11 +51,25 @@ error_console = Console(stderr=True)
 
 _engine: Any = None
 _agent_mapping: Any = None
+_audit_chain: Any = None
 
 
 def _get_engine() -> Any:
     """Return the module-level GovernanceEngine, or None if not initialized."""
     return _engine
+
+
+def _make_audit_chain() -> Any:
+    """Create a fresh AuditChain for the GovernanceEngine.
+
+    This ensures that governance mutations (set_role_envelope, grant_clearance,
+    create_bridge) emit EATP audit anchors, as required by TODO-04/05/06.
+    """
+    import uuid
+
+    from pact_platform.trust.audit.anchor import AuditChain
+
+    return AuditChain(chain_id=f"cli-{uuid.uuid4().hex[:12]}")
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +124,7 @@ def quickstart(example: str, serve: bool, host: str, port: int) -> None:
     Example:
         pact quickstart --example university
     """
-    global _engine, _agent_mapping
+    global _engine, _agent_mapping, _audit_chain
 
     from pact.governance import (
         AgentRoleMapping,
@@ -133,7 +147,8 @@ def quickstart(example: str, serve: bool, host: str, port: int) -> None:
         # --- Compile the org ---
         with console.status("[bold green]Compiling university org..."):
             compiled, org_def = create_university_org()
-            engine = GovernanceEngine(org_def)
+            _audit_chain = _make_audit_chain()
+            engine = GovernanceEngine(org_def, audit_chain=_audit_chain)
             org = engine.get_org()
 
         console.print(f"  [green]Compiled[/green] {len(org.nodes)} nodes")
@@ -289,7 +304,7 @@ def org_create(yaml_file: str) -> None:
     The YAML file should follow the PACT org schema (org_id, name,
     departments, teams, roles, clearances, envelopes, bridges, ksps).
     """
-    global _engine, _agent_mapping
+    global _engine, _agent_mapping, _audit_chain
 
     from pact.governance import (
         AgentRoleMapping,
@@ -300,7 +315,8 @@ def org_create(yaml_file: str) -> None:
     console.print()
     with console.status(f"[bold green]Loading org from {yaml_file}..."):
         loaded = load_org_yaml(yaml_file)
-        engine = GovernanceEngine(loaded.org_definition)
+        _audit_chain = _make_audit_chain()
+        engine = GovernanceEngine(loaded.org_definition, audit_chain=_audit_chain)
         org = engine.get_org()
 
     console.print(f"  [green]Compiled[/green] {len(org.nodes)} nodes")
@@ -560,6 +576,118 @@ def role_assign(address: str, user: str) -> None:
     )
 
 
+@role.command("designate-acting")
+@click.argument("vacant_address")
+@click.argument("acting_address")
+@click.argument("designated_by")
+def role_designate_acting(vacant_address: str, acting_address: str, designated_by: str) -> None:
+    """Designate an acting occupant for a vacant role.
+
+    VACANT_ADDRESS is the D/T/R address of the vacant role.
+    ACTING_ADDRESS is the D/T/R address of the acting occupant.
+    DESIGNATED_BY is the D/T/R address of the authority making the designation.
+
+    Acting occupant inherits the vacant role's envelope but NOT clearance upgrades.
+    Designation expires after 24 hours and must be renewed.
+    """
+    from pact.governance import Address
+
+    for label, addr in [
+        ("VACANT", vacant_address),
+        ("ACTING", acting_address),
+        ("DESIGNATED_BY", designated_by),
+    ]:
+        try:
+            Address.parse(addr)
+        except Exception as exc:
+            error_console.print(f"[bold red]Invalid {label} address:[/bold red] {addr}\n  {exc}")
+            sys.exit(1)
+
+    engine = _get_engine()
+    if engine is None:
+        error_console.print("[bold red]No org loaded.[/bold red] Load an org first.")
+        sys.exit(1)
+
+    try:
+        designation = engine.designate_acting_occupant(
+            vacant_address, acting_address, designated_by
+        )
+    except Exception as exc:
+        error_console.print(f"[bold red]Vacancy designation failed:[/bold red] {exc}")
+        sys.exit(1)
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Property", style="dim")
+    table.add_column("Value")
+    table.add_row("Vacant Role", vacant_address)
+    table.add_row("Acting Occupant", acting_address)
+    table.add_row("Designated By", designated_by)
+    table.add_row("Expires At", str(designation.expires_at))
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold green]Designated[/bold green] [cyan]{acting_address}[/cyan] "
+            f"as acting occupant for vacant role [cyan]{vacant_address}[/cyan].\n\n"
+            f"Designation valid for 24 hours.",
+            title="PACT — Vacancy Designation",
+            border_style="green",
+        )
+    )
+    console.print(table)
+
+
+@role.command("vacancy-status")
+@click.argument("address")
+def role_vacancy_status(address: str) -> None:
+    """Check vacancy designation status for a role at ADDRESS.
+
+    Shows current acting occupant designation if one exists.
+    """
+    from pact.governance import Address
+
+    try:
+        Address.parse(address)
+    except Exception as exc:
+        error_console.print(f"[bold red]Invalid address:[/bold red] {address}\n  {exc}")
+        sys.exit(1)
+
+    engine = _get_engine()
+    if engine is None:
+        error_console.print("[bold red]No org loaded.[/bold red] Load an org first.")
+        sys.exit(1)
+
+    designation = engine.get_vacancy_designation(address)
+    console.print()
+    if designation is None:
+        console.print(
+            Panel(
+                f"No vacancy designation for [cyan]{address}[/cyan].\n\n"
+                f"The role is either occupied or vacant without an acting occupant.",
+                title="PACT — Vacancy Status",
+                border_style="yellow",
+            )
+        )
+    else:
+        table = Table(show_header=True, header_style="bold cyan")
+        table.add_column("Property", style="dim")
+        table.add_column("Value")
+        table.add_row("Vacant Role", designation.vacant_role_address)
+        table.add_row("Acting Occupant", designation.acting_role_address)
+        table.add_row("Designated By", designation.designated_by)
+        table.add_row("Designated At", str(designation.designated_at))
+        table.add_row("Expires At", str(designation.expires_at))
+
+        console.print(
+            Panel(
+                f"Active vacancy designation for [cyan]{address}[/cyan].",
+                title="PACT — Vacancy Status",
+                border_style="green",
+            )
+        )
+        console.print(table)
+
+
 # ---------------------------------------------------------------------------
 # clearance group
 # ---------------------------------------------------------------------------
@@ -743,6 +871,69 @@ def bridge_create(
         console.print("\n  Configured. State persisted when DataFlow storage is wired in M4.")
 
 
+@bridge.command("approve")
+@click.argument("source_address")
+@click.argument("target_address")
+@click.argument("approver_address")
+def bridge_approve(source_address: str, target_address: str, approver_address: str) -> None:
+    """Pre-approve a bridge between SOURCE_ADDRESS and TARGET_ADDRESS.
+
+    The APPROVER_ADDRESS must be the lowest common ancestor (LCA) of both
+    roles in the org tree, or a designated compliance role. Approval is
+    required before create_bridge() will succeed.
+
+    Approvals expire after 24 hours.
+    """
+    from pact.governance import Address
+
+    for label, addr in [
+        ("SOURCE", source_address),
+        ("TARGET", target_address),
+        ("APPROVER", approver_address),
+    ]:
+        try:
+            Address.parse(addr)
+        except Exception as exc:
+            error_console.print(f"[bold red]Invalid {label} address:[/bold red] {addr}\n  {exc}")
+            sys.exit(1)
+
+    engine = _get_engine()
+    if engine is None:
+        error_console.print(
+            "[bold red]No org loaded.[/bold red] "
+            "Load an org first:\n"
+            "  [cyan]pact quickstart --example university[/cyan]\n"
+            "  [cyan]pact org create org.yaml[/cyan]"
+        )
+        sys.exit(1)
+
+    try:
+        approval = engine.approve_bridge(source_address, target_address, approver_address)
+    except Exception as exc:
+        error_console.print(f"[bold red]Bridge approval failed:[/bold red] {exc}")
+        sys.exit(1)
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Property", style="dim")
+    table.add_column("Value")
+    table.add_row("Source", source_address)
+    table.add_row("Target", target_address)
+    table.add_row("Approved By", approver_address)
+    table.add_row("Expires At", str(approval.expires_at))
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold green]Approved[/bold green] bridge between "
+            f"[cyan]{source_address}[/cyan] and [cyan]{target_address}[/cyan].\n\n"
+            f"Approval valid for 24 hours. Run [cyan]pact bridge create[/cyan] to create the bridge.",
+            title="PACT — Bridge LCA Approval",
+            border_style="green",
+        )
+    )
+    console.print(table)
+
+
 # ---------------------------------------------------------------------------
 # envelope group
 # ---------------------------------------------------------------------------
@@ -908,6 +1099,30 @@ def envelope_show(address: str) -> None:
     )
     comm_table.add_row("External Requires Approval", "Yes" if ext_approval else "No")
     console.print(comm_table)
+
+    # Dimension scope (from delegation record, if applicable)
+    dimension_scope = getattr(envelope_config, "dimension_scope", None)
+    if dimension_scope and dimension_scope != frozenset(
+        {"financial", "operational", "temporal", "data_access", "communication"}
+    ):
+        scope_table = Table(
+            title="Dimension Scope",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        scope_table.add_column("Scoped Dimensions", style="dim")
+        scope_sorted = (
+            sorted(dimension_scope)
+            if isinstance(dimension_scope, (set, frozenset))
+            else list(dimension_scope)
+        )
+        for dim in scope_sorted:
+            scope_table.add_row(dim)
+        console.print(scope_table)
+        console.print(
+            "[dim]Only scoped dimensions are tightened by delegation; "
+            "unscoped dimensions inherit from parent unchanged.[/dim]"
+        )
 
 
 # ---------------------------------------------------------------------------

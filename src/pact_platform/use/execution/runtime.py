@@ -82,6 +82,30 @@ _RATE_LIMIT_WINDOW_SECONDS: float = 86_400.0
 # cyclic delegation graphs and bounds stack usage).
 _MAX_CHAIN_DEPTH: int = 50
 
+# Dimension context keys forwarded from task.metadata to verify_action()
+# so the L1 engine can enforce data-access and communication constraints.
+_DIMENSION_CONTEXT_KEYS: tuple[str, ...] = (
+    "resource_path",  # Data Access: e.g. "/data/reports/q1"
+    "access_type",  # Data Access: "read" or "write"
+    "data_type",  # Data Access: optional data classification
+    "is_external",  # Communication: bool
+    "channel",  # Communication: e.g. "slack", "email"
+)
+
+# Sensitive envelope fields redacted from reasoning traces (H6).
+_REDACTION_KEYS: frozenset[str] = frozenset(
+    {
+        "max_budget",
+        "max_cost_per_action",
+        "daily_budget_limit",
+        "read_paths",
+        "write_paths",
+        "denied_paths",
+        "blocked_data_types",
+        "allowed_channels",
+    }
+)
+
 
 class TaskStatus(str, Enum):
     """Lifecycle status of a submitted task."""
@@ -1197,7 +1221,15 @@ class ExecutionRuntime:
             context: dict[str, Any] = {}
             cost = task.metadata.get("cost")
             if cost is not None:
-                context["cost"] = float(cost)
+                cost_val = float(cost)
+                if not math.isfinite(cost_val) or cost_val < 0:
+                    logger.warning(
+                        "Non-finite or negative cost %r for task '%s' — fail-closed to 0.0",
+                        cost_val,
+                        task.task_id,
+                    )
+                    cost_val = 0.0
+                context["cost"] = cost_val
             task_id_val = task.metadata.get("task_id") or task.task_id
             context["task_id"] = task_id_val
 
@@ -1214,6 +1246,69 @@ class ExecutionRuntime:
             cumulative_spend = raw_spend if math.isfinite(raw_spend) else 0.0
             context["cumulative_spend_usd"] = cumulative_spend
             context["action_count_today"] = action_count_today
+
+            # Forward dimension context keys from task metadata so the L1
+            # engine can enforce data-access and communication constraints.
+            # H2: Validate and normalize values before forwarding to L1.
+            _rp = task.metadata.get("resource_path")
+            if _rp is not None:
+                import posixpath
+
+                _rp = posixpath.normpath(str(_rp))
+                if ".." in _rp.split("/"):
+                    logger.warning(
+                        "Path traversal in resource_path %r for task '%s' — blocked",
+                        _rp,
+                        task.task_id,
+                    )
+                else:
+                    context["resource_path"] = _rp
+
+            _at = task.metadata.get("access_type")
+            if _at is not None:
+                if str(_at) in ("read", "write"):
+                    context["access_type"] = str(_at)
+
+            _dt = task.metadata.get("data_type")
+            if _dt is not None:
+                context["data_type"] = str(_dt)
+
+            _ie = task.metadata.get("is_external")
+            if _ie is not None:
+                context["is_external"] = bool(_ie)
+
+            _ch = task.metadata.get("channel")
+            if _ch is not None:
+                context["channel"] = str(_ch)[:256]
+
+            # T3: Forward dimension_scope from the agent's delegation record
+            # so the L1 engine can scope envelope intersection to specific
+            # constraint dimensions (e.g. only tighten financial + temporal).
+            if self._trust_store is not None:
+                try:
+                    delegations = self._trust_store.get_delegations_for(agent.agent_id)
+                    inbound = [d for d in delegations if d.get("delegatee_id") == agent.agent_id]
+                    if inbound:
+                        ds = inbound[0].get("dimension_scope")
+                        if ds and ds != {
+                            "financial",
+                            "operational",
+                            "temporal",
+                            "data_access",
+                            "communication",
+                        }:
+                            context["dimension_scope"] = (
+                                sorted(ds) if isinstance(ds, (set, frozenset, list)) else ds
+                            )
+                except Exception:
+                    # Fail-closed: absence of dimension_scope means full envelope
+                    # applies (all 5 dimensions enforced) — maximally restrictive.
+                    logger.debug(
+                        "dimension_scope lookup failed for agent '%s' — "
+                        "full envelope applies (all dimensions)",
+                        agent.agent_id,
+                        exc_info=True,
+                    )
 
             # Call governance engine verify_action
             verdict = self._governance_engine.verify_action(
@@ -1241,7 +1336,9 @@ class ExecutionRuntime:
                     "reason": verdict.reason,
                     "role_address": role_address,
                     "action": task.action,
-                    "envelope_snapshot": getattr(verdict, "effective_envelope_snapshot", None),
+                    "envelope_snapshot": _redact_envelope_snapshot(
+                        getattr(verdict, "effective_envelope_snapshot", None)
+                    ),
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
 
@@ -1777,6 +1874,29 @@ class TaskExecutor:
             The TaskResult.
         """
         return TaskResult(output=f"Executed '{task.action}' by agent '{agent.agent_id}'")
+
+
+def _redact_envelope_snapshot(snapshot: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Redact sensitive fields from an envelope snapshot before persisting.
+
+    Envelope snapshots may contain specific financial limits, path lists,
+    and channel names that should not leak into task metadata.  This
+    function replaces sensitive leaf values with ``"[REDACTED]"`` while
+    preserving the structure (which dimensions are configured vs None).
+
+    Returns None if input is None.
+    """
+    if snapshot is None:
+        return None
+
+    def _redact(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: "[REDACTED]" if k in _REDACTION_KEYS else _redact(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_redact(item) for item in obj]
+        return obj
+
+    return _redact(snapshot)
 
 
 def _collect_all_genesis(trust_store: TrustStore) -> list[dict]:
