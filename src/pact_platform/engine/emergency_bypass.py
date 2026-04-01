@@ -579,10 +579,6 @@ class EmergencyBypass:
 
         now = datetime.now(UTC)
 
-        # M4: Rate limiting — check before committing
-        with self._lock:
-            self._check_rate_limits(role_address, now)
-
         bypass_id = f"eb-{uuid4().hex[:12]}"
 
         # Compute expiry
@@ -593,7 +589,7 @@ class EmergencyBypass:
         review_anchor = expires_at if expires_at is not None else now
         review_due_by = review_anchor + timedelta(days=_REVIEW_WINDOW_DAYS)
 
-        # Create audit anchor
+        # Create audit anchor (outside lock — may do I/O)
         audit_anchor_id = ""
         audit_details = {
             "bypass_id": bypass_id,
@@ -634,12 +630,15 @@ class EmergencyBypass:
             audit_anchor_id=audit_anchor_id,
         )
 
+        # M4: Rate limit check + record + store — all under single lock
+        # acquisition to prevent TOCTOU race where two threads both pass
+        # the rate limit check before either records its creation.
         with self._lock:
+            self._check_rate_limits(role_address, now)
             # Enforce bounded collection
             while len(self._bypasses) >= MAX_BYPASS_RECORDS:
                 self._bypasses.popitem(last=False)  # Evict oldest
             self._bypasses[bypass_id] = record
-            # M4: Record creation for rate limiting
             self._record_bypass_creation(role_address, now)
 
         logger.info(
