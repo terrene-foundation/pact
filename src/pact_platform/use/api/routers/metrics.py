@@ -1,38 +1,36 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Platform metrics API router -- /api/v1/platform/metrics."""
+"""Platform metrics API router -- /api/v1/platform/metrics.
+
+Uses DataFlow Express API for all CRUD operations.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
-from pact_platform.models import db, safe_sum_finite
+from pact_platform.models import db, safe_sum_finite, validate_record_id
+from pact_platform.use.api.rate_limit import RATE_GET, limiter
 
 router = APIRouter(prefix="/api/v1/platform/metrics", tags=["metrics"])
 
 
-def _exec(wf) -> dict:
-    results, _ = db.execute_workflow(wf)
-    return results
-
-
 @router.get("/cost")
-def get_cost_metrics(
+@limiter.limit(RATE_GET)
+async def get_cost_metrics(
+    request: Request,
     agent_address: Optional[str] = Query(None),
     period_days: int = Query(30),
 ) -> dict:
     """Get cost metrics."""
     filt: dict[str, Any] = {}
     if agent_address:
+        validate_record_id(agent_address)
         filt["agent_address"] = agent_address
 
-    wf = db.create_workflow()
-    wf.add_node("RunListNode", "runs", {"filter": filt, "limit": 10000})
-    result = _exec(wf)
-    runs = result["runs"].get("records", [])
-    # C3 fix: NaN-safe summation -- corrupted DB values don't poison totals
+    runs = await db.express.list("Run", filt, limit=10000)
     total = safe_sum_finite([r.get("cost_usd", 0.0) for r in runs])
     tokens_in = safe_sum_finite([r.get("input_tokens", 0) for r in runs])
     tokens_out = safe_sum_finite([r.get("output_tokens", 0) for r in runs])
@@ -45,58 +43,30 @@ def get_cost_metrics(
 
 
 @router.get("/throughput")
-def get_throughput_metrics() -> dict:
+@limiter.limit(RATE_GET)
+async def get_throughput_metrics(request: Request) -> dict:
     """Get throughput metrics."""
     stats = {}
     for status in ("running", "completed", "failed"):
-        wf = db.create_workflow()
-        wf.add_node(
-            "RunListNode",
-            "runs",
-            {
-                "filter": {"status": status},
-                "limit": 0,
-            },
-        )
-        result = _exec(wf)
-        stats[status] = result["runs"].get("total", len(result["runs"].get("records", [])))
+        stats[status] = await db.express.count("Run", {"status": status})
     return {"throughput": stats}
 
 
 @router.get("/governance")
-def get_governance_verdicts() -> dict:
+@limiter.limit(RATE_GET)
+async def get_governance_verdicts(request: Request) -> dict:
     """Get governance verdict distribution."""
     stats = {}
     for status in ("pending", "approved", "rejected", "expired"):
-        wf = db.create_workflow()
-        wf.add_node(
-            "AgenticDecisionListNode",
-            "list",
-            {
-                "filter": {"status": status},
-                "limit": 0,
-            },
-        )
-        result = _exec(wf)
-        stats[status] = result["list"].get("total", len(result["list"].get("records", [])))
+        stats[status] = await db.express.count("AgenticDecision", {"status": status})
     return {"governance_verdicts": stats}
 
 
 @router.get("/budget")
-def get_budget_utilization() -> dict:
+@limiter.limit(RATE_GET)
+async def get_budget_utilization(request: Request) -> dict:
     """Get budget utilization across objectives."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticObjectiveListNode",
-        "list",
-        {
-            "filter": {"status": "active"},
-            "limit": 1000,
-        },
-    )
-    result = _exec(wf)
-    objectives = result["list"].get("records", [])
-    # C3 fix: NaN-safe summation
+    objectives = await db.express.list("AgenticObjective", {"status": "active"}, limit=1000)
     total_budget = safe_sum_finite([o.get("budget_usd", 0.0) for o in objectives])
     return {
         "active_objectives": len(objectives),

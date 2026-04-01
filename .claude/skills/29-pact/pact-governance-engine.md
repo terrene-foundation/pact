@@ -13,18 +13,47 @@ description: "Complete GovernanceEngine API reference -- decision, query, mutati
 from pact.governance.engine import GovernanceEngine
 
 engine = GovernanceEngine(
-    org,                        # OrgDefinition | CompiledOrg
-    envelope_store=None,        # EnvelopeStore (default: MemoryEnvelopeStore)
-    clearance_store=None,       # ClearanceStore (default: MemoryClearanceStore)
-    access_policy_store=None,   # AccessPolicyStore (default: MemoryAccessPolicyStore)
-    org_store=None,             # OrgStore (default: MemoryOrgStore)
-    audit_chain=None,           # AuditChain (optional, for audit trail)
-    store_backend="memory",     # "memory" or "sqlite"
-    store_url=None,             # Path for sqlite backend
+    org,                              # OrgDefinition | CompiledOrg
+    envelope_store=None,              # EnvelopeStore (default: MemoryEnvelopeStore)
+    clearance_store=None,             # ClearanceStore (default: MemoryClearanceStore)
+    access_policy_store=None,         # AccessPolicyStore (default: MemoryAccessPolicyStore)
+    org_store=None,                   # OrgStore (default: MemoryOrgStore)
+    audit_chain=None,                 # AuditChain (optional, for audit trail)
+    store_backend="memory",           # "memory" or "sqlite"
+    store_url=None,                   # Path for sqlite backend
+    eatp_emitter=None,                # PactEatpEmitter (§5.7 EATP records)
+    vacancy_deadline_hours=24,        # §5.5 configurable vacancy deadline
+    require_bilateral_consent=False,  # §4.4 require bilateral bridge consent
 )
 ```
 
 When `store_backend="sqlite"` and `store_url` is set, all stores are automatically created as SQLite-backed stores. All explicit `*_store` args must be `None`.
+
+### EATP Record Emission (§5.7)
+
+```python
+from kailash.trust.pact.eatp_emitter import InMemoryPactEmitter
+
+emitter = InMemoryPactEmitter()
+engine = GovernanceEngine(org, eatp_emitter=emitter)
+
+# Engine now emits real EATP records on governance events:
+# - GenesisRecord on org initialization
+# - DelegationRecord on set_role_envelope / set_task_envelope
+# - CapabilityAttestation on grant_clearance
+# - Bilateral DelegationRecords on create_bridge
+```
+
+### L3 Platform Factory
+
+In `pact_platform`, always use the factory (reads env config automatically):
+
+```python
+from pact_platform.cli import _create_engine
+engine = _create_engine(org_def, audit_chain=audit_chain)
+# Reads: PACT_VACANCY_DEADLINE_HOURS, PACT_REQUIRE_BILATERAL_CONSENT,
+#         PACT_ENABLE_EATP_EMISSION from environment
+```
 
 ## Decision API
 
@@ -183,6 +212,13 @@ engine.create_ksp(KnowledgeSharePolicy(
     created_by_role_address="D1-R1",
 ))
 
+# Bridge creation requires LCA approval first (PACT Section 4.4)
+engine.approve_bridge("D1-R1-D2-R1", "D1-R1-D3-R1", "D1-R1")  # LCA approves
+
+# If require_bilateral_consent=True, both endpoints must consent (§4.4 property 3)
+engine.consent_bridge("D1-R1-D2-R1", "bridge-1")  # Role A consents
+engine.consent_bridge("D1-R1-D3-R1", "bridge-1")  # Role B consents
+
 engine.create_bridge(PactBridge(
     id="bridge-1",
     role_a_address="D1-R1-D2-R1",
@@ -191,6 +227,9 @@ engine.create_bridge(PactBridge(
     max_classification=ConfidentialityLevel.SECRET,
     bilateral=True,
 ))
+
+# Compliance role as alternative approver (§4.4 property 4)
+engine.register_compliance_role("D1-R1-D1-R1")  # CCO can approve bridges
 ```
 
 ## Audit API

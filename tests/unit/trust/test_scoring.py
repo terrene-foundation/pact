@@ -277,9 +277,7 @@ class TestChainCompleteness:
         """Genesis -> delegator -> agent -> 1.0."""
         store = MemoryStore()
         store.store_genesis("root", _make_genesis("root"))
-        store.store_delegation(
-            "d1", _make_delegation("root", "agent-1", delegation_id="d1")
-        )
+        store.store_delegation("d1", _make_delegation("root", "agent-1", delegation_id="d1"))
         assert _score_chain_completeness("agent-1", store) == 1.0
 
     def test_broken_chain_no_delegation(self):
@@ -300,12 +298,8 @@ class TestChainCompleteness:
     def test_cycle_detection(self):
         """Cyclic delegation graph -> 0.0."""
         store = MemoryStore()
-        store.store_delegation(
-            "d1", _make_delegation("agent-a", "agent-b", delegation_id="d1")
-        )
-        store.store_delegation(
-            "d2", _make_delegation("agent-b", "agent-a", delegation_id="d2")
-        )
+        store.store_delegation("d1", _make_delegation("agent-a", "agent-b", delegation_id="d1"))
+        store.store_delegation("d2", _make_delegation("agent-b", "agent-a", delegation_id="d2"))
         assert _score_chain_completeness("agent-a", store) == 0.0
 
 
@@ -327,9 +321,7 @@ class TestDelegationDepth:
         """One delegation hop -> depth=1."""
         store = MemoryStore()
         store.store_genesis("root", _make_genesis("root"))
-        store.store_delegation(
-            "d1", _make_delegation("root", "agent-1", delegation_id="d1")
-        )
+        store.store_delegation("d1", _make_delegation("root", "agent-1", delegation_id="d1"))
         score, depth = _score_delegation_depth("agent-1", store)
         assert depth == 1
         assert score == pytest.approx(1.0 - (1 / MAX_DELEGATION_DEPTH))
@@ -400,23 +392,17 @@ class TestConstraintCoverage:
 class TestPostureLevel:
     def test_delegated_posture(self):
         store = MemoryStore()
-        store.store_posture_change(
-            "agent-1", _make_posture_change("agent-1", "delegated")
-        )
+        store.store_posture_change("agent-1", _make_posture_change("agent-1", "delegated"))
         assert _score_posture_level("agent-1", store) == 1.0
 
     def test_pseudo_agent_posture(self):
         store = MemoryStore()
-        store.store_posture_change(
-            "agent-1", _make_posture_change("agent-1", "pseudo_agent")
-        )
+        store.store_posture_change("agent-1", _make_posture_change("agent-1", "pseudo_agent"))
         assert _score_posture_level("agent-1", store) == 0.0
 
     def test_supervised_posture(self):
         store = MemoryStore()
-        store.store_posture_change(
-            "agent-1", _make_posture_change("agent-1", "supervised")
-        )
+        store.store_posture_change("agent-1", _make_posture_change("agent-1", "supervised"))
         assert _score_posture_level("agent-1", store) == 0.25
 
     def test_no_posture_history(self):
@@ -427,12 +413,10 @@ class TestPostureLevel:
         """Verify all posture values have expected scores."""
         for posture_value, expected_score in POSTURE_SCORES.items():
             store = MemoryStore()
-            store.store_posture_change(
-                "agent-x", _make_posture_change("agent-x", posture_value)
-            )
-            assert _score_posture_level("agent-x", store) == expected_score, (
-                f"Posture {posture_value} should score {expected_score}"
-            )
+            store.store_posture_change("agent-x", _make_posture_change("agent-x", posture_value))
+            assert (
+                _score_posture_level("agent-x", store) == expected_score
+            ), f"Posture {posture_value} should score {expected_score}"
 
 
 # ---------------------------------------------------------------------------
@@ -643,3 +627,82 @@ class TestComputeTrustScore:
         store = _build_perfect_agent_store()
         score = compute_trust_score("agent-perfect", store, governance_engine=None)
         assert score.grade == "A"
+
+
+# ---------------------------------------------------------------------------
+# M1: Chain recency uses most recent inbound delegation
+# ---------------------------------------------------------------------------
+
+
+class TestChainRecencySorting:
+    """Verify _score_chain_recency picks the most recent delegation, not first in list."""
+
+    def test_picks_most_recent_delegation(self):
+        """With multiple inbound delegations, the newest timestamp should be used."""
+        store = MemoryStore()
+        now = datetime.now(UTC)
+        old_time = now - timedelta(days=200)
+        recent_time = now - timedelta(days=5)
+
+        store.store_genesis("root", _make_genesis("root"))
+        # Two delegations to the same agent with different timestamps
+        store.store_delegation(
+            "del-old",
+            _make_delegation("root", "agent-1", delegation_id="del-old", timestamp=old_time),
+        )
+        store.store_delegation(
+            "del-new",
+            _make_delegation("root", "agent-1", delegation_id="del-new", timestamp=recent_time),
+        )
+
+        score = _score_chain_recency("agent-1", store)
+        # The recent delegation (5 days old) should give a score near 1.0
+        assert score > 0.9, f"Expected high recency score for 5-day-old delegation, got {score}"
+
+    def test_old_delegation_alone_gives_low_score(self):
+        """A single old delegation should give a low recency score."""
+        store = MemoryStore()
+        old_time = datetime.now(UTC) - timedelta(days=300)
+
+        store.store_genesis("root", _make_genesis("root"))
+        store.store_delegation(
+            "del-old",
+            _make_delegation("root", "agent-1", timestamp=old_time),
+        )
+
+        score = _score_chain_recency("agent-1", store)
+        assert score < 0.3, f"Expected low recency score for 300-day-old delegation, got {score}"
+
+
+# ---------------------------------------------------------------------------
+# M2: Immutable weights and posture scores
+# ---------------------------------------------------------------------------
+
+
+class TestImmutableConstants:
+    """Verify FACTOR_WEIGHTS and POSTURE_SCORES cannot be mutated at runtime."""
+
+    def test_factor_weights_immutable(self):
+        with pytest.raises(TypeError):
+            FACTOR_WEIGHTS["chain_completeness"] = 0.99  # type: ignore[index]
+
+    def test_posture_scores_immutable(self):
+        with pytest.raises(TypeError):
+            POSTURE_SCORES["delegated"] = 0.0  # type: ignore[index]
+
+    def test_factor_weights_sum_to_one(self):
+        total = sum(FACTOR_WEIGHTS.values())
+        assert total == pytest.approx(1.0)
+
+    def test_trust_score_factors_immutable(self):
+        """C1 fix: TrustScore.factors must not be mutable after construction."""
+        score = TrustScore(total=0.5, grade="C", factors={"chain_completeness": 1.0})
+        with pytest.raises(TypeError):
+            score.factors["chain_completeness"] = 0.0  # type: ignore[index]
+
+    def test_trust_score_factors_isolated_from_source(self):
+        """C1 fix: mutating the source dict must not affect the TrustScore."""
+        source = {"chain_completeness": 1.0}
+        score = TrustScore(total=0.5, grade="C", factors=source)
+        source["chain_completeness"] = 0.0
+        assert score.factors["chain_completeness"] == 1.0

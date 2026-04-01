@@ -6,11 +6,19 @@ and eligibility checking for posture upgrades.
 The history is immutable once written: records can only be appended,
 never modified or deleted. This ensures a tamper-evident audit trail
 of every posture transition.
+
+Independent Assessor Validation (PACT spec Section 12.9.4):
+    Posture upgrades require an independent assessor to prevent posture
+    gaming. Self-upgrades (changed_by == agent_id) are always blocked.
+    A pluggable assessor validator callback allows callers with org
+    hierarchy access to enforce structural independence checks (e.g.,
+    blocking direct supervisors who benefit from higher autonomy).
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from uuid import uuid4
@@ -31,7 +39,34 @@ class PostureHistoryError(Exception):
 
     This includes attempts to directly mutate the internal ``_records`` store
     or any other operation that would break the immutable audit trail.
+    Also raised when independent assessor validation fails for posture upgrades.
     """
+
+
+def validate_posture_independence(agent_id: str, changed_by: str, direction: str) -> None:
+    """Validate that a posture change assessor is independent of the agent.
+
+    This is the default independence validator per PACT spec Section 12.9.4.
+    It enforces the baseline rule: an agent cannot assess its own upgrade.
+
+    For structural checks (e.g., direct supervisor conflict of interest),
+    callers with access to the governance engine should provide a custom
+    validator via :meth:`PostureHistoryStore.set_assessor_validator`.
+
+    Args:
+        agent_id: The agent whose posture is being changed.
+        changed_by: The identity performing the change.
+        direction: Either ``"upgrade"`` or ``"downgrade"``.
+
+    Raises:
+        PostureHistoryError: If the assessor is the agent itself on upgrade.
+    """
+    if direction == "upgrade" and changed_by == agent_id:
+        raise PostureHistoryError(
+            f"Posture self-assessment blocked: agent '{agent_id}' cannot upgrade "
+            f"its own posture (PACT spec 12.9.4). An independent assessor is "
+            f"required for posture upgrades to prevent posture gaming."
+        )
 
 
 class PostureChangeTrigger(str, Enum):
@@ -105,6 +140,13 @@ class PostureHistoryStore:
 
     Each appended record is assigned a globally monotonic
     ``sequence_number`` to enforce ordering integrity.
+
+    Independent Assessor Validation (PACT spec Section 12.9.4):
+        Self-upgrades (``changed_by == agent_id``) are always blocked.
+        An optional assessor validator callback can be registered via
+        :meth:`set_assessor_validator` for structural independence checks
+        (e.g., blocking direct supervisors). The validator is only invoked
+        for upgrade-direction records.
     """
 
     def __init__(self) -> None:
@@ -114,6 +156,11 @@ class PostureHistoryStore:
         object.__setattr__(self, "_records", {})
         object.__setattr__(self, "_sequence_counter", 0)
         object.__setattr__(self, "_lock", threading.Lock())
+        object.__setattr__(
+            self,
+            "_assessor_validator",
+            None,  # type: Callable[[str, str, str], None] | None
+        )
         object.__setattr__(self, "_initialized", True)
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -137,12 +184,102 @@ class PostureHistoryStore:
             )
         object.__setattr__(self, name, value)
 
+    def set_assessor_validator(
+        self,
+        validator: Callable[[str, str, str], None],
+    ) -> None:
+        """Set a validator that checks assessor independence for posture upgrades.
+
+        The validator is called with ``(agent_id, changed_by, direction)`` for
+        every upgrade-direction record. It should raise :class:`PostureHistoryError`
+        if the assessor is not independent (e.g., the agent's direct supervisor
+        who benefits from higher autonomy).
+
+        This does NOT replace the built-in self-upgrade check -- that always
+        runs first. The custom validator provides additional structural checks
+        for callers with access to the org hierarchy.
+
+        Args:
+            validator: A callable ``(agent_id, changed_by, direction) -> None``
+                that raises :class:`PostureHistoryError` on independence violations.
+        """
+        object.__setattr__(self, "_assessor_validator", validator)
+
+    def _validate_assessor_independence(self, record: PostureChangeRecord) -> None:
+        """Validate assessor independence before storing a posture change.
+
+        For upgrade-direction records:
+        1. Always check: ``changed_by != agent_id`` (self-upgrade blocked)
+        2. If a custom validator is set, invoke it for further structural checks
+
+        For downgrade-direction records: no independence check is required.
+        Agents and operators can downgrade themselves (incident response,
+        voluntary step-down).
+
+        Raises:
+            PostureHistoryError: If the assessor fails independence validation.
+        """
+        if record.direction != "upgrade":
+            return
+
+        # Built-in: self-upgrade is always blocked (PACT spec 12.9.4)
+        if record.changed_by == record.agent_id:
+            logger.warning(
+                "SECURITY: Posture self-upgrade attempt blocked: agent=%s, "
+                "from=%s, to=%s, trigger=%s",
+                record.agent_id,
+                record.from_posture,
+                record.to_posture,
+                record.trigger.value,
+            )
+            raise PostureHistoryError(
+                f"Posture self-assessment blocked: agent '{record.agent_id}' "
+                f"cannot upgrade its own posture (PACT spec 12.9.4). An "
+                f"independent assessor is required for posture upgrades to "
+                f"prevent posture gaming."
+            )
+
+        # Custom validator for structural checks (e.g., supervisor COI)
+        if self._assessor_validator is not None:
+            try:
+                self._assessor_validator(record.agent_id, record.changed_by, record.direction)
+            except PostureHistoryError:
+                # Re-raise PostureHistoryError directly -- caller provided
+                # a well-typed error with context
+                raise
+            except Exception as exc:
+                # Wrap unexpected errors -- fail closed, do not allow the
+                # upgrade through on validator bugs
+                logger.error(
+                    "Assessor validation failed unexpectedly for agent=%s, " "changed_by=%s: %s",
+                    record.agent_id,
+                    record.changed_by,
+                    exc,
+                )
+                raise PostureHistoryError(
+                    f"Assessor validation failed for upgrade of agent "
+                    f"'{record.agent_id}' by '{record.changed_by}': {exc}"
+                ) from exc
+
     def record_change(self, record: PostureChangeRecord) -> None:
         """Append a posture change record. Never modifies existing records.
 
+        Validates assessor independence for upgrade-direction records
+        before storing (PACT spec Section 12.9.4). Self-upgrades are
+        always blocked. If a custom assessor validator is set, it is
+        also invoked for upgrades.
+
         Assigns a monotonically increasing sequence number to the record
         before appending it to the store. Thread-safe.
+
+        Raises:
+            PostureHistoryError: If the record fails independence validation.
         """
+        # Validate BEFORE acquiring the lock and assigning sequence number.
+        # A rejected record must not consume a sequence number or appear
+        # in the store.
+        self._validate_assessor_independence(record)
+
         with self._lock:
             new_seq = self._sequence_counter + 1
             object.__setattr__(self, "_sequence_counter", new_seq)

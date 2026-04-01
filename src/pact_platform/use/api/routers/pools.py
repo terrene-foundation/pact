@@ -1,13 +1,18 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Pools API router -- /api/v1/pools."""
+"""Pools API router -- /api/v1/pools.
+
+Uses DataFlow Express API for all CRUD operations.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from pact_platform.models import (
     MAX_CONCURRENT_UPPER,
@@ -16,65 +21,81 @@ from pact_platform.models import (
     MAX_SHORT_STRING,
     db,
     safe_sum_finite,
+    validate_record_id,
     validate_string_length,
 )
+from pact_platform.use.api.governance import governance_gate, is_governance_active
+from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
 
 router = APIRouter(prefix="/api/v1/pools", tags=["pools"])
 
 
-def _exec(wf) -> dict:
-    results, _ = db.execute_workflow(wf)
-    return results
-
-
-@router.post("", status_code=201)
-def create_pool(body: dict[str, Any]) -> dict:
+@router.post("", status_code=201, response_model=None)
+@limiter.limit(RATE_POST)
+async def create_pool(request: Request, body: dict[str, Any]) -> dict | Response:
     """Create a new pool."""
     pid = body.get("id") or uuid4().hex[:12]
+    if body.get("id"):
+        validate_record_id(pid)
     org_id = body.get("org_id", "")
     name = body.get("name", "")
     if not org_id or not name:
         raise HTTPException(400, "org_id and name are required")
 
-    # M2 fix: input length validation
     validate_string_length(org_id, "org_id", MAX_SHORT_STRING)
     validate_string_length(name, "name", MAX_SHORT_STRING)
     description = body.get("description", "")
     if description:
         validate_string_length(description, "description", MAX_LONG_STRING)
 
-    # L1 fix: validate max_concurrent bounds
     max_concurrent = body.get("max_concurrent", 5)
     if not isinstance(max_concurrent, int) or max_concurrent < 1:
         raise HTTPException(400, "max_concurrent must be a positive integer")
     if max_concurrent > MAX_CONCURRENT_UPPER:
+        raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
+
+    # H5 fix: validate enum-typed fields
+    _VALID_POOL_TYPES = ("agent", "human", "mixed")
+    _VALID_ROUTING_STRATEGIES = ("round_robin", "least_busy", "capability_match")
+    pool_type = body.get("pool_type", "agent")
+    if pool_type not in _VALID_POOL_TYPES:
         raise HTTPException(
             400,
-            f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}",
+            f"pool_type must be one of: {', '.join(_VALID_POOL_TYPES)}",
+        )
+    routing_strategy = body.get("routing_strategy", "round_robin")
+    if routing_strategy not in _VALID_ROUTING_STRATEGIES:
+        raise HTTPException(
+            400,
+            f"routing_strategy must be one of: {', '.join(_VALID_ROUTING_STRATEGIES)}",
         )
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolCreateNode",
-        "create",
+    held = await governance_gate(org_id, "create_pool", {"resource": "pool"})
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
+
+    return await db.express.create(
+        "AgenticPool",
         {
             "id": pid,
             "org_id": org_id,
             "name": name,
             "description": description,
-            "pool_type": body.get("pool_type", "agent"),
-            "routing_strategy": body.get("routing_strategy", "round_robin"),
+            "pool_type": pool_type,
+            "routing_strategy": routing_strategy,
             "max_concurrent": max_concurrent,
         },
     )
-    return _exec(wf)["create"]
 
 
 @router.get("")
-def list_pools(
+@limiter.limit(RATE_GET)
+async def list_pools(
+    request: Request,
     org_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
 ) -> dict:
     """List pools."""
     filt: dict[str, Any] = {}
@@ -83,73 +104,68 @@ def list_pools(
     if status:
         filt["status"] = status
 
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolListNode",
-        "list",
-        {
-            "filter": filt,
-            "limit": limit,
-        },
-    )
-    return _exec(wf)["list"]
+    records = await db.express.list("AgenticPool", filt, limit=limit, offset=offset)
+    return {"records": records, "count": len(records), "limit": limit, "offset": offset}
 
 
 @router.get("/{pool_id}")
-def get_pool(pool_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_pool(request: Request, pool_id: str) -> dict:
     """Get pool detail."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticPoolReadNode", "read", {"id": pool_id})
-    result = _exec(wf)["read"]
-    if not result or result.get("found") is False or result.get("failed"):
-        raise HTTPException(404, f"Pool {pool_id} not found")
+    validate_record_id(pool_id)
+    result = await db.express.read("AgenticPool", pool_id)
+    if not result or result.get("found") is False:
+        raise HTTPException(404, "Pool not found")
     return result
 
 
-@router.post("/{pool_id}/members", status_code=201)
-def add_member(pool_id: str, body: dict[str, Any]) -> dict:
-    """Add a member to a pool.
-
-    Enforces MAX_POOL_MEMBERS to prevent pool flooding (DoS).
-    """
-    # M1 fix: check current member count before adding
-    wf_count = db.create_workflow()
-    wf_count.add_node(
-        "AgenticPoolMembershipListNode",
-        "count_members",
-        {
-            "filter": {"pool_id": pool_id, "status": "active"},
-            "limit": 0,
-        },
+@router.post("/{pool_id}/members", status_code=201, response_model=None)
+@limiter.limit(RATE_POST)
+async def add_member(request: Request, pool_id: str, body: dict[str, Any]) -> dict | Response:
+    """Add a member to a pool."""
+    validate_record_id(pool_id)
+    current_count = await db.express.count(
+        "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )
-    count_result = _exec(wf_count)["count_members"]
-    current_count = count_result.get("total", len(count_result.get("records", [])))
     if current_count >= MAX_POOL_MEMBERS:
-        raise HTTPException(
-            429,
-            f"Pool {pool_id} has reached the maximum of " f"{MAX_POOL_MEMBERS} members",
-        )
+        raise HTTPException(429, f"Pool has reached the maximum of {MAX_POOL_MEMBERS} members")
 
     member_address = body.get("member_address", "")
     if not member_address:
         raise HTTPException(400, "member_address is required")
     validate_string_length(member_address, "member_address", MAX_SHORT_STRING)
 
-    # L1 fix: validate max_concurrent bounds
     max_concurrent = body.get("max_concurrent", 3)
     if not isinstance(max_concurrent, int) or max_concurrent < 1:
         raise HTTPException(400, "max_concurrent must be a positive integer")
     if max_concurrent > MAX_CONCURRENT_UPPER:
+        raise HTTPException(400, f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}")
+
+    # H5 fix: validate member_type enum
+    _VALID_MEMBER_TYPES = ("agent", "human")
+    member_type = body.get("member_type", "agent")
+    if member_type not in _VALID_MEMBER_TYPES:
         raise HTTPException(
             400,
-            f"max_concurrent must not exceed {MAX_CONCURRENT_UPPER}",
+            f"member_type must be one of: {', '.join(_VALID_MEMBER_TYPES)}",
         )
 
     mid = body.get("id") or uuid4().hex[:12]
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolMembershipCreateNode",
-        "create",
+    if body.get("id"):
+        validate_record_id(mid)
+
+    pool_rec = await db.express.read("AgenticPool", pool_id)
+    if pool_rec and pool_rec.get("org_id"):
+        held = await governance_gate(
+            pool_rec["org_id"], "add_pool_member", {"resource": "pool_member"}
+        )
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
+    elif is_governance_active():
+        raise HTTPException(403, "Cannot resolve governance context — action blocked")
+
+    return await db.express.create(
+        "AgenticPoolMembership",
         {
             "id": mid,
             "pool_id": pool_id,
@@ -159,31 +175,35 @@ def add_member(pool_id: str, body: dict[str, Any]) -> dict:
             "max_concurrent": max_concurrent,
         },
     )
-    return _exec(wf)["create"]
 
 
-@router.delete("/{pool_id}/members/{member_id}")
-def remove_member(pool_id: str, member_id: str) -> dict:
+@router.delete("/{pool_id}/members/{member_id}", response_model=None)
+@limiter.limit(RATE_POST)
+async def remove_member(request: Request, pool_id: str, member_id: str) -> dict | Response:
     """Remove a member from a pool."""
-    wf = db.create_workflow()
-    wf.add_node("AgenticPoolMembershipDeleteNode", "delete", {"id": member_id})
-    return _exec(wf)["delete"]
+    validate_record_id(pool_id)
+    validate_record_id(member_id)
+    pool_rec = await db.express.read("AgenticPool", pool_id)
+    if pool_rec and pool_rec.get("org_id"):
+        held = await governance_gate(
+            pool_rec["org_id"], "remove_pool_member", {"resource": "pool_member"}
+        )
+        if held is not None:
+            return JSONResponse(content=held, status_code=202)
+    elif is_governance_active():
+        raise HTTPException(403, "Cannot resolve governance context — action blocked")
+    deleted = await db.express.delete("AgenticPoolMembership", member_id)
+    return {"deleted": deleted, "id": member_id}
 
 
 @router.get("/{pool_id}/capacity")
-def get_pool_capacity(pool_id: str) -> dict:
+@limiter.limit(RATE_GET)
+async def get_pool_capacity(request: Request, pool_id: str) -> dict:
     """Get pool capacity info."""
-    wf = db.create_workflow()
-    wf.add_node(
-        "AgenticPoolMembershipListNode",
-        "list",
-        {
-            "filter": {"pool_id": pool_id, "status": "active"},
-        },
+    validate_record_id(pool_id)
+    members = await db.express.list(
+        "AgenticPoolMembership", {"pool_id": pool_id, "status": "active"}
     )
-    result = _exec(wf)["list"]
-    members = result.get("records", [])
-    # C3 fix: NaN-safe summation for read-back values
     total_capacity = safe_sum_finite([m.get("max_concurrent", 0) for m in members])
     total_active = safe_sum_finite([m.get("active_count", 0) for m in members])
     return {

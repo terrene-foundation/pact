@@ -1,6 +1,6 @@
 # Copyright 2026 Terrene Foundation
 # Licensed under the Apache License, Version 2.0
-"""Tests for HELD timeout in ApprovalQueue (TODO-09).
+"""Tests for HELD timeout in ApprovalQueue (implemented, formerly TODO-09).
 
 Covers: timeout not triggered immediately, auto-deny after timeout,
 resolved actions unaffected, and timeout reason message.

@@ -22,10 +22,8 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -35,6 +33,7 @@ from pact_platform.build.config.env import EnvConfig, load_env_config
 from pact_platform.build.workspace.bridge import BridgeManager
 from pact_platform.build.workspace.models import WorkspaceRegistry
 from pact_platform.trust.store.cost_tracking import CostTracker
+from pact_platform.models import validate_record_id
 from pact_platform.use.api.endpoints import ApiResponse, PactAPI
 from pact_platform.use.api.events import event_bus
 from pact_platform.use.api.shutdown import ShutdownManager
@@ -178,7 +177,7 @@ def create_app(
     platform_api: PactAPI | None = None,
     env_config: EnvConfig | None = None,
     trust_store: Any | None = None,
-    dm_runner: Any | None = None,
+    team_runner: Any | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -188,9 +187,9 @@ def create_app(
         env_config: Optional EnvConfig. When None, loaded from environment.
         trust_store: Optional trust store for readiness probe. When
             provided, the ``/ready`` endpoint checks store health.
-        dm_runner: Optional DMTeamRunner instance for DM team endpoints.
-            When provided, mounts POST/GET /api/v1/dm/tasks and
-            GET /api/v1/dm/status endpoints.
+        team_runner: Optional governed team runner for team task endpoints.
+            When provided, mounts POST/GET /api/v1/teams/tasks and
+            GET /api/v1/teams/status endpoints.
 
     Returns:
         Configured FastAPI application with all routes mounted.
@@ -209,8 +208,8 @@ def create_app(
     # Shutdown manager for graceful connection cleanup (I8)
     shutdown_manager = ShutdownManager()
 
-    # Rate limiter (M35-3503) — key by remote IP address
-    limiter = Limiter(key_func=get_remote_address)
+    # Rate limiter (M35-3503) — shared singleton from rate_limit module
+    from pact_platform.use.api.rate_limit import limiter
 
     app = FastAPI(
         title="PACT API",
@@ -229,7 +228,18 @@ def create_app(
     async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
         return JSONResponse(
             status_code=429,
-            content={"error": "Rate limit exceeded", "detail": str(exc.detail)},
+            content={"error": "Rate limit exceeded", "detail": "Please try again later"},
+        )
+
+    # ValueError handler — validation helpers (validate_finite, validate_string_length,
+    # validate_record_id) raise ValueError. Return 400 with generic message to avoid
+    # leaking internal field names or validation logic.
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+        logger.debug("Input validation failed: %s", exc)
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid input", "detail": "Request contains invalid values"},
         )
 
     # SlowAPI rate limiting middleware
@@ -353,7 +363,7 @@ def create_app(
     # ------------------------------------------------------------------
 
     @app.get("/health")
-    @limiter.limit(_rate_get)
+    @limiter.exempt
     async def health(request: Request) -> dict[str, Any]:
         """Health check endpoint for load balancers and monitoring.
 
@@ -375,7 +385,7 @@ def create_app(
     # ------------------------------------------------------------------
 
     @app.get("/ready")
-    @limiter.limit(_rate_get)
+    @limiter.exempt
     async def readiness(request: Request) -> JSONResponse:
         """Readiness probe — checks whether the platform is ready to serve.
 
@@ -424,6 +434,7 @@ def create_app(
         request: Request, team_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """List agents in a team. Requires authentication."""
+        validate_record_id(team_id)
         return api.list_agents(team_id)
 
     @app.get("/api/v1/agents/{agent_id}/status")
@@ -432,6 +443,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get agent status and posture. Requires authentication."""
+        validate_record_id(agent_id)
         return api.agent_status(agent_id)
 
     @app.post("/api/v1/agents/{agent_id}/approve/{action_id}")
@@ -445,6 +457,8 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Approve a held action. Requires authentication."""
+        validate_record_id(agent_id)
+        validate_record_id(action_id)
         return api.approve_action(agent_id, action_id, approver_id, reason)
 
     @app.post("/api/v1/agents/{agent_id}/reject/{action_id}")
@@ -458,6 +472,8 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Reject a held action. Requires authentication."""
+        validate_record_id(agent_id)
+        validate_record_id(action_id)
         return api.reject_action(agent_id, action_id, approver_id, reason)
 
     @app.get("/api/v1/held-actions")
@@ -496,6 +512,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get trust chain detail for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.get_trust_chain_detail(agent_id)
 
     @app.get("/api/v1/envelopes/{envelope_id}")
@@ -504,6 +521,7 @@ def create_app(
         request: Request, envelope_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get constraint envelope with all five CARE dimensions. Requires authentication."""
+        validate_record_id(envelope_id)
         return api.get_envelope(envelope_id)
 
     @app.get("/api/v1/workspaces")
@@ -540,6 +558,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get posture change history for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.posture_history(agent_id)
 
     # ------------------------------------------------------------------
@@ -552,6 +571,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get upgrade evidence for posture upgrade evaluation. Requires authentication."""
+        validate_record_id(agent_id)
         return api.upgrade_evidence(agent_id)
 
     # ------------------------------------------------------------------
@@ -576,6 +596,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """List bridges for a specific team. Requires authentication."""
+        validate_record_id(team_id)
         return api.list_bridges_by_team(team_id)
 
     @app.get("/api/v1/bridges/{bridge_id}/audit")
@@ -590,6 +611,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Get bridge audit trail. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.bridge_audit(
             bridge_id,
             start_date=start_date,
@@ -606,6 +628,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Get bridge detail by ID. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.get_bridge(bridge_id)
 
     @app.put("/api/v1/bridges/{bridge_id}/approve")
@@ -618,6 +641,12 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Approve a bridge on source or target side. Requires authentication."""
+        validate_record_id(bridge_id)
+        if side not in ("source", "target"):
+            raise HTTPException(
+                status_code=400,
+                detail="side must be 'source' or 'target'",
+            )
         return api.approve_bridge(bridge_id, side, approver_id)
 
     @app.post("/api/v1/bridges/{bridge_id}/suspend")
@@ -629,6 +658,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Suspend an active bridge. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.suspend_bridge_action(bridge_id, reason)
 
     @app.post("/api/v1/bridges/{bridge_id}/close")
@@ -640,6 +670,7 @@ def create_app(
         _token: str = Depends(verify_token),
     ) -> ApiResponse:
         """Close a bridge. Requires authentication."""
+        validate_record_id(bridge_id)
         return api.close_bridge_action(bridge_id, reason)
 
     # ------------------------------------------------------------------
@@ -652,6 +683,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get shadow enforcement metrics for an agent. Requires authentication."""
+        validate_record_id(agent_id)
         return api.shadow_metrics(agent_id)
 
     @app.get("/api/v1/shadow/{agent_id}/report")
@@ -660,6 +692,7 @@ def create_app(
         request: Request, agent_id: str, _token: str = Depends(verify_token)
     ) -> ApiResponse:
         """Get shadow enforcement posture upgrade report. Requires authentication."""
+        validate_record_id(agent_id)
         return api.shadow_report(agent_id)
 
     # ------------------------------------------------------------------
@@ -739,15 +772,15 @@ def create_app(
     # M23 DM Team endpoints (Task 5052)
     # ------------------------------------------------------------------
 
-    if dm_runner is not None:
+    if team_runner is not None:
 
-        @app.post("/api/v1/dm/tasks")
+        @app.post("/api/v1/teams/tasks")
         @limiter.limit(_rate_post)
         async def dm_submit_task(
             request: Request,
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
-            """Submit a DM team task. Auto-routes by keyword matching."""
+            """Submit a governed team task. Auto-routes by keyword matching."""
             body: dict[str, Any] = await request.json()
             description = body.get("description", "")
             target_agent = body.get("target_agent")
@@ -766,16 +799,16 @@ def create_app(
                 )
 
             # Validate target agent if specified
-            if target_agent and target_agent not in dm_runner.registered_agents:
+            if target_agent and target_agent not in team_runner.registered_agents:
                 return ApiResponse(
                     status="error",
                     error=(
-                        f"Agent '{target_agent}' is not a valid DM team agent. "
-                        f"Available: {dm_runner.registered_agents}"
+                        f"Agent '{target_agent}' is not a valid governed team agent. "
+                        f"Available: {team_runner.registered_agents}"
                     ),
                 )
 
-            result = dm_runner.submit_task(
+            result = team_runner.submit_task(
                 description=description,
                 target_agent=target_agent,
             )
@@ -806,7 +839,7 @@ def create_app(
                 },
             )
 
-        @app.get("/api/v1/dm/tasks/{task_id}")
+        @app.get("/api/v1/teams/tasks/{task_id}")
         @limiter.limit(_rate_get)
         async def dm_get_task(
             request: Request,
@@ -814,7 +847,8 @@ def create_app(
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get DM task result and lifecycle by task_id."""
-            result = dm_runner.get_task_result(task_id)
+            validate_record_id(task_id)
+            result = team_runner.get_task_result(task_id)
             if result is None:
                 return ApiResponse(
                     status="error",
@@ -833,17 +867,17 @@ def create_app(
                 },
             )
 
-        @app.get("/api/v1/dm/status")
+        @app.get("/api/v1/teams/status")
         @limiter.limit(_rate_get)
         async def dm_status(
             request: Request,
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get all 5 DM agents' postures and task stats."""
-            stats = dm_runner.get_agent_stats()
+            stats = team_runner.get_agent_stats()
             agents_data = []
-            for agent_id in dm_runner.registered_agents:
-                record = dm_runner.get_agent_record(agent_id)
+            for agent_id in team_runner.registered_agents:
+                record = team_runner.get_agent_record(agent_id)
                 agent_stats = stats.get(agent_id, {})
                 agents_data.append(
                     {
@@ -862,7 +896,7 @@ def create_app(
             return ApiResponse(
                 status="ok",
                 data={
-                    "team_id": "dm-team",
+                    "team_id": "governed-team",
                     "agents": agents_data,
                     "total_agents": len(agents_data),
                 },
@@ -876,8 +910,9 @@ def create_app(
             _token: str = Depends(verify_token),
         ) -> ApiResponse:
             """Get posture upgrade recommendation for an agent."""
+            validate_record_id(agent_id)
             try:
-                rec = dm_runner.get_upgrade_recommendation(agent_id)
+                rec = team_runner.get_upgrade_recommendation(agent_id)
                 return ApiResponse(status="ok", data=rec)
             except KeyError as exc:
                 logger.exception("get_upgrade_recommendation failed for agent_id=%s", agent_id)
@@ -918,11 +953,17 @@ def create_app(
         await shutdown_manager.close_all_connections()
         logger.info("PACT API shutdown complete")
 
+    # --- Governance gate dev-mode (allows operations without engine in dev mode) ---
+    from pact_platform.use.api.governance import set_dev_mode
+
+    set_dev_mode(cfg.pact_dev_mode)
+
     # --- Work management routers (M2) ---
     from pact_platform.use.api.routers import (
         decisions_router,
         metrics_router,
         objectives_router,
+        org_router,
         pools_router,
         requests_router,
         reviews_router,
@@ -937,6 +978,7 @@ def create_app(
     app.include_router(pools_router, dependencies=_auth_deps)
     app.include_router(reviews_router, dependencies=_auth_deps)
     app.include_router(metrics_router, dependencies=_auth_deps)
+    app.include_router(org_router, dependencies=_auth_deps)
 
     return app
 

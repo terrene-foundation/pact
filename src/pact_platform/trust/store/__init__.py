@@ -33,6 +33,7 @@ from pact_platform.trust.store.posture_history import (
     PostureEligibilityChecker,
     PostureHistoryError,
     PostureHistoryStore,
+    validate_posture_independence,
 )
 from pact_platform.trust.store.sqlite_store import SQLiteTrustStore
 from pact_platform.trust.store.store import FilesystemStore, MemoryStore, TrustStore
@@ -72,6 +73,7 @@ __all__ = [
     "PostureEligibilityChecker",
     "PostureHistoryError",
     "EligibilityResult",
+    "validate_posture_independence",
     # Migrations
     "Migration",
     "MigrationError",

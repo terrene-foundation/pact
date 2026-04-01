@@ -139,3 +139,139 @@ class TestCLIModuleExecutable:
         from pact_platform.build.cli import main
 
         assert callable(main)
+
+
+class TestBridgeApproveCLI:
+    """Tests for `pact bridge approve` command (implemented, formerly TODO-10 L3 wiring)."""
+
+    def test_bridge_approve_no_engine(self, runner):
+        import pact_platform.cli as cli_mod
+
+        old_engine = cli_mod._engine
+        cli_mod._engine = None
+        try:
+            result = runner.invoke(
+                cli_mod.main, ["bridge", "approve", "D1-R1", "D1-R1-T1-R1", "D1-R1"]
+            )
+            assert result.exit_code != 0
+            assert "no org loaded" in result.output.lower()
+        finally:
+            cli_mod._engine = old_engine
+
+    def test_bridge_approve_invalid_address(self, runner):
+        import pact_platform.cli as cli_mod
+
+        result = runner.invoke(
+            cli_mod.main, ["bridge", "approve", "INVALID", "D1-R1-T1-R1", "D1-R1"]
+        )
+        assert result.exit_code != 0
+
+    def test_bridge_approve_success(self, runner):
+        from unittest.mock import MagicMock
+
+        import pact_platform.cli as cli_mod
+
+        mock_engine = MagicMock()
+        mock_approval = MagicMock()
+        mock_approval.expires_at = "2026-04-01T00:00:00"
+        mock_engine.approve_bridge.return_value = mock_approval
+        old_engine = cli_mod._engine
+        cli_mod._engine = mock_engine
+        try:
+            result = runner.invoke(
+                cli_mod.main, ["bridge", "approve", "D1-R1", "D1-R1-T1-R1", "D1-R1"]
+            )
+            assert result.exit_code == 0
+            assert "approved" in result.output.lower()
+            mock_engine.approve_bridge.assert_called_once()
+        finally:
+            cli_mod._engine = old_engine
+
+
+class TestRoleDesignateActingCLI:
+    """Tests for `pact role designate-acting` command (implemented, formerly TODO-11 L3 wiring)."""
+
+    def test_designate_acting_no_engine(self, runner):
+        import pact_platform.cli as cli_mod
+
+        old_engine = cli_mod._engine
+        cli_mod._engine = None
+        try:
+            result = runner.invoke(
+                cli_mod.main, ["role", "designate-acting", "D1-R1", "D1-R1-T1-R1", "D1-R1"]
+            )
+            assert result.exit_code != 0
+            assert "no org loaded" in result.output.lower()
+        finally:
+            cli_mod._engine = old_engine
+
+    def test_designate_acting_invalid_address(self, runner):
+        import pact_platform.cli as cli_mod
+
+        result = runner.invoke(
+            cli_mod.main, ["role", "designate-acting", "INVALID", "D1-R1-T1-R1", "D1-R1"]
+        )
+        assert result.exit_code != 0
+
+    def test_designate_acting_success(self, runner):
+        from unittest.mock import MagicMock
+
+        import pact_platform.cli as cli_mod
+
+        mock_engine = MagicMock()
+        mock_designation = MagicMock()
+        mock_designation.expires_at = "2026-04-01T00:00:00"
+        mock_engine.designate_acting_occupant.return_value = mock_designation
+        old_engine = cli_mod._engine
+        cli_mod._engine = mock_engine
+        try:
+            result = runner.invoke(
+                cli_mod.main, ["role", "designate-acting", "D1-R1", "D1-R1-T1-R1", "D1-R1"]
+            )
+            assert result.exit_code == 0
+            assert "designated" in result.output.lower()
+            mock_engine.designate_acting_occupant.assert_called_once()
+        finally:
+            cli_mod._engine = old_engine
+
+
+class TestRoleVacancyStatusCLI:
+    """Tests for `pact role vacancy-status` command (implemented, formerly TODO-11 L3 wiring)."""
+
+    def test_vacancy_status_no_engine(self, runner):
+        import pact_platform.cli as cli_mod
+
+        old_engine = cli_mod._engine
+        cli_mod._engine = None
+        try:
+            result = runner.invoke(cli_mod.main, ["role", "vacancy-status", "D1-R1"])
+            assert result.exit_code != 0
+            assert "no org loaded" in result.output.lower()
+        finally:
+            cli_mod._engine = old_engine
+
+
+class TestGovernanceCLIAuditChain:
+    """Verify _make_audit_chain() produces a valid AuditChain."""
+
+    def test_make_audit_chain_returns_valid_chain(self):
+        from pact_platform.cli import _make_audit_chain
+
+        chain = _make_audit_chain()
+        assert chain.chain_id.startswith("cli-")
+        assert chain.length == 0
+
+    def test_make_audit_chain_accepts_appends(self):
+        """Audit chain must accept the append() signature GovernanceEngine uses."""
+        from pact_platform.build.config.schema import VerificationLevel
+        from pact_platform.cli import _make_audit_chain
+
+        chain = _make_audit_chain()
+        anchor = chain.append(
+            agent_id="governance-engine:test-org",
+            action="envelope_created",
+            verification_level=VerificationLevel.AUTO_APPROVED,
+            metadata={"role_address": "D1-R1", "envelope_id": "env-001"},
+        )
+        assert chain.length == 1
+        assert anchor.action == "envelope_created"
