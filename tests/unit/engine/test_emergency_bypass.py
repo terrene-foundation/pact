@@ -24,6 +24,8 @@ from pact_platform.engine.emergency_bypass import (
     BypassRecord,
     BypassTier,
     EmergencyBypass,
+    MemoryRateLimitStore,
+    SqliteRateLimitStore,
     _REVIEW_WINDOW_DAYS,
     _TIER_DURATION,
 )
@@ -1388,3 +1390,252 @@ class TestOverdueReviews:
         assert len(overdue) == 2
         assert overdue[0].bypass_id == r1.bypass_id
         assert overdue[1].bypass_id == r2.bypass_id
+
+
+# ------------------------------------------------------------------
+# RateLimitStore implementations
+# ------------------------------------------------------------------
+
+
+class TestMemoryRateLimitStore:
+    """Tests for in-memory rate limit store (default backend)."""
+
+    def test_record_and_get_history(self):
+        store = MemoryRateLimitStore()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+        store.record_creation("D1-R1", now + timedelta(hours=5))
+        history = store.get_history("D1-R1", now - timedelta(days=1))
+        assert len(history) == 2
+        assert history[0] == now
+        assert history[1] == now + timedelta(hours=5)
+
+    def test_get_history_filters_by_cutoff(self):
+        store = MemoryRateLimitStore()
+        old = datetime(2026, 1, 1, tzinfo=UTC)
+        recent = datetime(2026, 1, 8, tzinfo=UTC)
+        store.record_creation("D1-R1", old)
+        store.record_creation("D1-R1", recent)
+        cutoff = datetime(2026, 1, 5, tzinfo=UTC)
+        history = store.get_history("D1-R1", cutoff)
+        assert len(history) == 1
+        assert history[0] == recent
+
+    def test_cleanup_stale_removes_old_entries(self):
+        store = MemoryRateLimitStore()
+        old = datetime(2026, 1, 1, tzinfo=UTC)
+        recent = datetime(2026, 1, 10, tzinfo=UTC)
+        store.record_creation("D1-R1", old)
+        store.record_creation("D1-R1", recent)
+        removed = store.cleanup_stale(datetime(2026, 1, 5, tzinfo=UTC))
+        assert removed == 1
+        # Only recent remains
+        history = store.get_history("D1-R1", datetime(2025, 1, 1, tzinfo=UTC))
+        assert len(history) == 1
+
+    def test_empty_history_returns_empty(self):
+        store = MemoryRateLimitStore()
+        history = store.get_history("D1-R1", datetime(2026, 1, 1, tzinfo=UTC))
+        assert history == []
+
+    def test_separate_roles_are_isolated(self):
+        store = MemoryRateLimitStore()
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+        store.record_creation("D2-R1", now + timedelta(hours=1))
+        assert len(store.get_history("D1-R1", now - timedelta(days=1))) == 1
+        assert len(store.get_history("D2-R1", now - timedelta(days=1))) == 1
+
+
+class TestSqliteRateLimitStore:
+    """Tests for SQLite-backed rate limit store (multi-process safe)."""
+
+    @pytest.fixture()
+    def store(self, tmp_path):
+        db_path = str(tmp_path / "ratelimit.db")
+        s = SqliteRateLimitStore(db_path=db_path)
+        yield s
+        s.close()
+
+    def test_record_and_get_history(self, store):
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+        store.record_creation("D1-R1", now + timedelta(hours=5))
+        history = store.get_history("D1-R1", now - timedelta(days=1))
+        assert len(history) == 2
+        assert history[0] == now
+        assert history[1] == now + timedelta(hours=5)
+
+    def test_get_history_filters_by_cutoff(self, store):
+        old = datetime(2026, 1, 1, tzinfo=UTC)
+        recent = datetime(2026, 1, 8, tzinfo=UTC)
+        store.record_creation("D1-R1", old)
+        store.record_creation("D1-R1", recent)
+        history = store.get_history("D1-R1", datetime(2026, 1, 5, tzinfo=UTC))
+        assert len(history) == 1
+        assert history[0] == recent
+
+    def test_cleanup_stale_removes_old_entries(self, store):
+        old = datetime(2026, 1, 1, tzinfo=UTC)
+        recent = datetime(2026, 1, 10, tzinfo=UTC)
+        store.record_creation("D1-R1", old)
+        store.record_creation("D1-R1", recent)
+        removed = store.cleanup_stale(datetime(2026, 1, 5, tzinfo=UTC))
+        assert removed == 1
+        history = store.get_history("D1-R1", datetime(2025, 1, 1, tzinfo=UTC))
+        assert len(history) == 1
+
+    def test_separate_roles_are_isolated(self, store):
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+        store.record_creation("D2-R1", now + timedelta(hours=1))
+        assert len(store.get_history("D1-R1", now - timedelta(days=1))) == 1
+        assert len(store.get_history("D2-R1", now - timedelta(days=1))) == 1
+
+    def test_persists_across_connections(self, tmp_path):
+        """Verify data survives close+reopen (multi-process scenario)."""
+        db_path = str(tmp_path / "persist.db")
+        s1 = SqliteRateLimitStore(db_path=db_path)
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        s1.record_creation("D1-R1", now)
+        s1.close()
+
+        s2 = SqliteRateLimitStore(db_path=db_path)
+        history = s2.get_history("D1-R1", now - timedelta(days=1))
+        assert len(history) == 1
+        assert history[0] == now
+        s2.close()
+
+    def test_bypass_with_sqlite_store_enforces_rate_limit(self, tmp_path):
+        """End-to-end: EmergencyBypass with SqliteRateLimitStore."""
+        db_path = str(tmp_path / "e2e.db")
+        store = SqliteRateLimitStore(db_path=db_path)
+        mgr = EmergencyBypass(rate_limit_store=store)
+
+        now = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+
+        # Create MAX_BYPASSES_PER_WEEK bypasses for the same role
+        for i in range(MAX_BYPASSES_PER_WEEK):
+            with freeze_time(now + timedelta(hours=COOLDOWN_HOURS * i)):
+                mgr.create_bypass(
+                    role_address="D1-R1",
+                    tier=BypassTier.TIER_1,
+                    reason=f"emergency {i+1}",
+                    approved_by="admin",
+                )
+
+        # Next one should be rate-limited
+        with freeze_time(now + timedelta(hours=COOLDOWN_HOURS * MAX_BYPASSES_PER_WEEK)):
+            with pytest.raises(ValueError, match="rate limit exceeded"):
+                mgr.create_bypass(
+                    role_address="D1-R1",
+                    tier=BypassTier.TIER_1,
+                    reason="one too many",
+                    approved_by="admin",
+                )
+
+        store.close()
+
+    def test_atomic_check_and_record_rolls_back_on_violation(self, tmp_path):
+        """Verify atomic_check_and_record does NOT insert when rate limit violated."""
+        db_path = str(tmp_path / "atomic.db")
+        store = SqliteRateLimitStore(db_path=db_path)
+
+        now = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+
+        # Fill up to the limit
+        for i in range(MAX_BYPASSES_PER_WEEK):
+            t = now + timedelta(hours=COOLDOWN_HOURS * i)
+            store.record_creation("D1-R1", t)
+
+        # Atomic check-and-record should reject and NOT insert
+        next_time = now + timedelta(hours=COOLDOWN_HOURS * MAX_BYPASSES_PER_WEEK)
+        with pytest.raises(ValueError, match="rate limit exceeded"):
+            store.atomic_check_and_record(
+                "D1-R1",
+                next_time,
+                MAX_BYPASSES_PER_WEEK,
+                COOLDOWN_HOURS,
+            )
+
+        # Verify no extra row was inserted
+        cutoff = now - timedelta(days=1)
+        history = store.get_history("D1-R1", cutoff)
+        assert len(history) == MAX_BYPASSES_PER_WEEK  # unchanged
+        store.close()
+
+    def test_atomic_check_and_record_cooldown_rollback(self, tmp_path):
+        """Verify cooldown violation rolls back the transaction."""
+        db_path = str(tmp_path / "cooldown.db")
+        store = SqliteRateLimitStore(db_path=db_path)
+
+        now = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+
+        # Try within cooldown window
+        too_soon = now + timedelta(hours=COOLDOWN_HOURS - 1)
+        with pytest.raises(ValueError, match="cooldown"):
+            store.atomic_check_and_record(
+                "D1-R1",
+                too_soon,
+                MAX_BYPASSES_PER_WEEK,
+                COOLDOWN_HOURS,
+            )
+
+        # Should still have only 1 record
+        history = store.get_history("D1-R1", now - timedelta(days=1))
+        assert len(history) == 1
+        store.close()
+
+
+# ------------------------------------------------------------------
+# RT29 Test Hardening — edge cases identified by testing-specialist
+# ------------------------------------------------------------------
+
+
+class TestRateLimitStoreEdgeCases:
+    """Edge case tests from RT29 testing-specialist review."""
+
+    def test_sqlite_empty_history_returns_empty(self, tmp_path):
+        store = SqliteRateLimitStore(db_path=str(tmp_path / "empty.db"))
+        history = store.get_history("D1-R1", datetime(2026, 1, 1, tzinfo=UTC))
+        assert history == []
+        store.close()
+
+    def test_memory_cleanup_stale_empty_returns_zero(self):
+        store = MemoryRateLimitStore()
+        assert store.cleanup_stale(datetime(2026, 1, 1, tzinfo=UTC)) == 0
+
+    def test_sqlite_cleanup_stale_empty_returns_zero(self, tmp_path):
+        store = SqliteRateLimitStore(db_path=str(tmp_path / "empty2.db"))
+        assert store.cleanup_stale(datetime(2026, 1, 1, tzinfo=UTC)) == 0
+        store.close()
+
+    def test_sqlite_close_is_idempotent(self, tmp_path):
+        store = SqliteRateLimitStore(db_path=str(tmp_path / "idempotent.db"))
+        store.close()
+        store.close()  # Must not raise
+
+    def test_sqlite_default_path_from_env_var(self, tmp_path, monkeypatch):
+        db_path = str(tmp_path / "from_env.db")
+        monkeypatch.setenv("PACT_BYPASS_RATELIMIT_DB", db_path)
+        store = SqliteRateLimitStore(db_path=None)
+        now = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", now)
+        history = store.get_history("D1-R1", now - timedelta(days=1))
+        assert len(history) == 1
+        store.close()
+
+    def test_emergency_bypass_defaults_to_memory_store(self):
+        mgr = EmergencyBypass()
+        assert isinstance(mgr._rate_limit_store, MemoryRateLimitStore)
+
+    def test_memory_cleanup_stale_prunes_empty_keys(self):
+        """Verify cleanup_stale removes dict keys for roles with no remaining history."""
+        store = MemoryRateLimitStore()
+        old = datetime(2026, 1, 1, tzinfo=UTC)
+        store.record_creation("D1-R1", old)
+        store.record_creation("D2-R1", old)
+        # Both should be removed after cleanup
+        store.cleanup_stale(datetime(2026, 1, 8, tzinfo=UTC))
+        assert len(store._history) == 0  # Keys pruned, not just deques emptied

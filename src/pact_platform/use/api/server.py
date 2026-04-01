@@ -960,7 +960,11 @@ def create_app(
 
     # --- Work management routers (M2) ---
     from pact_platform.use.api.routers import (
+        access_router,
+        clearance_router,
         decisions_router,
+        envelopes_router,
+        ksp_router,
         metrics_router,
         objectives_router,
         org_router,
@@ -979,6 +983,38 @@ def create_app(
     app.include_router(reviews_router, dependencies=_auth_deps)
     app.include_router(metrics_router, dependencies=_auth_deps)
     app.include_router(org_router, dependencies=_auth_deps)
+    app.include_router(clearance_router, dependencies=_auth_deps)
+    app.include_router(ksp_router, dependencies=_auth_deps)
+    app.include_router(envelopes_router, dependencies=_auth_deps)
+    app.include_router(access_router, dependencies=_auth_deps)
+
+    # Inject governance engine into new routers (same pattern as org.py)
+    from pact_platform.use.api.routers.access import set_engine as _set_access_engine
+    from pact_platform.use.api.routers.clearance import set_engine as _set_clearance_engine
+    from pact_platform.use.api.routers.envelopes import set_engine as _set_envelopes_engine
+    from pact_platform.use.api.routers.ksp import set_engine as _set_ksp_engine
+
+    # Engine is injected at org deploy time via org.set_engine() which also
+    # calls governance.set_engine().  For the new routers, we wire them into
+    # the same set_engine chain by monkey-patching the org router's setter.
+    _orig_org_set_engine = org_router_mod_set_engine = None
+    try:
+        from pact_platform.use.api.routers import org as _org_mod
+
+        _orig_org_set_engine = _org_mod.set_engine
+
+        def _cascading_set_engine(engine: object) -> None:
+            """Forward engine to org + new governance routers."""
+            if _orig_org_set_engine is not None:
+                _orig_org_set_engine(engine)
+            _set_clearance_engine(engine)
+            _set_ksp_engine(engine)
+            _set_envelopes_engine(engine)
+            _set_access_engine(engine)
+
+        _org_mod.set_engine = _cascading_set_engine
+    except Exception:
+        logger.warning("Failed to wire cascading set_engine for governance routers")
 
     return app
 

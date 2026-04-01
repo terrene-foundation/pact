@@ -5,17 +5,33 @@ Root conftest.py — Auto-loads .env for ALL pytest sessions.
 
 This ensures that environment variables (API keys, model names, database URLs)
 are available in every test without manual setup. Works with any Kailash project.
+
+Also sets a single shared test DATABASE_URL to prevent SQLite resource
+exhaustion when 2400+ tests run together.  Without this, each test module
+creates its own temp database; the DataFlow singleton only connects to
+the first one, and orphaned file handles accumulate until the OS limit.
 """
 
 import os
+import tempfile
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Shared test database — set BEFORE any test module imports models
+# ---------------------------------------------------------------------------
+_test_db_dir = tempfile.mkdtemp(prefix="pact_test_")
 
 
 def pytest_configure(config):
-    """Load .env at the very start of the pytest session."""
+    """Load .env and set shared test DATABASE_URL."""
     env_path = Path(__file__).parent / ".env"
     if env_path.exists():
         _load_env(env_path)
+
+    # Set a single shared DATABASE_URL for all tests.  This MUST happen in
+    # pytest_configure (before collection) so the DataFlow singleton in
+    # pact_platform.models uses this URL when first imported.
+    os.environ["DATABASE_URL"] = f"sqlite:///{_test_db_dir}/pact_test.db"
 
 
 def pytest_runtest_setup(item):
@@ -63,3 +79,18 @@ def _load_env(env_path: Path):
         # Only set if not already in environment (don't override explicit env)
         if key not in os.environ:
             os.environ[key] = val
+
+
+def pytest_unconfigure(config):  # noqa: ARG001
+    """Clean up the shared test database after the test session."""
+    import shutil
+
+    try:
+        from pact_platform.models import db
+
+        db.close()
+    except Exception:
+        pass
+
+    # Remove the temp directory and all its contents
+    shutil.rmtree(_test_db_dir, ignore_errors=True)

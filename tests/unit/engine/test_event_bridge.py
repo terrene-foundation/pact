@@ -15,16 +15,10 @@ from __future__ import annotations
 
 import asyncio
 import math
-import os
-import tempfile
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_event_bridge.db"
 
 from pact_platform.engine.event_bridge import EventBridge
 

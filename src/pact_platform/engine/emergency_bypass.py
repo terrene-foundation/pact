@@ -29,9 +29,12 @@ Additional controls:
 
 from __future__ import annotations
 
+import abc
 import copy
 import logging
 import math
+import os
+import sqlite3
 import threading
 from collections import OrderedDict, deque
 from types import MappingProxyType
@@ -50,6 +53,9 @@ __all__ = [
     "BypassRecord",
     "BypassTier",
     "MAX_BYPASSES_PER_WEEK",
+    "MemoryRateLimitStore",
+    "SqliteRateLimitStore",
+    "RateLimitStore",
 ]
 
 MAX_BYPASS_RECORDS = 10_000
@@ -115,6 +121,274 @@ _TIER_DURATION: dict[BypassTier, timedelta] = {
     BypassTier.TIER_2: timedelta(hours=24),
     BypassTier.TIER_3: timedelta(hours=72),
 }
+
+
+# ---------------------------------------------------------------------------
+# Rate Limit Store — pluggable backend for cross-process rate limiting
+# ---------------------------------------------------------------------------
+
+
+class RateLimitStore(abc.ABC):
+    """Abstract rate limit store for bypass creation tracking.
+
+    Implementations must be safe for their declared concurrency model:
+    - ``MemoryRateLimitStore``: thread-safe (single process)
+    - ``SqliteRateLimitStore``: process-safe (multiple Gunicorn workers)
+    """
+
+    @abc.abstractmethod
+    def record_creation(self, role_address: str, created_at: datetime) -> None:
+        """Record a bypass creation timestamp for a role."""
+
+    @abc.abstractmethod
+    def get_history(self, role_address: str, since: datetime) -> list[datetime]:
+        """Return creation timestamps for a role since the given cutoff, oldest first."""
+
+    @abc.abstractmethod
+    def cleanup_stale(self, before: datetime) -> int:
+        """Remove entries older than *before*.  Return count of removed entries."""
+
+    def atomic_check_and_record(
+        self,
+        role_address: str,
+        now: datetime,
+        max_per_week: int,
+        cooldown_hours: float,
+    ) -> None:
+        """Atomically check rate limits and record a creation.
+
+        This default implementation calls the individual methods sequentially.
+        Subclasses may override to provide cross-process atomicity (e.g. via
+        a database transaction).
+
+        Raises:
+            ValueError: If rate limit or cooldown is violated.
+        """
+        cutoff = now - timedelta(days=7)
+        self.cleanup_stale(cutoff)
+        history = self.get_history(role_address, cutoff)
+
+        if history:
+            last_creation = history[-1]
+            hours_since_last = (now - last_creation).total_seconds() / 3600
+            if hours_since_last < cooldown_hours:
+                remaining = cooldown_hours - hours_since_last
+                raise ValueError(
+                    f"Bypass cooldown period active for role '{role_address}': "
+                    f"{remaining:.1f} hours remaining. Minimum gap between bypasses "
+                    f"is {cooldown_hours} hours."
+                )
+            if len(history) >= max_per_week:
+                raise ValueError(
+                    f"Bypass rate limit exceeded for role '{role_address}': "
+                    f"{len(history)} bypasses in the last 7 days (maximum "
+                    f"is {max_per_week} per week). Higher-tier authority "
+                    f"or re-authorization through normal governance channels is required."
+                )
+
+        self.record_creation(role_address, now)
+
+
+class MemoryRateLimitStore(RateLimitStore):
+    """In-memory rate limit store — thread-safe, single-process only.
+
+    This is the default backend.  It is NOT shared across Gunicorn workers.
+    Use ``SqliteRateLimitStore`` for multi-process deployments.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._history: dict[str, deque[datetime]] = {}
+
+    def record_creation(self, role_address: str, created_at: datetime) -> None:
+        with self._lock:
+            if role_address not in self._history:
+                self._history[role_address] = deque(maxlen=MAX_BYPASSES_PER_WEEK * 2)
+            self._history[role_address].append(created_at)
+
+    def get_history(self, role_address: str, since: datetime) -> list[datetime]:
+        with self._lock:
+            history = self._history.get(role_address)
+            if history is None:
+                return []
+            return [ts for ts in history if ts >= since]
+
+    def cleanup_stale(self, before: datetime) -> int:
+        removed = 0
+        with self._lock:
+            empty_keys: list[str] = []
+            for key, history in self._history.items():
+                while history and history[0] < before:
+                    history.popleft()
+                    removed += 1
+                if not history:
+                    empty_keys.append(key)
+            for key in empty_keys:
+                del self._history[key]
+        return removed
+
+
+class SqliteRateLimitStore(RateLimitStore):
+    """SQLite-backed rate limit store — safe across multiple processes.
+
+    Uses WAL mode for concurrent readers and a single writer.  Each write
+    is an independent transaction with SQLite's file-level locking, so
+    separate Gunicorn workers can share the same database file.
+
+    Args:
+        db_path: Path to the SQLite database file.  Parent directory must
+            exist.  Defaults to ``./pact_bypass_ratelimit.db``.
+    """
+
+    _DDL = """
+        CREATE TABLE IF NOT EXISTS bypass_rate_limit (
+            id INTEGER PRIMARY KEY,
+            role_address TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """
+    _IDX = """
+        CREATE INDEX IF NOT EXISTS idx_brl_role_created
+        ON bypass_rate_limit (role_address, created_at)
+    """
+
+    _MAX_ROWS = 100_000
+
+    def __init__(self, db_path: str | None = None) -> None:
+        if db_path is None:
+            db_path = os.environ.get("PACT_BYPASS_RATELIMIT_DB", "pact_bypass_ratelimit.db")
+        self._db_path = db_path
+        self._local = threading.local()
+        # Set restrictive file permissions before SQLite creates sidecar files.
+        if os.name != "nt" and not os.path.exists(db_path):
+            import stat
+
+            open(db_path, "a").close()  # noqa: SIM115
+            os.chmod(db_path, stat.S_IRUSR | stat.S_IWUSR)
+        self._init_schema()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return a thread-local connection (SQLite connections are not thread-safe)."""
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self._db_path, timeout=10)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=5000")
+            self._local.conn = conn
+        return conn
+
+    def _init_schema(self) -> None:
+        conn = self._get_conn()
+        conn.execute(self._DDL)
+        conn.execute(self._IDX)
+        conn.commit()
+
+    def record_creation(self, role_address: str, created_at: datetime) -> None:
+        conn = self._get_conn()
+        conn.execute(
+            "INSERT INTO bypass_rate_limit (role_address, created_at) VALUES (?, ?)",
+            (role_address, created_at.isoformat()),
+        )
+        # Enforce bounded table size — evict oldest rows when at capacity.
+        count = conn.execute("SELECT COUNT(*) FROM bypass_rate_limit").fetchone()[0]
+        if count > self._MAX_ROWS:
+            conn.execute(
+                "DELETE FROM bypass_rate_limit WHERE id IN "
+                "(SELECT id FROM bypass_rate_limit ORDER BY created_at LIMIT ?)",
+                (count - self._MAX_ROWS,),
+            )
+        conn.commit()
+
+    def get_history(self, role_address: str, since: datetime) -> list[datetime]:
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT created_at FROM bypass_rate_limit "
+            "WHERE role_address = ? AND created_at >= ? "
+            "ORDER BY created_at",
+            (role_address, since.isoformat()),
+        ).fetchall()
+        return [datetime.fromisoformat(row[0]) for row in rows]
+
+    def cleanup_stale(self, before: datetime) -> int:
+        conn = self._get_conn()
+        cursor = conn.execute(
+            "DELETE FROM bypass_rate_limit WHERE created_at < ?",
+            (before.isoformat(),),
+        )
+        conn.commit()
+        return cursor.rowcount
+
+    def atomic_check_and_record(
+        self,
+        role_address: str,
+        now: datetime,
+        max_per_week: int,
+        cooldown_hours: float,
+    ) -> None:
+        """Atomically check rate limits and record — cross-process safe.
+
+        Uses ``BEGIN IMMEDIATE`` to acquire the SQLite write lock before
+        reading, preventing TOCTOU races where two processes both pass the
+        check before either records.
+        """
+        conn = self._get_conn()
+        cutoff = now - timedelta(days=7)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "DELETE FROM bypass_rate_limit WHERE created_at < ?",
+                (cutoff.isoformat(),),
+            )
+            rows = conn.execute(
+                "SELECT created_at FROM bypass_rate_limit "
+                "WHERE role_address = ? AND created_at >= ? "
+                "ORDER BY created_at",
+                (role_address, cutoff.isoformat()),
+            ).fetchall()
+            history = [datetime.fromisoformat(r[0]) for r in rows]
+
+            if history:
+                last_creation = history[-1]
+                hours_since_last = (now - last_creation).total_seconds() / 3600
+                if hours_since_last < cooldown_hours:
+                    conn.execute("ROLLBACK")
+                    remaining = cooldown_hours - hours_since_last
+                    raise ValueError(
+                        f"Bypass cooldown period active for role '{role_address}': "
+                        f"{remaining:.1f} hours remaining. Minimum gap between bypasses "
+                        f"is {cooldown_hours} hours."
+                    )
+                if len(history) >= max_per_week:
+                    conn.execute("ROLLBACK")
+                    raise ValueError(
+                        f"Bypass rate limit exceeded for role '{role_address}': "
+                        f"{len(history)} bypasses in the last 7 days (maximum "
+                        f"is {max_per_week} per week). Higher-tier authority "
+                        f"or re-authorization through normal governance channels is required."
+                    )
+
+            conn.execute(
+                "INSERT INTO bypass_rate_limit (role_address, created_at) VALUES (?, ?)",
+                (role_address, now.isoformat()),
+            )
+            conn.execute("COMMIT")
+        except ValueError:
+            raise
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+
+    def close(self) -> None:
+        """Close the thread-local connection."""
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
+
+
+# ---------------------------------------------------------------------------
+# Bypass Record
+# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -191,19 +465,22 @@ class EmergencyBypass:
         audit_callback: Optional callable invoked with audit anchor details
             on bypass creation.  Signature:
             ``(event: str, details: dict) -> str`` returning an anchor ID.
+        rate_limit_store: Pluggable rate limit backend.  Defaults to
+            ``MemoryRateLimitStore`` (single-process, thread-safe).
+            Use ``SqliteRateLimitStore`` for multi-process deployments
+            (e.g. Gunicorn with multiple workers).
     """
 
     def __init__(
         self,
         audit_callback: Any | None = None,
+        rate_limit_store: RateLimitStore | None = None,
     ) -> None:
         self._lock = threading.Lock()
         # OrderedDict preserves insertion order for FIFO eviction.
         self._bypasses: OrderedDict[str, BypassRecord] = OrderedDict()
         self._audit_callback = audit_callback
-        # M4: Per-role bypass creation history for rate limiting.
-        # Maps role_address -> deque of creation timestamps (bounded).
-        self._bypass_history: dict[str, deque[datetime]] = {}
+        self._rate_limit_store = rate_limit_store or MemoryRateLimitStore()
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -411,66 +688,6 @@ class EmergencyBypass:
                     f"in the accountability chain (found position {approver_index})"
                 )
 
-    def _check_rate_limits(self, role_address: str, now: datetime) -> None:
-        """Check rate limits for bypass creation on a specific role.
-
-        Enforces:
-        - Maximum ``MAX_BYPASSES_PER_WEEK`` bypasses per 7-day rolling window.
-        - Minimum ``COOLDOWN_HOURS`` gap between consecutive bypasses.
-
-        Also cleans up stale entries (>7 days) to prevent unbounded growth.
-
-        Args:
-            role_address: D/T/R address to check.
-            now: Current time.
-
-        Raises:
-            ValueError: If rate limit or cooldown is violated.
-        """
-        history = self._bypass_history.get(role_address)
-        if history is None:
-            return
-
-        # Clean up entries older than 7 days
-        cutoff = now - timedelta(days=7)
-        while history and history[0] < cutoff:
-            history.popleft()
-
-        if not history:
-            return
-
-        # Check cooldown period
-        last_creation = history[-1]
-        hours_since_last = (now - last_creation).total_seconds() / 3600
-        if hours_since_last < COOLDOWN_HOURS:
-            remaining = COOLDOWN_HOURS - hours_since_last
-            raise ValueError(
-                f"Bypass cooldown period active for role '{role_address}': "
-                f"{remaining:.1f} hours remaining. Minimum gap between bypasses "
-                f"is {COOLDOWN_HOURS} hours."
-            )
-
-        # Check weekly frequency limit
-        if len(history) >= MAX_BYPASSES_PER_WEEK:
-            raise ValueError(
-                f"Bypass rate limit exceeded for role '{role_address}': "
-                f"{len(history)} bypasses in the last 7 days (maximum "
-                f"is {MAX_BYPASSES_PER_WEEK} per week). Higher-tier authority "
-                f"or re-authorization through normal governance channels is required."
-            )
-
-    def _record_bypass_creation(self, role_address: str, now: datetime) -> None:
-        """Record a bypass creation for rate limiting purposes.
-
-        Args:
-            role_address: D/T/R address of the role.
-            now: Creation time.
-        """
-        if role_address not in self._bypass_history:
-            # Bounded deque: max 2x the weekly limit to handle cleanup correctly
-            self._bypass_history[role_address] = deque(maxlen=MAX_BYPASSES_PER_WEEK * 2)
-        self._bypass_history[role_address].append(now)
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -630,16 +847,22 @@ class EmergencyBypass:
             audit_anchor_id=audit_anchor_id,
         )
 
-        # M4: Rate limit check + record + store — all under single lock
-        # acquisition to prevent TOCTOU race where two threads both pass
-        # the rate limit check before either records its creation.
+        # M4: Rate limit check + record — atomic to prevent TOCTOU.
+        # For MemoryRateLimitStore the outer threading.Lock provides
+        # per-process atomicity.  For SqliteRateLimitStore the overridden
+        # atomic_check_and_record uses BEGIN IMMEDIATE for cross-process
+        # atomicity via SQLite's write lock.
         with self._lock:
-            self._check_rate_limits(role_address, now)
-            # Enforce bounded collection
+            self._rate_limit_store.atomic_check_and_record(
+                role_address,
+                now,
+                MAX_BYPASSES_PER_WEEK,
+                COOLDOWN_HOURS,
+            )
+            # Enforce bounded collection for in-memory bypass records
             while len(self._bypasses) >= MAX_BYPASS_RECORDS:
                 self._bypasses.popitem(last=False)  # Evict oldest
             self._bypasses[bypass_id] = record
-            self._record_bypass_creation(role_address, now)
 
         logger.info(
             "Emergency bypass created: id=%s role=%s tier=%s expires=%s approved_by=%s",

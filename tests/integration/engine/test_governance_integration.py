@@ -14,15 +14,10 @@ Tests that the GovernanceEngine verdicts correctly control execution:
 from __future__ import annotations
 
 import math
-import os
-import tempfile
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
-_db_dir = tempfile.mkdtemp()
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{_db_dir}/test_gov.db")
 
 from pact_platform.models import db, validate_finite
 

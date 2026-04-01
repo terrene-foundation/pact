@@ -14,15 +14,9 @@ Covers:
 
 from __future__ import annotations
 
-import os
-import tempfile
 from typing import Any
 
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_approval_bridge.db"
 
 from pact.governance import GovernanceVerdict
 from pact_platform.engine.approval_bridge import ApprovalBridge

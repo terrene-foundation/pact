@@ -330,6 +330,64 @@ async def approve_bridge_lca(request: Request, body: dict[str, Any]) -> dict:
     }
 
 
+@router.post("/bridges/consent")
+@limiter.limit(RATE_POST)
+async def consent_bridge(request: Request, body: dict[str, Any]) -> dict:
+    """Record bilateral consent for a bridge.
+
+    After a bridge is approved via LCA, both roles in the bridge must
+    independently consent.  This endpoint records one role's consent.
+
+    Body:
+        {"bridge_id": "...", "consenting_address": "..."}
+    """
+    from pact_platform.models import validate_record_id
+    from pact_platform.use.api.governance import governance_gate
+
+    bridge_id = body.get("bridge_id", "")
+    consenting = body.get("consenting_address", "")
+
+    if not bridge_id or not consenting:
+        raise HTTPException(400, detail="bridge_id and consenting_address are required")
+
+    validate_record_id(bridge_id)
+
+    try:
+        from pact.governance import Address
+
+        Address.parse(consenting)
+    except Exception as exc:
+        raise HTTPException(400, detail=f"Invalid D/T/R address: {exc}")
+
+    if _engine is None:
+        raise HTTPException(503, detail="Governance engine not initialized")
+
+    # Governance gate — mutation requires approval
+    held = await governance_gate(consenting, "consent_bridge", {"bridge_id": bridge_id})
+    if held is not None:
+        return held
+
+    try:
+        result = _engine.consent_bridge(bridge_id, consenting)
+    except ValueError:
+        raise HTTPException(400, detail="Bridge consent failed — invalid parameters")
+    except LookupError:
+        raise HTTPException(404, detail="Bridge not found")
+    except Exception:
+        logger.warning("Bridge consent failed for bridge=%s role=%s", bridge_id, consenting)
+        raise HTTPException(400, detail="Bridge consent failed")
+
+    return {
+        "status": "ok",
+        "data": {
+            "bridge_id": bridge_id,
+            "consenting_address": consenting,
+            "consented": True,
+            "bridge_active": getattr(result, "active", False),
+        },
+    }
+
+
 @router.post("/roles/{role_address}/designate-acting")
 @limiter.limit(RATE_POST)
 async def designate_acting_occupant(
