@@ -975,6 +975,78 @@ def bridge_approve(source_address: str, target_address: str, approver_address: s
     console.print(table)
 
 
+@bridge.command("consent")
+@click.argument("role_address")
+@click.argument("bridge_id")
+def bridge_consent(role_address: str, bridge_id: str) -> None:
+    """Register consent for a bridge from ROLE_ADDRESS.
+
+    Per PACT spec Section 4.4, bridges require bilateral consent — both
+    endpoint roles must agree before creation succeeds. Each role calls
+    this command to register their consent for the specified bridge.
+
+    ROLE_ADDRESS is the D/T/R address of the consenting role.
+    BRIDGE_ID is the identifier of the pending bridge.
+    """
+    engine = _get_engine()
+    if engine is None:
+        error_console.print("[bold red]No org loaded.[/bold red] " "Load an org first.")
+        sys.exit(1)
+
+    try:
+        engine.consent_bridge(role_address, bridge_id)
+    except Exception as exc:
+        error_console.print(f"[bold red]Bridge consent failed:[/bold red] {exc}")
+        sys.exit(1)
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold green]Consent registered[/bold green] for "
+            f"[cyan]{role_address}[/cyan] on bridge [cyan]{bridge_id}[/cyan].\n\n"
+            f"Both endpoint roles must consent before bridge creation can proceed.",
+            title="PACT — Bridge Bilateral Consent",
+            border_style="green",
+        )
+    )
+
+
+@main.command("register-compliance-role")
+@click.argument("role_address")
+def register_compliance_role(role_address: str) -> None:
+    """Designate a role as a compliance approver for bridges.
+
+    Per PACT spec Section 4.4, bridge creation requires approval from either
+    the lowest common ancestor (LCA) or a designated compliance role.
+    This command registers ROLE_ADDRESS as a compliance role that can
+    approve bridges across containment boundaries.
+
+    ROLE_ADDRESS is the D/T/R address of the compliance role.
+    """
+    engine = _get_engine()
+    if engine is None:
+        error_console.print("[bold red]No org loaded.[/bold red] " "Load an org first.")
+        sys.exit(1)
+
+    try:
+        engine.register_compliance_role(role_address)
+    except Exception as exc:
+        error_console.print(f"[bold red]Failed to register compliance role:[/bold red] {exc}")
+        sys.exit(1)
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold green]Compliance role registered:[/bold green] "
+            f"[cyan]{role_address}[/cyan]\n\n"
+            f"This role can now approve bridge creation as an alternative to "
+            f"the lowest common ancestor (LCA).",
+            title="PACT — Compliance Role",
+            border_style="green",
+        )
+    )
+
+
 # ---------------------------------------------------------------------------
 # envelope group
 # ---------------------------------------------------------------------------
