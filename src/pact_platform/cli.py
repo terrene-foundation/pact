@@ -72,6 +72,47 @@ def _make_audit_chain() -> Any:
     return AuditChain(chain_id=f"cli-{uuid.uuid4().hex[:12]}")
 
 
+def _create_engine(org_def: Any, audit_chain: Any = None) -> Any:
+    """Create a GovernanceEngine with L1 spec-conformance features wired in.
+
+    Reads governance settings from environment (vacancy deadline, bilateral
+    consent, EATP emission) and passes them to the engine constructor.
+    This is the single factory for all CLI and API engine instantiation.
+
+    Args:
+        org_def: OrgDefinition to compile.
+        audit_chain: Optional AuditChain for governance audit trail.
+
+    Returns:
+        Configured GovernanceEngine instance.
+    """
+    from pact.governance import GovernanceEngine
+
+    kwargs: dict[str, Any] = {"audit_chain": audit_chain}
+
+    # #202: Configurable vacancy deadline
+    import os
+
+    vacancy_hours = int(os.environ.get("PACT_VACANCY_DEADLINE_HOURS", "24"))
+    kwargs["vacancy_deadline_hours"] = vacancy_hours
+
+    # #201: Bilateral consent for bridges
+    bilateral = os.environ.get("PACT_REQUIRE_BILATERAL_CONSENT", "true").lower() == "true"
+    kwargs["require_bilateral_consent"] = bilateral
+
+    # #199: EATP record emission
+    enable_eatp = os.environ.get("PACT_ENABLE_EATP_EMISSION", "true").lower() == "true"
+    if enable_eatp:
+        try:
+            from kailash.trust.pact.eatp_emitter import InMemoryPactEmitter
+
+            kwargs["eatp_emitter"] = InMemoryPactEmitter()
+        except ImportError:
+            pass  # L1 version without emitter support — graceful degradation
+
+    return GovernanceEngine(org_def, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Root group
 # ---------------------------------------------------------------------------
@@ -148,7 +189,7 @@ def quickstart(example: str, serve: bool, host: str, port: int) -> None:
         with console.status("[bold green]Compiling university org..."):
             compiled, org_def = create_university_org()
             _audit_chain = _make_audit_chain()
-            engine = GovernanceEngine(org_def, audit_chain=_audit_chain)
+            engine = _create_engine(org_def, audit_chain=_audit_chain)
             org = engine.get_org()
 
         console.print(f"  [green]Compiled[/green] {len(org.nodes)} nodes")

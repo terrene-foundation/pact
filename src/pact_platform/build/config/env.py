@@ -164,6 +164,11 @@ class EnvConfig:
     eatp_genesis_authority: str = "terrene.foundation"
     eatp_credential_ttl_seconds: int = 300
 
+    # Governance (L1 wiring — spec conformance #199-#202)
+    pact_vacancy_deadline_hours: int = 24
+    pact_require_bilateral_consent: bool = True
+    pact_enable_eatp_emission: bool = True
+
     # Application
     app_env: str = "development"
     debug: bool = False

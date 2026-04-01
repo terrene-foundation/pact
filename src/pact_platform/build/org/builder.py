@@ -892,6 +892,56 @@ class OrgDefinition(BaseModel):
                 "skipping degenerate envelope detection"
             )
 
+        # --- Pass-through envelope detection (TODO-13 / #200) ---
+        # Detects when a child envelope is identical to its parent — a governance
+        # smell indicating the supervisor did not meaningfully constrain the role.
+        try:
+            from kailash.trust.pact.envelopes import check_passthrough_envelope
+
+            if self.org_envelope is not None:
+                for env in self.envelopes:
+                    if check_passthrough_envelope(env, self.org_envelope):
+                        results.append(
+                            ValidationResult(
+                                severity=ValidationSeverity.WARNING,
+                                message=(
+                                    f"Envelope '{env.id}' is identical to the org envelope "
+                                    f"(pass-through). Consider narrowing constraints for "
+                                    f"this role to provide meaningful governance."
+                                ),
+                                code="PASSTHROUGH_ENVELOPE",
+                            )
+                        )
+        except (ImportError, TypeError):
+            logger.debug(
+                "check_passthrough_envelope not available; " "skipping pass-through detection"
+            )
+
+        # --- Gradient dereliction detection (TODO-12 / #200) ---
+        # Flags envelopes where auto-approve thresholds are set near the
+        # effective limit, meaning the supervisor is granting near-full autonomy.
+        try:
+            from kailash.trust.pact.envelopes import check_gradient_dereliction
+
+            if self.org_envelope is not None:
+                for env in self.envelopes:
+                    if not hasattr(env, "gradient_thresholds"):
+                        continue
+                    dereliction_warnings = check_gradient_dereliction(env, self.org_envelope)
+                    for warning_msg in dereliction_warnings:
+                        results.append(
+                            ValidationResult(
+                                severity=ValidationSeverity.WARNING,
+                                message=f"Envelope '{env.id}': {warning_msg}",
+                                code="GRADIENT_DERELICTION",
+                            )
+                        )
+        except (ImportError, TypeError, AttributeError):
+            logger.debug(
+                "check_gradient_dereliction not available; "
+                "skipping gradient dereliction detection"
+            )
+
         return results
 
 

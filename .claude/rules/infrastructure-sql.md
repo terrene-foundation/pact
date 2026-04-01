@@ -155,7 +155,7 @@ async def _init_postgres(self):
     except ImportError as exc:
         raise ImportError(
             "asyncpg is required for PostgreSQL connections. "
-            "Install it with: pip install kailash"
+            "Install it with: pip install kailash[postgres]"
         ) from exc
     self._pool = await asyncpg.create_pool(self.url)
 

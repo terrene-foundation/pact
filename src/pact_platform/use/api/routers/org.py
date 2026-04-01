@@ -148,7 +148,12 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
                     "Audit chain creation failed — governance mutations will not be audited",
                 )
 
-            engine = GovernanceEngine(loaded.org_definition, audit_chain=audit_chain)
+            try:
+                from pact_platform.cli import _create_engine
+
+                engine = _create_engine(loaded.org_definition, audit_chain=audit_chain)
+            except ImportError:
+                engine = GovernanceEngine(loaded.org_definition, audit_chain=audit_chain)
             compiled = engine.get_org()
 
             _apply_governance_specs(engine, loaded, compiled)

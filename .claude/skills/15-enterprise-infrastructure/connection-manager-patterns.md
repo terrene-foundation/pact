@@ -188,7 +188,9 @@ await conn.initialize()
 ### Driver Installation
 
 ```bash
-pip install kailash   # Includes aiosqlite, asyncpg, aiomysql
+pip install kailash[database]   # aiosqlite (already lightweight)
+pip install kailash[postgres]   # asyncpg
+pip install kailash[mysql]      # aiomysql
 ```
 
 Drivers are imported lazily inside `ConnectionManager._init_*()` methods. If the driver is not installed, a clear `ImportError` with installation instructions is raised.
