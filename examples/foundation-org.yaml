@@ -8,399 +8,407 @@ org_id: terrene-foundation
 name: Terrene Foundation
 authority_id: terrene.foundation
 teams:
-- id: dm-team
-  name: Digital Media Team
-  workspace: ws-dm
-  team_lead: dm-team-lead
-  agents:
-  - dm-team-lead
-  - dm-content-creator
-  - dm-analytics
-  - dm-community-manager
-  - dm-seo-specialist
-  default_llm_backend: anthropic
-  verification_gradient:
-    rules:
-    - pattern: read_*
-      level: AUTO_APPROVED
-      reason: Read operations are safe and internal
-    - pattern: draft_*
-      level: AUTO_APPROVED
-      reason: Drafts are internal, cannot be published without approval
-    - pattern: analyze_*
-      level: AUTO_APPROVED
-      reason: Analysis operations are internal and non-destructive
-    - pattern: approve_*
-      level: HELD
-      reason: Approval actions have governance implications
-    - pattern: publish_*
-      level: HELD
-      reason: External publication always requires human approval
-    - pattern: external_*
-      level: HELD
-      reason: External communication carries reputational risk
-    - pattern: delete_*
-      level: BLOCKED
-      reason: Destructive operations are blocked for all DM agents
-    - pattern: modify_constraints
-      level: BLOCKED
-      reason: Agents cannot modify their own constraint envelopes
-    default_level: FLAGGED
-  metadata: {}
+  - id: dm-team
+    name: Digital Media Team
+    workspace: ws-dm
+    team_lead: dm-team-lead
+    agents:
+      - dm-team-lead
+      - dm-content-creator
+      - dm-analytics
+      - dm-community-manager
+      - dm-seo-specialist
+    default_llm_backend: anthropic
+    verification_gradient:
+      rules:
+        - pattern: read_*
+          level: AUTO_APPROVED
+          reason: Read operations are safe and internal
+        - pattern: draft_*
+          level: AUTO_APPROVED
+          reason: Drafts are internal, cannot be published without approval
+        - pattern: analyze_*
+          level: AUTO_APPROVED
+          reason: Analysis operations are internal and non-destructive
+        - pattern: approve_*
+          level: HELD
+          reason: Approval actions have governance implications
+        - pattern: publish_*
+          level: HELD
+          reason: External publication always requires human approval
+        - pattern: external_*
+          level: HELD
+          reason: External communication carries reputational risk
+        - pattern: delete_*
+          level: BLOCKED
+          reason: Destructive operations are blocked for all DM agents
+        - pattern: modify_constraints
+          level: BLOCKED
+          reason: Agents cannot modify their own constraint envelopes
+      default_level: FLAGGED
+    metadata: {}
 agents:
-- id: dm-team-lead
-  name: DM Team Lead
-  role: Team coordination, content review, approval routing
-  constraint_envelope: dm-lead-envelope
-  initial_posture: supervised
-  capabilities:
-  - review_content
-  - approve_publication
-  - coordinate_team
-  - schedule_content
-  - analyze_metrics
-  - draft_strategy
-  - draft_post
-  - edit_content
-  - research_topic
-  - suggest_hashtags
-  - read_metrics
-  - generate_report
-  - track_engagement
-  - analyze_trends
-  - draft_response
-  - moderate_content
-  - track_community
-  - flag_issues
-  - analyze_keywords
-  - suggest_structure
-  - audit_seo
-  - research_topics
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
-- id: dm-content-creator
-  name: Content Creator
-  role: Draft social media posts, blog articles, and marketing copy
-  constraint_envelope: dm-content-envelope
-  initial_posture: supervised
-  capabilities:
-  - draft_post
-  - edit_content
-  - research_topic
-  - suggest_hashtags
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
-- id: dm-analytics
-  name: Analytics Agent
-  role: Monitor engagement metrics, generate reports, track KPIs
-  constraint_envelope: dm-analytics-envelope
-  initial_posture: supervised
-  capabilities:
-  - read_metrics
-  - generate_report
-  - track_engagement
-  - analyze_trends
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
-- id: dm-community-manager
-  name: Community Manager
-  role: Community engagement, response drafting, moderation
-  constraint_envelope: dm-community-envelope
-  initial_posture: supervised
-  capabilities:
-  - draft_response
-  - moderate_content
-  - track_community
-  - flag_issues
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
-- id: dm-seo-specialist
-  name: SEO Specialist
-  role: SEO optimization, keyword research, content structure
-  constraint_envelope: dm-seo-envelope
-  initial_posture: supervised
-  capabilities:
-  - analyze_keywords
-  - suggest_structure
-  - audit_seo
-  - research_topics
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
+  - id: dm-team-lead
+    name: DM Team Lead
+    role: Team coordination, content review, approval routing
+    constraint_envelope: dm-lead-envelope
+    initial_posture: supervised
+    capabilities:
+      - review_content
+      - approve_publication
+      - coordinate_team
+      - schedule_content
+      - analyze_metrics
+      - draft_strategy
+      - draft_post
+      - edit_content
+      - research_topic
+      - suggest_hashtags
+      - read_metrics
+      - generate_report
+      - track_engagement
+      - analyze_trends
+      - draft_response
+      - moderate_content
+      - track_community
+      - flag_issues
+      - analyze_keywords
+      - suggest_structure
+      - audit_seo
+      - research_topics
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
+  - id: dm-content-creator
+    name: Content Creator
+    role: Draft social media posts, blog articles, and marketing copy
+    constraint_envelope: dm-content-envelope
+    initial_posture: supervised
+    capabilities:
+      - draft_post
+      - edit_content
+      - research_topic
+      - suggest_hashtags
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
+  - id: dm-analytics
+    name: Analytics Agent
+    role: Monitor engagement metrics, generate reports, track KPIs
+    constraint_envelope: dm-analytics-envelope
+    initial_posture: supervised
+    capabilities:
+      - read_metrics
+      - generate_report
+      - track_engagement
+      - analyze_trends
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
+  - id: dm-community-manager
+    name: Community Manager
+    role: Community engagement, response drafting, moderation
+    constraint_envelope: dm-community-envelope
+    initial_posture: supervised
+    capabilities:
+      - draft_response
+      - moderate_content
+      - track_community
+      - flag_issues
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
+  - id: dm-seo-specialist
+    name: SEO Specialist
+    role: SEO optimization, keyword research, content structure
+    constraint_envelope: dm-seo-envelope
+    initial_posture: supervised
+    capabilities:
+      - analyze_keywords
+      - suggest_structure
+      - audit_seo
+      - research_topics
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
 envelopes:
-- id: dm-lead-envelope
-  description: 'DM Team Lead: broadest authority within DM, still $0 spend, internal-only'
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions:
-    - review_content
-    - approve_publication
-    - coordinate_team
-    - schedule_content
-    - analyze_metrics
-    - draft_strategy
-    - draft_post
-    - edit_content
-    - research_topic
-    - suggest_hashtags
-    - read_metrics
-    - generate_report
-    - track_engagement
-    - analyze_trends
-    - draft_response
-    - moderate_content
-    - track_community
-    - flag_issues
-    - analyze_keywords
-    - suggest_structure
-    - audit_seo
-    - research_topics
-    blocked_actions:
-    - publish_externally
-    - modify_brand_guidelines
-    - engage_legal
-    max_actions_per_day: 200
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: 06:00
-    active_hours_end: '22:00'
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths:
-    - workspaces/dm/*
-    - workspaces/standards/public/*
-    - analytics/*
-    write_paths:
-    - workspaces/dm/*
-    blocked_data_types:
-    - pii
-    - financial_records
-    - legal_docs
-    - board_minutes
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels:
-    - slack
-    - internal_review
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
-- id: dm-content-envelope
-  description: 'Content Creator: draft-only, no publishing, no external communication'
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions:
-    - draft_post
-    - edit_content
-    - research_topic
-    - suggest_hashtags
-    blocked_actions:
-    - publish_externally
-    - modify_brand_guidelines
-    - engage_legal
-    - schedule_content
-    - approve_publication
-    max_actions_per_day: 20
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: 08:00
-    active_hours_end: '20:00'
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths:
-    - workspaces/dm/content/*
-    - workspaces/standards/public/*
-    write_paths:
-    - workspaces/dm/content/drafts/*
-    blocked_data_types:
-    - pii
-    - financial_records
-    - legal_docs
-    - board_minutes
-    - strategy
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels: []
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
-- id: dm-analytics-envelope
-  description: 'Analytics: read-heavy, 24/7 monitoring, no external communication'
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions:
-    - read_metrics
-    - generate_report
-    - track_engagement
-    - analyze_trends
-    blocked_actions:
-    - publish_externally
-    - modify_brand_guidelines
-    - engage_legal
-    - modify_content
-    - access_pii
-    max_actions_per_day: 120
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: 06:00
-    active_hours_end: '22:00'
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths:
-    - workspaces/dm/*
-    - analytics/*
-    write_paths:
-    - workspaces/dm/reports/*
-    blocked_data_types:
-    - pii
-    - financial_records
-    - legal_docs
-    - board_minutes
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels: []
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
-- id: dm-community-envelope
-  description: 'Community Manager: draft responses, moderate, no external sending'
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions:
-    - draft_response
-    - moderate_content
-    - track_community
-    - flag_issues
-    blocked_actions:
-    - publish_externally
-    - modify_brand_guidelines
-    - engage_legal
-    - approve_publication
-    max_actions_per_day: 40
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: 08:00
-    active_hours_end: '20:00'
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths:
-    - workspaces/dm/community/*
-    - workspaces/standards/public/*
-    write_paths:
-    - workspaces/dm/community/drafts/*
-    blocked_data_types:
-    - pii
-    - financial_records
-    - legal_docs
-    - board_minutes
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels: []
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
-- id: dm-seo-envelope
-  description: 'SEO Specialist: analysis and suggestions, no publishing'
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions:
-    - analyze_keywords
-    - suggest_structure
-    - audit_seo
-    - research_topics
-    blocked_actions:
-    - publish_externally
-    - modify_brand_guidelines
-    - engage_legal
-    - approve_publication
-    max_actions_per_day: 30
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: 08:00
-    active_hours_end: '20:00'
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths:
-    - workspaces/dm/content/*
-    - workspaces/standards/public/*
-    - analytics/seo/*
-    write_paths:
-    - workspaces/dm/seo/reports/*
-    blocked_data_types:
-    - pii
-    - financial_records
-    - legal_docs
-    - board_minutes
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels: []
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
+  - id: dm-lead-envelope
+    description: "DM Team Lead: broadest authority within DM, still $0 spend, internal-only"
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    # Gradient thresholds — per-dimension numeric thresholds for verification
+    # gradient classification (Section 5.6).  Requires kailash-pact >=0.6.0.
+    #
+    # gradient_thresholds:
+    #   financial:
+    #     auto_approve_threshold: 5.0    # Actions costing <= $5 -> AUTO_APPROVED
+    #     flag_threshold: 25.0           # $5 < cost <= $25 -> FLAGGED
+    #     hold_threshold: 100.0          # $25 < cost <= $100 -> HELD; above -> BLOCKED
+    operational:
+      allowed_actions:
+        - review_content
+        - approve_publication
+        - coordinate_team
+        - schedule_content
+        - analyze_metrics
+        - draft_strategy
+        - draft_post
+        - edit_content
+        - research_topic
+        - suggest_hashtags
+        - read_metrics
+        - generate_report
+        - track_engagement
+        - analyze_trends
+        - draft_response
+        - moderate_content
+        - track_community
+        - flag_issues
+        - analyze_keywords
+        - suggest_structure
+        - audit_seo
+        - research_topics
+      blocked_actions:
+        - publish_externally
+        - modify_brand_guidelines
+        - engage_legal
+      max_actions_per_day: 200
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: 06:00
+      active_hours_end: "22:00"
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths:
+        - workspaces/dm/*
+        - workspaces/standards/public/*
+        - analytics/*
+      write_paths:
+        - workspaces/dm/*
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_docs
+        - board_minutes
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels:
+        - slack
+        - internal_review
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
+  - id: dm-content-envelope
+    description: "Content Creator: draft-only, no publishing, no external communication"
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    operational:
+      allowed_actions:
+        - draft_post
+        - edit_content
+        - research_topic
+        - suggest_hashtags
+      blocked_actions:
+        - publish_externally
+        - modify_brand_guidelines
+        - engage_legal
+        - schedule_content
+        - approve_publication
+      max_actions_per_day: 20
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: 08:00
+      active_hours_end: "20:00"
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths:
+        - workspaces/dm/content/*
+        - workspaces/standards/public/*
+      write_paths:
+        - workspaces/dm/content/drafts/*
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_docs
+        - board_minutes
+        - strategy
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels: []
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
+  - id: dm-analytics-envelope
+    description: "Analytics: read-heavy, 24/7 monitoring, no external communication"
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    operational:
+      allowed_actions:
+        - read_metrics
+        - generate_report
+        - track_engagement
+        - analyze_trends
+      blocked_actions:
+        - publish_externally
+        - modify_brand_guidelines
+        - engage_legal
+        - modify_content
+        - access_pii
+      max_actions_per_day: 120
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: 06:00
+      active_hours_end: "22:00"
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths:
+        - workspaces/dm/*
+        - analytics/*
+      write_paths:
+        - workspaces/dm/reports/*
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_docs
+        - board_minutes
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels: []
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
+  - id: dm-community-envelope
+    description: "Community Manager: draft responses, moderate, no external sending"
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    operational:
+      allowed_actions:
+        - draft_response
+        - moderate_content
+        - track_community
+        - flag_issues
+      blocked_actions:
+        - publish_externally
+        - modify_brand_guidelines
+        - engage_legal
+        - approve_publication
+      max_actions_per_day: 40
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: 08:00
+      active_hours_end: "20:00"
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths:
+        - workspaces/dm/community/*
+        - workspaces/standards/public/*
+      write_paths:
+        - workspaces/dm/community/drafts/*
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_docs
+        - board_minutes
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels: []
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
+  - id: dm-seo-envelope
+    description: "SEO Specialist: analysis and suggestions, no publishing"
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    operational:
+      allowed_actions:
+        - analyze_keywords
+        - suggest_structure
+        - audit_seo
+        - research_topics
+      blocked_actions:
+        - publish_externally
+        - modify_brand_guidelines
+        - engage_legal
+        - approve_publication
+      max_actions_per_day: 30
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: 08:00
+      active_hours_end: "20:00"
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths:
+        - workspaces/dm/content/*
+        - workspaces/standards/public/*
+        - analytics/seo/*
+      write_paths:
+        - workspaces/dm/seo/reports/*
+      blocked_data_types:
+        - pii
+        - financial_records
+        - legal_docs
+        - board_minutes
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels: []
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
 workspaces:
-- id: ws-dm
-  path: workspaces/dm/
-  description: Digital Media team workspace
-  knowledge_base_paths:
-  - briefs/
-  - 01-analysis/
-  - 02-plans/
+  - id: ws-dm
+    path: workspaces/dm/
+    description: Digital Media team workspace
+    knowledge_base_paths:
+      - briefs/
+      - 01-analysis/
+      - 02-plans/

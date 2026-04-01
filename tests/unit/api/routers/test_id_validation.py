@@ -11,15 +11,8 @@ endpoints. No external dependencies.
 
 from __future__ import annotations
 
-import os
-import tempfile
-
 import httpx
 import pytest
-
-# Override DATABASE_URL before any model imports
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_id_validation.db"
 
 from pact_platform.models import MAX_SHORT_STRING, validate_record_id
 from pact_platform.build.config.env import EnvConfig

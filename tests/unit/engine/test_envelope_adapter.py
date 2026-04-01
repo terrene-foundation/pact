@@ -14,14 +14,8 @@ Covers:
 from __future__ import annotations
 
 import math
-import os
-import tempfile
 
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_envelope_adapter.db"
 
 from pact.governance import (
     CompiledOrg,

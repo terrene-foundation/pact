@@ -20,19 +20,13 @@ are in their own test files.
 from __future__ import annotations
 
 import math
-import os
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from types import ModuleType
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_orchestrator.db"
 
 from pact.governance import (
     CompiledOrg,

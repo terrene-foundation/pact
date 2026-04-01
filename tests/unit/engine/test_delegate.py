@@ -15,16 +15,10 @@ Covers:
 from __future__ import annotations
 
 import math
-import os
-import tempfile
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_delegate.db"
 
 from pact.governance import (
     CompiledOrg,

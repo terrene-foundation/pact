@@ -8,15 +8,8 @@ pools, reviews, and metrics.
 
 from __future__ import annotations
 
-import os
-import tempfile
-
 import httpx
 import pytest
-
-# Override DATABASE_URL before any model imports
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_api.db"
 
 from pact_platform.build.config.env import EnvConfig
 from pact_platform.use.api.server import create_app

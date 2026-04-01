@@ -12,14 +12,7 @@ Covers:
 
 from __future__ import annotations
 
-import os
-import tempfile
-
 import pytest
-
-# Override DATABASE_URL before any pact_platform.models import
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_seed.db"
 
 from pact_platform.engine.seed import seed_demo_data, seed_if_empty
 from pact_platform.models import db

@@ -10,17 +10,11 @@ Tier 1 (Unit): Tests the gate in dev mode (no real GovernanceEngine).
 
 from __future__ import annotations
 
-import os
-import tempfile
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
 import pytest
-
-# Override DATABASE_URL before any model imports
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_gov_gate.db"
 
 from pact_platform.build.config.env import EnvConfig
 from pact_platform.use.api import governance as gov_mod

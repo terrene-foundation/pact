@@ -7,66 +7,84 @@
 #
 org_id: starter-org
 name: Starter Org
-authority_id: ''
+authority_id: ""
 teams:
-- id: starter-org-default-team
-  name: Starter Org Default Team
-  workspace: starter-org-default-ws
-  team_lead: null
-  agents:
-  - starter-org-default-agent
-  default_llm_backend: anthropic
-  verification_gradient: null
-  metadata: {}
+  - id: starter-org-default-team
+    name: Starter Org Default Team
+    workspace: starter-org-default-ws
+    team_lead: null
+    agents:
+      - starter-org-default-agent
+    default_llm_backend: anthropic
+    verification_gradient: null
+    metadata: {}
 agents:
-- id: starter-org-default-agent
-  name: Starter Org Default Agent
-  role: General-purpose agent
-  constraint_envelope: starter-org-default-envelope
-  initial_posture: supervised
-  capabilities: []
-  llm_backend: null
-  verification_gradient: null
-  metadata: {}
+  - id: starter-org-default-agent
+    name: Starter Org Default Agent
+    role: General-purpose agent
+    constraint_envelope: starter-org-default-envelope
+    initial_posture: supervised
+    capabilities: []
+    llm_backend: null
+    verification_gradient: null
+    metadata: {}
 envelopes:
-- id: starter-org-default-envelope
-  description: Default constraint envelope for Starter Org
-  confidentiality_clearance: public
-  financial:
-    max_spend_usd: 0.0
-    api_cost_budget_usd: null
-    requires_approval_above_usd: null
-    reasoning_required: false
-  operational:
-    allowed_actions: []
-    blocked_actions: []
-    max_actions_per_day: null
-    max_actions_per_hour: null
-    rate_limit_window_type: fixed
-    reasoning_required: false
-  temporal:
-    active_hours_start: null
-    active_hours_end: null
-    timezone: UTC
-    blackout_periods: []
-    reasoning_required: false
-  data_access:
-    read_paths: []
-    write_paths: []
-    blocked_data_types: []
-    reasoning_required: false
-  communication:
-    internal_only: true
-    allowed_channels: []
-    external_requires_approval: true
-    reasoning_required: false
-  max_delegation_depth: null
-  expires_at: null
+  - id: starter-org-default-envelope
+    description: Default constraint envelope for Starter Org
+    confidentiality_clearance: public
+    financial:
+      max_spend_usd: 0.0
+      api_cost_budget_usd: null
+      requires_approval_above_usd: null
+      reasoning_required: false
+    # Gradient thresholds — per-dimension numeric thresholds for verification
+    # gradient classification (Section 5.6).  Requires kailash-pact >=0.6.0.
+    #
+    # When set, the verification gradient engine uses these thresholds to
+    # classify actions by their cost (or other dimension value):
+    #   - Below auto_approve_threshold -> AUTO_APPROVED
+    #   - Between auto_approve and flag -> FLAGGED
+    #   - Between flag and hold -> HELD
+    #   - Above hold -> BLOCKED
+    #
+    # Thresholds must be ordered: auto_approve <= flag <= hold.
+    # All values must be finite (NaN/Inf rejected).
+    #
+    # gradient_thresholds:
+    #   financial:
+    #     auto_approve_threshold: 10.0
+    #     flag_threshold: 50.0
+    #     hold_threshold: 100.0
+    operational:
+      allowed_actions: []
+      blocked_actions: []
+      max_actions_per_day: null
+      max_actions_per_hour: null
+      rate_limit_window_type: fixed
+      reasoning_required: false
+    temporal:
+      active_hours_start: null
+      active_hours_end: null
+      timezone: UTC
+      blackout_periods: []
+      reasoning_required: false
+    data_access:
+      read_paths: []
+      write_paths: []
+      blocked_data_types: []
+      reasoning_required: false
+    communication:
+      internal_only: true
+      allowed_channels: []
+      external_requires_approval: true
+      reasoning_required: false
+    max_delegation_depth: null
+    expires_at: null
 workspaces:
-- id: starter-org-default-ws
-  path: workspaces/starter-org/
-  description: Default workspace for Starter Org
-  knowledge_base_paths:
-  - briefs/
-  - 01-analysis/
-  - 02-plans/
+  - id: starter-org-default-ws
+    path: workspaces/starter-org/
+    description: Default workspace for Starter Org
+    knowledge_base_paths:
+      - briefs/
+      - 01-analysis/
+      - 02-plans/

@@ -8,17 +8,11 @@ Uses the production DataFlow instance with a temp SQLite file.
 
 from __future__ import annotations
 
-import os
-import tempfile
 from uuid import uuid4
 
 import pytest
 
-# Override DATABASE_URL before importing models
-_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_dir}/test_models.db"
-
-from pact_platform.models import db, validate_finite  # noqa: E402
+from pact_platform.models import db, validate_finite
 
 
 def _uid() -> str:
