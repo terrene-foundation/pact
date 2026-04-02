@@ -24,20 +24,16 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
         dict with seeded=True/False and counts of seeded items.
     """
     # Check if data already exists
-    wf = db.create_workflow()
-    wf.add_node("AgenticObjectiveListNode", "list", {"filter": {}, "limit": 1})
-    results, _ = db.execute_workflow(wf)
-    existing = results["list"].get("records", [])
+    existing = db.express_sync.list("AgenticObjective", {}, limit=1)
     if existing:
-        logger.info("Data already exists (%d objectives), skipping seed", len(existing))
+        logger.info("Data already exists, skipping seed")
         return {"seeded": False}
 
     logger.info("Seeding demo data...")
 
     # --- Objectives ---
-    _create(
-        db,
-        "AgenticObjectiveCreateNode",
+    db.express_sync.create(
+        "AgenticObjective",
         {
             "id": "obj-admissions",
             "org_address": "university/research-dept",
@@ -49,9 +45,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
             "budget_usd": 50.0,
         },
     )
-    _create(
-        db,
-        "AgenticObjectiveCreateNode",
+    db.express_sync.create(
+        "AgenticObjective",
         {
             "id": "obj-catalog",
             "org_address": "university/admin-dept",
@@ -102,9 +97,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
             2,
         ),
     ]:
-        _create(
-            db,
-            "AgenticRequestCreateNode",
+        db.express_sync.create(
+            "AgenticRequest",
             {
                 "id": rid,
                 "objective_id": oid,
@@ -117,9 +111,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
         )
 
     # --- HELD decision ---
-    _create(
-        db,
-        "AgenticDecisionCreateNode",
+    db.express_sync.create(
+        "AgenticDecision",
         {
             "id": "dec-restricted",
             "request_id": "req-transcripts",
@@ -154,9 +147,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
             300,
         ),
     ]:
-        _create(
-            db,
-            "RunCreateNode",
+        db.express_sync.create(
+            "Run",
             {
                 "id": run_id,
                 "request_id": req_id,
@@ -171,9 +163,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
         )
 
     # --- Pool ---
-    _create(
-        db,
-        "AgenticPoolCreateNode",
+    db.express_sync.create(
+        "AgenticPool",
         {
             "id": "pool-research",
             "org_id": "university",
@@ -183,9 +174,8 @@ def seed_demo_data(db: Any) -> dict[str, Any]:
             "max_concurrent": 3,
         },
     )
-    _create(
-        db,
-        "AgenticPoolMembershipCreateNode",
+    db.express_sync.create(
+        "AgenticPoolMembership",
         {
             "id": "mem-researcher",
             "pool_id": "pool-research",
@@ -217,11 +207,3 @@ def seed_if_empty(db: Any) -> None:
             logger.info("Auto-seeded demo data on first boot")
     except Exception:
         logger.exception("Failed to seed demo data — continuing without seed")
-
-
-def _create(db: Any, node_type: str, data: dict[str, Any]) -> dict[str, Any]:
-    """Helper to create a single record via DataFlow."""
-    wf = db.create_workflow()
-    wf.add_node(node_type, "create", data)
-    results, _ = db.execute_workflow(wf)
-    return results["create"]

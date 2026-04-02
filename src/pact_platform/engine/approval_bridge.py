@@ -5,8 +5,8 @@ approval queue.
 
 When the GovernanceEngine returns a HELD verdict (action near a soft
 limit, requiring human judgment), the ApprovalBridge persists an
-``AgenticDecision`` record via DataFlow.  This record appears in the
-platform's approval queue (dashboard and API), where a human can
+``AgenticDecision`` record via DataFlow Express.  This record appears in
+the platform's approval queue (dashboard and API), where a human can
 approve or reject it.
 
 The bridge also provides ``approve()`` and ``reject()`` methods for
@@ -96,12 +96,8 @@ class ApprovalBridge:
                         f"NaN/Inf values bypass governance checks."
                     )
 
-        wf = self._db.create_workflow("create_hold_decision")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.create(
             "AgenticDecision",
-            "Create",
-            "create_decision",
             {
                 "id": decision_id,
                 "request_id": request_id or "",
@@ -119,11 +115,9 @@ class ApprovalBridge:
                 "updated_at": now_iso,
             },
         )
-        self._db.execute_workflow(wf)
 
         logger.info(
-            "ApprovalBridge: created HELD decision '%s' for role='%s' "
-            "action='%s' — %s",
+            "ApprovalBridge: created HELD decision '%s' for role='%s' " "action='%s' — %s",
             decision_id,
             role_address,
             action,
@@ -158,24 +152,17 @@ class ApprovalBridge:
 
         now_iso = datetime.now(UTC).isoformat()
 
-        wf = self._db.create_workflow("approve_decision")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.update(
             "AgenticDecision",
-            "Update",
-            "approve",
+            decision_id,
             {
-                "filter": {"id": decision_id},
-                "fields": {
-                    "status": "approved",
-                    "decided_by": decided_by,
-                    "decided_at": now_iso,
-                    "decision_reason": reason,
-                    "updated_at": now_iso,
-                },
+                "status": "approved",
+                "decided_by": decided_by,
+                "decided_at": now_iso,
+                "decision_reason": reason,
+                "updated_at": now_iso,
             },
         )
-        self._db.execute_workflow(wf)
 
         logger.info(
             "ApprovalBridge: APPROVED decision '%s' by '%s' — %s",
@@ -210,24 +197,17 @@ class ApprovalBridge:
 
         now_iso = datetime.now(UTC).isoformat()
 
-        wf = self._db.create_workflow("reject_decision")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.update(
             "AgenticDecision",
-            "Update",
-            "reject",
+            decision_id,
             {
-                "filter": {"id": decision_id},
-                "fields": {
-                    "status": "rejected",
-                    "decided_by": decided_by,
-                    "decided_at": now_iso,
-                    "decision_reason": reason,
-                    "updated_at": now_iso,
-                },
+                "status": "rejected",
+                "decided_by": decided_by,
+                "decided_at": now_iso,
+                "decision_reason": reason,
+                "updated_at": now_iso,
             },
         )
-        self._db.execute_workflow(wf)
 
         logger.info(
             "ApprovalBridge: REJECTED decision '%s' by '%s' — %s",
@@ -245,17 +225,4 @@ class ApprovalBridge:
         Returns:
             List of AgenticDecision dicts with ``status == "pending"``.
         """
-        wf = self._db.create_workflow("list_pending_decisions")
-        self._db.add_node(
-            wf,
-            "AgenticDecision",
-            "List",
-            "list_pending",
-            {
-                "filter": {"status": "pending"},
-                "limit": limit,
-            },
-        )
-        results, _ = self._db.execute_workflow(wf)
-        records = results.get("list_pending", {}).get("records", [])
-        return records
+        return self._db.express_sync.list("AgenticDecision", {"status": "pending"}, limit=limit)

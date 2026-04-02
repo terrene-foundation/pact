@@ -36,11 +36,68 @@ from pact.governance import (
     OrgNode,
 )
 from pact_platform.engine.orchestrator import SupervisorOrchestrator
-from pact_platform.models import db
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers — MockExpressSync
+# ---------------------------------------------------------------------------
+
+
+class MockExpressSync:
+    """In-memory Express sync API that tracks all calls and stores records."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self._store: dict[str, list[dict[str, Any]]] = {}
+
+    def create(self, model: str, data: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append({"method": "create", "model": model, "data": data})
+        self._store.setdefault(model, []).append(dict(data))
+        return dict(data)
+
+    def read(self, model: str, record_id: str) -> dict[str, Any] | None:
+        self.calls.append({"method": "read", "model": model, "record_id": record_id})
+        for rec in self._store.get(model, []):
+            if rec.get("id") == record_id:
+                return dict(rec)
+        return None
+
+    def update(self, model: str, record_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append(
+            {"method": "update", "model": model, "record_id": record_id, "fields": fields}
+        )
+        for rec in self._store.get(model, []):
+            if rec.get("id") == record_id:
+                rec.update(fields)
+                return dict(rec)
+        return fields
+
+    def list(
+        self, model: str, filter_dict: dict[str, Any], limit: int = 100
+    ) -> list[dict[str, Any]]:
+        self.calls.append({"method": "list", "model": model, "filter": filter_dict, "limit": limit})
+        records = self._store.get(model, [])
+        matched = []
+        for rec in records:
+            match = True
+            for k, v in filter_dict.items():
+                if rec.get(k) != v:
+                    match = False
+                    break
+            if match:
+                matched.append(dict(rec))
+        return matched[:limit]
+
+
+class MockDB:
+    """Mock DataFlow with express_sync attribute."""
+
+    def __init__(self) -> None:
+        self.express_sync = MockExpressSync()
+
+
+# ---------------------------------------------------------------------------
+# Helpers — Governance + Supervisor fakes
 # ---------------------------------------------------------------------------
 
 
@@ -113,7 +170,8 @@ class TestInputValidation:
 
     def test_empty_request_id_raises(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with pytest.raises(ValueError, match="request_id must not be empty"):
             orch.execute_request(
@@ -124,7 +182,8 @@ class TestInputValidation:
 
     def test_empty_role_address_raises(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with pytest.raises(ValueError, match="role_address must not be empty"):
             orch.execute_request(
@@ -144,7 +203,8 @@ class TestContextNaNGuard:
 
     def test_nan_cost_in_context_raises(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with pytest.raises(ValueError, match="finite"):
             orch.execute_request(
@@ -156,7 +216,8 @@ class TestContextNaNGuard:
 
     def test_inf_daily_total_in_context_raises(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with pytest.raises(ValueError, match="finite"):
             orch.execute_request(
@@ -168,7 +229,8 @@ class TestContextNaNGuard:
 
     def test_nan_transaction_amount_in_context_raises(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with pytest.raises(ValueError, match="finite"):
             orch.execute_request(
@@ -189,7 +251,8 @@ class TestEnvelopeResolutionFailure:
 
     def test_envelope_failure_returns_success_false(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         # Patch the adapter's adapt method to raise an exception
         with patch.object(orch._adapter, "adapt", side_effect=RuntimeError("Connection lost")):
@@ -207,7 +270,8 @@ class TestEnvelopeResolutionFailure:
 
     def test_envelope_failure_records_run(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         with patch.object(orch._adapter, "adapt", side_effect=RuntimeError("DB down")):
             result = orch.execute_request(
@@ -218,10 +282,8 @@ class TestEnvelopeResolutionFailure:
 
         # Verify the failed run was recorded in DataFlow
         run_id = result["run_id"]
-        wf = db.create_workflow("read_run")
-        db.add_node(wf, "Run", "Read", "read", {"id": run_id})
-        results, _ = db.execute_workflow(wf)
-        run = results["read"]
+        run = mock_db.express_sync.read("Run", run_id)
+        assert run is not None
         assert run["status"] == "failed"
         assert "Envelope resolution failed" in run["error_message"]
 
@@ -236,7 +298,8 @@ class TestSupervisorCreationFailure:
 
     def test_supervisor_creation_failure(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         class _BrokenSupervisor:
             def __init__(self, **kwargs):
@@ -277,7 +340,8 @@ class TestSuccessfulExecution:
 
     def test_success_returns_results(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         fake_result = _FakeSupervisorResult(
             success=True,
@@ -322,7 +386,8 @@ class TestSuccessfulExecution:
 
     def test_success_records_run_in_dataflow(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         fake_result = _FakeSupervisorResult(
             success=True,
@@ -358,10 +423,8 @@ class TestSuccessfulExecution:
 
         # Read back the Run record
         run_id = result["run_id"]
-        wf = db.create_workflow("read_run")
-        db.add_node(wf, "Run", "Read", "read", {"id": run_id})
-        results, _ = db.execute_workflow(wf)
-        run = results["read"]
+        run = mock_db.express_sync.read("Run", run_id)
+        assert run is not None
         assert run["status"] == "completed"
         assert run["cost_usd"] == pytest.approx(0.01, abs=0.001)
 
@@ -376,7 +439,8 @@ class TestNaNBudgetFromSupervisor:
 
     def test_nan_budget_consumed_recorded_as_zero(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         fake_result = _FakeSupervisorResult(
             success=True,
@@ -414,7 +478,8 @@ class TestNaNBudgetFromSupervisor:
 
     def test_inf_budget_allocated_recorded_as_zero(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         fake_result = _FakeSupervisorResult(
             success=True,
@@ -461,7 +526,8 @@ class TestRecordRunNaNGuard:
 
     def test_nan_cost_usd_recorded_as_zero(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         from datetime import UTC, datetime
 
@@ -477,15 +543,14 @@ class TestRecordRunNaNGuard:
         )
 
         # Read back the run
-        wf = db.create_workflow("read_run")
-        db.add_node(wf, "Run", "Read", "read", {"id": "run-nan-cost"})
-        results, _ = db.execute_workflow(wf)
-        run = results["read"]
+        run = mock_db.express_sync.read("Run", "run-nan-cost")
+        assert run is not None
         assert run["cost_usd"] == 0.0
 
     def test_inf_cost_usd_recorded_as_zero(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
 
         from datetime import UTC, datetime
 
@@ -499,10 +564,8 @@ class TestRecordRunNaNGuard:
             cost_usd=float("inf"),
         )
 
-        wf = db.create_workflow("read_run")
-        db.add_node(wf, "Run", "Read", "read", {"id": "run-inf-cost"})
-        results, _ = db.execute_workflow(wf)
-        run = results["read"]
+        run = mock_db.express_sync.read("Run", "run-inf-cost")
+        assert run is not None
         assert run["cost_usd"] == 0.0
 
 
@@ -516,17 +579,20 @@ class TestPropertyAccessors:
 
     def test_approval_bridge_accessible(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
         assert orch.approval_bridge is not None
 
     def test_event_bridge_accessible(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
         assert orch.event_bridge is not None
 
     def test_event_bridge_has_no_bus_when_none(self):
         engine = _make_engine()
-        orch = SupervisorOrchestrator(engine, db, event_bus=None)
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db, event_bus=None)
         assert orch.event_bridge._bus is None
 
 
@@ -540,6 +606,7 @@ class TestSupervisorExecutionFailure:
 
     def test_supervisor_run_exception(self):
         engine = _make_engine()
+        mock_db = MockDB()
 
         # Track completion events
         events: list[dict[str, Any]] = []
@@ -548,7 +615,7 @@ class TestSupervisorExecutionFailure:
             def on_completion_event(self, **kwargs):
                 events.append(kwargs)
 
-        orch = SupervisorOrchestrator(engine, db)
+        orch = SupervisorOrchestrator(engine, mock_db)
         orch._event_bridge = _TrackingBridge()
 
         class _ExplodingSupervisor:

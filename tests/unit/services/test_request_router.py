@@ -29,55 +29,56 @@ from pact_platform.use.services.request_router import RequestRouterService
 
 
 # ---------------------------------------------------------------------------
-# Test helpers — mock DataFlow that tracks workflow executions
+# Test helpers — MockExpressSync with configurable returns
 # ---------------------------------------------------------------------------
 
 
-class _WorkflowStub:
-    """Lightweight stand-in for a DataFlow workflow object."""
+class MockExpressSync:
+    """In-memory Express sync API that tracks all calls.
 
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.nodes: list[dict[str, Any]] = []
+    ``list_results`` maps ``(model, filter_key_tuple)`` to the list that
+    ``list()`` returns.  If not configured for a given call, an empty list
+    is returned.
 
-
-class MockDataFlow:
-    """Minimal DataFlow double that records create/add/execute calls.
-
-    ``execute_results`` maps workflow names to the (results, run_id) tuples
-    that ``execute_workflow`` returns.  If not configured for a given
-    workflow, a safe empty default is returned.
+    ``create_log`` and ``update_log`` record all mutation calls for
+    assertion.
     """
 
-    def __init__(self, execute_results: dict[str, tuple[dict, str]] | None = None) -> None:
-        self.created_workflows: list[_WorkflowStub] = []
-        self.added_nodes: list[dict[str, Any]] = []
-        self.executed_workflows: list[_WorkflowStub] = []
-        self._execute_results = execute_results or {}
-
-    def create_workflow(self, name: str = "") -> _WorkflowStub:
-        wf = _WorkflowStub(name)
-        self.created_workflows.append(wf)
-        return wf
-
-    def add_node(
-        self, wf: _WorkflowStub, model: str, operation: str, node_id: str, params: dict
+    def __init__(
+        self,
+        list_results: dict[str, list[dict[str, Any]]] | None = None,
     ) -> None:
-        entry = {
-            "workflow": wf.name,
-            "model": model,
-            "operation": operation,
-            "node_id": node_id,
-            "params": params,
-        }
-        wf.nodes.append(entry)
-        self.added_nodes.append(entry)
+        self.create_log: list[dict[str, Any]] = []
+        self.update_log: list[dict[str, Any]] = []
+        self.list_log: list[dict[str, Any]] = []
+        self._list_results = list_results or {}
 
-    def execute_workflow(self, wf: _WorkflowStub) -> tuple[dict, str]:
-        self.executed_workflows.append(wf)
-        if wf.name in self._execute_results:
-            return self._execute_results[wf.name]
-        return ({}, "run-test")
+    def create(self, model: str, data: dict[str, Any]) -> dict[str, Any]:
+        self.create_log.append({"model": model, "data": data})
+        return dict(data)
+
+    def read(self, model: str, record_id: str) -> dict[str, Any] | None:
+        return None
+
+    def update(self, model: str, record_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+        self.update_log.append({"model": model, "record_id": record_id, "fields": fields})
+        return dict(fields)
+
+    def list(
+        self, model: str, filter_dict: dict[str, Any], limit: int = 100
+    ) -> list[dict[str, Any]]:
+        self.list_log.append({"model": model, "filter": filter_dict, "limit": limit})
+        # Match on model name for simple dispatch
+        if model in self._list_results:
+            return self._list_results[model][:limit]
+        return []
+
+
+class MockDB:
+    """Mock DataFlow with express_sync attribute."""
+
+    def __init__(self, express_sync: MockExpressSync | None = None) -> None:
+        self.express_sync = express_sync or MockExpressSync()
 
 
 def _make_verdict(
@@ -103,27 +104,25 @@ def _make_verdict(
 
 
 @pytest.fixture()
-def mock_db() -> MockDataFlow:
-    """Return a MockDataFlow with default (empty) execution results."""
-    return MockDataFlow(
-        execute_results={
-            "find_pool": (
-                {"list_pools": {"records": [{"id": "pool-abc"}]}},
-                "run-pool",
-            ),
-            "assign_request": ({}, "run-assign"),
-        }
+def mock_db() -> MockDB:
+    """Return a MockDB where pool lookup returns one pool."""
+    express = MockExpressSync(
+        list_results={
+            "AgenticPool": [{"id": "pool-abc", "org_id": "D1", "status": "active"}],
+        },
     )
+    return MockDB(express_sync=express)
 
 
 @pytest.fixture()
-def mock_db_no_pool() -> MockDataFlow:
-    """Return a MockDataFlow where pool lookup returns no records."""
-    return MockDataFlow(
-        execute_results={
-            "find_pool": ({"list_pools": {"records": []}}, "run-pool"),
-        }
+def mock_db_no_pool() -> MockDB:
+    """Return a MockDB where pool lookup returns no records."""
+    express = MockExpressSync(
+        list_results={
+            "AgenticPool": [],
+        },
     )
+    return MockDB(express_sync=express)
 
 
 @pytest.fixture()
@@ -142,7 +141,7 @@ def mock_engine() -> MagicMock:
 class TestNoGovernanceEngine:
     """When no governance engine is configured, every request must be blocked."""
 
-    def test_blocks_without_engine(self, mock_db: MockDataFlow) -> None:
+    def test_blocks_without_engine(self, mock_db: MockDB) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         result = service.route_request(
             request_id="req-001",
@@ -153,7 +152,7 @@ class TestNoGovernanceEngine:
         assert "fail-closed" in result["reason"]
         assert result["request_id"] == "req-001"
 
-    def test_no_db_calls_when_blocked_without_engine(self, mock_db: MockDataFlow) -> None:
+    def test_no_db_calls_when_blocked_without_engine(self, mock_db: MockDB) -> None:
         """Fail-closed path must not touch the database at all."""
         service = RequestRouterService(db=mock_db, governance_engine=None)
         service.route_request(
@@ -161,15 +160,16 @@ class TestNoGovernanceEngine:
             org_address="D1-R1",
             action="read",
         )
-        assert len(mock_db.created_workflows) == 0
-        assert len(mock_db.executed_workflows) == 0
+        assert len(mock_db.express_sync.create_log) == 0
+        assert len(mock_db.express_sync.list_log) == 0
+        assert len(mock_db.express_sync.update_log) == 0
 
-    def test_logs_warning_on_init_without_engine(self, mock_db: MockDataFlow, caplog) -> None:
+    def test_logs_warning_on_init_without_engine(self, mock_db: MockDB, caplog) -> None:
         with caplog.at_level(logging.WARNING, logger="pact_platform.use.services.request_router"):
             RequestRouterService(db=mock_db, governance_engine=None)
         assert any("without governance engine" in msg for msg in caplog.messages)
 
-    def test_logs_warning_on_route_without_engine(self, mock_db: MockDataFlow, caplog) -> None:
+    def test_logs_warning_on_route_without_engine(self, mock_db: MockDB, caplog) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         with caplog.at_level(logging.WARNING, logger="pact_platform.use.services.request_router"):
             service.route_request(
@@ -189,7 +189,7 @@ class TestBlockedVerdict:
     """Engine says BLOCKED -- the service must reject immediately."""
 
     def test_blocked_verdict_returns_blocked_status(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="blocked", reason="Budget exceeded"
@@ -205,7 +205,7 @@ class TestBlockedVerdict:
         assert result["request_id"] == "req-100"
 
     def test_blocked_verdict_does_not_create_decision(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="blocked", reason="nope")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -214,11 +214,11 @@ class TestBlockedVerdict:
             org_address="D1-R1",
             action="write",
         )
-        # No workflows should be created for a blocked verdict
-        assert len(mock_db.created_workflows) == 0
+        # No create calls should be made for a blocked verdict
+        assert len(mock_db.express_sync.create_log) == 0
 
     def test_blocked_verdict_does_not_assign_pool(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="blocked", reason="denied")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -229,9 +229,7 @@ class TestBlockedVerdict:
         )
         assert "assigned_to" not in result
 
-    def test_engine_called_with_correct_args(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_engine_called_with_correct_args(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="blocked", reason="x")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         service.route_request(
@@ -256,7 +254,7 @@ class TestHeldVerdict:
     """Engine says HELD -- the service must persist a decision for human review."""
 
     def test_held_verdict_returns_held_status(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="held", reason="Needs supervisor approval", envelope_version="3"
@@ -273,8 +271,8 @@ class TestHeldVerdict:
         assert "decision_id" in result
         assert result["decision_id"].startswith("dec-")
 
-    def test_held_verdict_creates_decision_workflow(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+    def test_held_verdict_creates_decision_via_express(
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="held", reason="requires review", envelope_version="5"
@@ -286,24 +284,22 @@ class TestHeldVerdict:
             action="write",
         )
 
-        # Should have created a "create_hold_decision" workflow
-        decision_wfs = [wf for wf in mock_db.created_workflows if wf.name == "create_hold_decision"]
-        assert len(decision_wfs) == 1
-
-        # Should have added a node with the correct params
-        decision_nodes = [n for n in mock_db.added_nodes if n["node_id"] == "create_decision"]
-        assert len(decision_nodes) == 1
-        params = decision_nodes[0]["params"]
-        assert params["request_id"] == "req-201"
-        assert params["agent_address"] == "D1-T1-R1"
-        assert params["action"] == "write"
-        assert params["decision_type"] == "governance_hold"
-        assert params["status"] == "pending"
-        assert params["reason_held"] == "requires review"
-        assert params["envelope_version"] == 5  # parsed to int
+        # Should have created one AgenticDecision
+        decision_creates = [
+            c for c in mock_db.express_sync.create_log if c["model"] == "AgenticDecision"
+        ]
+        assert len(decision_creates) == 1
+        data = decision_creates[0]["data"]
+        assert data["request_id"] == "req-201"
+        assert data["agent_address"] == "D1-T1-R1"
+        assert data["action"] == "write"
+        assert data["decision_type"] == "governance_hold"
+        assert data["status"] == "pending"
+        assert data["reason_held"] == "requires review"
+        assert data["envelope_version"] == 5  # parsed to int
 
     def test_held_verdict_does_not_assign_pool(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="held", reason="hold")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -315,7 +311,7 @@ class TestHeldVerdict:
         assert "assigned_to" not in result
 
     def test_held_with_empty_envelope_version(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         """Empty envelope_version should fall back to 0."""
         mock_engine.verify_action.return_value = _make_verdict(
@@ -327,8 +323,10 @@ class TestHeldVerdict:
             org_address="D1-R1",
             action="write",
         )
-        decision_nodes = [n for n in mock_db.added_nodes if n["node_id"] == "create_decision"]
-        assert decision_nodes[0]["params"]["envelope_version"] == 0
+        decision_creates = [
+            c for c in mock_db.express_sync.create_log if c["model"] == "AgenticDecision"
+        ]
+        assert decision_creates[0]["data"]["envelope_version"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +338,7 @@ class TestAutoApprovedVerdict:
     """Engine says AUTO_APPROVED -- assign to pool and return approved."""
 
     def test_auto_approved_returns_approved_status(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="auto_approved", reason="Within envelope"
@@ -356,7 +354,7 @@ class TestAutoApprovedVerdict:
         assert result["request_id"] == "req-300"
 
     def test_auto_approved_triggers_pool_lookup(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -365,11 +363,11 @@ class TestAutoApprovedVerdict:
             org_address="D1-R1",
             action="read",
         )
-        pool_wfs = [wf for wf in mock_db.created_workflows if wf.name == "find_pool"]
-        assert len(pool_wfs) == 1
+        pool_lists = [c for c in mock_db.express_sync.list_log if c["model"] == "AgenticPool"]
+        assert len(pool_lists) == 1
 
     def test_auto_approved_updates_request_assignment(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -378,17 +376,18 @@ class TestAutoApprovedVerdict:
             org_address="D1-R1",
             action="read",
         )
-        assign_wfs = [wf for wf in mock_db.created_workflows if wf.name == "assign_request"]
-        assert len(assign_wfs) == 1
-        assign_nodes = [n for n in mock_db.added_nodes if n["node_id"] == "assign"]
-        assert len(assign_nodes) == 1
-        params = assign_nodes[0]["params"]
-        assert params["filter"] == {"id": "req-302"}
-        assert params["fields"]["assigned_to"] == "pool-abc"
-        assert params["fields"]["status"] == "assigned"
+        # Should have called update on the AgenticRequest
+        request_updates = [
+            c for c in mock_db.express_sync.update_log if c["model"] == "AgenticRequest"
+        ]
+        assert len(request_updates) == 1
+        upd = request_updates[0]
+        assert upd["record_id"] == "req-302"
+        assert upd["fields"]["assigned_to"] == "pool-abc"
+        assert upd["fields"]["status"] == "assigned"
 
     def test_auto_approved_no_pool_returns_unassigned(
-        self, mock_db_no_pool: MockDataFlow, mock_engine: MagicMock
+        self, mock_db_no_pool: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db_no_pool, governance_engine=mock_engine)
@@ -409,9 +408,7 @@ class TestAutoApprovedVerdict:
 class TestFlaggedVerdict:
     """Engine says FLAGGED -- log a warning but assign to pool anyway."""
 
-    def test_flagged_returns_approved_status(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_flagged_returns_approved_status(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="flagged", reason="Unusual pattern detected"
         )
@@ -424,9 +421,7 @@ class TestFlaggedVerdict:
         assert result["status"] == "approved"
         assert result["assigned_to"] == "pool-abc"
 
-    def test_flagged_logs_warning(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock, caplog
-    ) -> None:
+    def test_flagged_logs_warning(self, mock_db: MockDB, mock_engine: MagicMock, caplog) -> None:
         mock_engine.verify_action.return_value = _make_verdict(
             level="flagged", reason="Anomaly score high"
         )
@@ -450,29 +445,29 @@ class TestFlaggedVerdict:
 class TestInputValidation:
     """Empty required fields must raise ValueError immediately."""
 
-    def test_empty_request_id_raises(self, mock_db: MockDataFlow) -> None:
+    def test_empty_request_id_raises(self, mock_db: MockDB) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         with pytest.raises(ValueError, match="request_id must not be empty"):
             service.route_request(request_id="", org_address="D1-R1", action="write")
 
-    def test_none_request_id_raises(self, mock_db: MockDataFlow) -> None:
+    def test_none_request_id_raises(self, mock_db: MockDB) -> None:
         """None is falsy, should also be rejected."""
         service = RequestRouterService(db=mock_db, governance_engine=None)
         with pytest.raises(ValueError, match="request_id must not be empty"):
             service.route_request(request_id=None, org_address="D1-R1", action="write")
 
-    def test_empty_org_address_raises(self, mock_db: MockDataFlow) -> None:
+    def test_empty_org_address_raises(self, mock_db: MockDB) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         with pytest.raises(ValueError, match="org_address must not be empty"):
             service.route_request(request_id="req-001", org_address="", action="write")
 
-    def test_none_org_address_raises(self, mock_db: MockDataFlow) -> None:
+    def test_none_org_address_raises(self, mock_db: MockDB) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         with pytest.raises(ValueError, match="org_address must not be empty"):
             service.route_request(request_id="req-001", org_address=None, action="write")
 
     def test_validation_runs_before_governance(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         """Validation errors should fire before the engine is ever consulted."""
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -489,7 +484,7 @@ class TestInputValidation:
 class TestNanInfCostValidation:
     """NaN and Inf cost values must be rejected before reaching governance."""
 
-    def test_nan_cost_raises(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_nan_cost_raises(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         with pytest.raises(ValueError, match="must be finite"):
             service.route_request(
@@ -499,7 +494,7 @@ class TestNanInfCostValidation:
                 context={"cost": float("nan")},
             )
 
-    def test_positive_inf_cost_raises(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_positive_inf_cost_raises(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         with pytest.raises(ValueError, match="must be finite"):
             service.route_request(
@@ -509,7 +504,7 @@ class TestNanInfCostValidation:
                 context={"cost": float("inf")},
             )
 
-    def test_negative_inf_cost_raises(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_negative_inf_cost_raises(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         with pytest.raises(ValueError, match="must be finite"):
             service.route_request(
@@ -519,9 +514,7 @@ class TestNanInfCostValidation:
                 context={"cost": float("-inf")},
             )
 
-    def test_nan_cost_does_not_reach_engine(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_nan_cost_does_not_reach_engine(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         with pytest.raises(ValueError):
             service.route_request(
@@ -532,7 +525,7 @@ class TestNanInfCostValidation:
             )
         mock_engine.verify_action.assert_not_called()
 
-    def test_valid_cost_passes_through(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_valid_cost_passes_through(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         result = service.route_request(
@@ -543,7 +536,7 @@ class TestNanInfCostValidation:
         )
         assert result["status"] == "approved"
 
-    def test_zero_cost_passes_through(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_zero_cost_passes_through(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         result = service.route_request(
@@ -554,7 +547,7 @@ class TestNanInfCostValidation:
         )
         assert result["status"] == "approved"
 
-    def test_none_cost_passes_through(self, mock_db: MockDataFlow, mock_engine: MagicMock) -> None:
+    def test_none_cost_passes_through(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         """context with no 'cost' key should be fine."""
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -576,7 +569,7 @@ class TestEngineException:
     """If the governance engine raises, the service must fail-closed to BLOCKED."""
 
     def test_engine_exception_returns_blocked(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.side_effect = RuntimeError("Engine crashed")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -593,7 +586,7 @@ class TestEngineException:
         assert result["request_id"] == "req-800"
 
     def test_engine_exception_does_not_create_decision(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.side_effect = ValueError("bad input")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -602,10 +595,10 @@ class TestEngineException:
             org_address="D1-R1",
             action="write",
         )
-        assert len(mock_db.created_workflows) == 0
+        assert len(mock_db.express_sync.create_log) == 0
 
     def test_engine_exception_does_not_assign_pool(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
+        self, mock_db: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.side_effect = TypeError("unexpected")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -617,7 +610,7 @@ class TestEngineException:
         assert "assigned_to" not in result
 
     def test_engine_exception_logs_error(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock, caplog
+        self, mock_db: MockDB, mock_engine: MagicMock, caplog
     ) -> None:
         mock_engine.verify_action.side_effect = RuntimeError("kaboom")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -638,9 +631,7 @@ class TestEngineException:
 class TestPoolAssignment:
     """Pool lookup and request assignment edge cases."""
 
-    def test_org_id_extraction_from_address(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_org_id_extraction_from_address(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         """The service extracts org_id as the first segment before '-'."""
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -649,13 +640,11 @@ class TestPoolAssignment:
             org_address="Engineering-Backend-SeniorDev",
             action="write",
         )
-        pool_nodes = [n for n in mock_db.added_nodes if n["node_id"] == "list_pools"]
-        assert len(pool_nodes) == 1
-        assert pool_nodes[0]["params"]["filter"]["org_id"] == "Engineering"
+        pool_lists = [c for c in mock_db.express_sync.list_log if c["model"] == "AgenticPool"]
+        assert len(pool_lists) == 1
+        assert pool_lists[0]["filter"]["org_id"] == "Engineering"
 
-    def test_simple_address_without_dash(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_simple_address_without_dash(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         """An address without '-' uses the whole string as org_id."""
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
@@ -664,11 +653,11 @@ class TestPoolAssignment:
             org_address="standalone",
             action="read",
         )
-        pool_nodes = [n for n in mock_db.added_nodes if n["node_id"] == "list_pools"]
-        assert pool_nodes[0]["params"]["filter"]["org_id"] == "standalone"
+        pool_lists = [c for c in mock_db.express_sync.list_log if c["model"] == "AgenticPool"]
+        assert pool_lists[0]["filter"]["org_id"] == "standalone"
 
     def test_no_pool_found_returns_unassigned(
-        self, mock_db_no_pool: MockDataFlow, mock_engine: MagicMock
+        self, mock_db_no_pool: MockDB, mock_engine: MagicMock
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db_no_pool, governance_engine=mock_engine)
@@ -680,7 +669,7 @@ class TestPoolAssignment:
         assert result["assigned_to"] == "unassigned"
 
     def test_no_pool_found_logs_warning(
-        self, mock_db_no_pool: MockDataFlow, mock_engine: MagicMock, caplog
+        self, mock_db_no_pool: MockDB, mock_engine: MagicMock, caplog
     ) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db_no_pool, governance_engine=mock_engine)
@@ -696,9 +685,9 @@ class TestPoolAssignment:
         )
 
     def test_no_pool_found_does_not_update_request(
-        self, mock_db_no_pool: MockDataFlow, mock_engine: MagicMock
+        self, mock_db_no_pool: MockDB, mock_engine: MagicMock
     ) -> None:
-        """When no pool found, the assign_request workflow must not be created."""
+        """When no pool found, the request must not be updated."""
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db_no_pool, governance_engine=mock_engine)
         service.route_request(
@@ -706,8 +695,7 @@ class TestPoolAssignment:
             org_address="D1-R1",
             action="read",
         )
-        assign_wfs = [wf for wf in mock_db_no_pool.created_workflows if wf.name == "assign_request"]
-        assert len(assign_wfs) == 0
+        assert len(mock_db_no_pool.express_sync.update_log) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -718,9 +706,7 @@ class TestPoolAssignment:
 class TestContextForwarding:
     """Verify that context dicts are forwarded correctly to the engine."""
 
-    def test_none_context_becomes_empty_dict(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_none_context_becomes_empty_dict(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         service.route_request(
@@ -736,9 +722,7 @@ class TestContextForwarding:
             context=None,
         )
 
-    def test_populated_context_forwarded(
-        self, mock_db: MockDataFlow, mock_engine: MagicMock
-    ) -> None:
+    def test_populated_context_forwarded(self, mock_db: MockDB, mock_engine: MagicMock) -> None:
         mock_engine.verify_action.return_value = _make_verdict(level="auto_approved", reason="ok")
         service = RequestRouterService(db=mock_db, governance_engine=mock_engine)
         ctx = {"cost": 10.0, "resource": "/reports", "extra": True}
@@ -774,7 +758,7 @@ class TestReturnStructure:
     )
     def test_all_verdicts_return_status_and_request_id(
         self,
-        mock_db: MockDataFlow,
+        mock_db: MockDB,
         mock_engine: MagicMock,
         level: str,
         expected_status: str,
@@ -793,7 +777,7 @@ class TestReturnStructure:
         assert "request_id" in result
         assert result["request_id"] == "req-struct"
 
-    def test_no_engine_returns_status_and_request_id(self, mock_db: MockDataFlow) -> None:
+    def test_no_engine_returns_status_and_request_id(self, mock_db: MockDB) -> None:
         service = RequestRouterService(db=mock_db, governance_engine=None)
         result = service.route_request(
             request_id="req-struct-2",

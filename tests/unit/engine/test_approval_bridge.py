@@ -20,11 +20,69 @@ import pytest
 
 from pact.governance import GovernanceVerdict
 from pact_platform.engine.approval_bridge import ApprovalBridge
-from pact_platform.models import db
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers — MockExpressSync
+# ---------------------------------------------------------------------------
+
+
+class MockExpressSync:
+    """In-memory Express sync API that tracks all calls and stores records."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self._store: dict[str, list[dict[str, Any]]] = {}
+
+    def create(self, model: str, data: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append({"method": "create", "model": model, "data": data})
+        self._store.setdefault(model, []).append(dict(data))
+        return dict(data)
+
+    def read(self, model: str, record_id: str) -> dict[str, Any] | None:
+        self.calls.append({"method": "read", "model": model, "record_id": record_id})
+        for rec in self._store.get(model, []):
+            if rec.get("id") == record_id:
+                return dict(rec)
+        return None
+
+    def update(self, model: str, record_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append(
+            {"method": "update", "model": model, "record_id": record_id, "fields": fields}
+        )
+        for rec in self._store.get(model, []):
+            if rec.get("id") == record_id:
+                rec.update(fields)
+                return dict(rec)
+        return fields
+
+    def list(
+        self, model: str, filter_dict: dict[str, Any], limit: int = 100
+    ) -> list[dict[str, Any]]:
+        self.calls.append({"method": "list", "model": model, "filter": filter_dict, "limit": limit})
+        records = self._store.get(model, [])
+        # Apply simple filter
+        matched = []
+        for rec in records:
+            match = True
+            for k, v in filter_dict.items():
+                if rec.get(k) != v:
+                    match = False
+                    break
+            if match:
+                matched.append(dict(rec))
+        return matched[:limit]
+
+
+class MockDB:
+    """Mock DataFlow with express_sync attribute."""
+
+    def __init__(self) -> None:
+        self.express_sync = MockExpressSync()
+
+
+# ---------------------------------------------------------------------------
+# Helpers — Verdict factory
 # ---------------------------------------------------------------------------
 
 
@@ -53,7 +111,8 @@ class TestCreateDecision:
     """Test that create_decision persists the correct AgenticDecision."""
 
     def test_creates_decision_with_pending_status(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
 
         decision_id = bridge.create_decision(
@@ -79,7 +138,8 @@ class TestCreateDecision:
         assert dec["session_id"] == "sess-1"
 
     def test_creates_decision_without_request_or_session(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
 
         decision_id = bridge.create_decision(
@@ -96,7 +156,8 @@ class TestCreateDecision:
         assert dec["session_id"] == ""
 
     def test_extracts_constraint_dimension_from_audit(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(
             audit_details={"dimension": "financial"},
         )
@@ -113,7 +174,8 @@ class TestCreateDecision:
         assert found[0]["constraint_dimension"] == "financial"
 
     def test_extracts_envelope_version(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(envelope_version="42")
 
         decision_id = bridge.create_decision(
@@ -128,7 +190,8 @@ class TestCreateDecision:
         assert found[0]["envelope_version"] == 42
 
     def test_invalid_envelope_version_defaults_to_zero(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(envelope_version="not-a-number")
 
         decision_id = bridge.create_decision(
@@ -143,7 +206,8 @@ class TestCreateDecision:
         assert found[0]["envelope_version"] == 0
 
     def test_reason_held_preserved(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(reason="Agent near daily action limit")
 
         decision_id = bridge.create_decision(
@@ -167,7 +231,8 @@ class TestNaNGuardConstraintDetails:
     """NaN or Inf in constraint_details must raise ValueError."""
 
     def test_nan_in_constraint_details_raises(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(
             audit_details={"constraint_details": {"max_budget": float("nan")}},
         )
@@ -180,7 +245,8 @@ class TestNaNGuardConstraintDetails:
             )
 
     def test_inf_in_constraint_details_raises(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(
             audit_details={"constraint_details": {"limit": float("inf")}},
         )
@@ -193,7 +259,8 @@ class TestNaNGuardConstraintDetails:
             )
 
     def test_finite_constraint_details_pass(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict(
             audit_details={"constraint_details": {"max_budget": 100.0, "current_spend": 80.0}},
         )
@@ -215,7 +282,8 @@ class TestApprove:
     """Test the approve method."""
 
     def test_approve_updates_status(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
         decision_id = bridge.create_decision(
             role_address="D1-R1",
@@ -225,22 +293,22 @@ class TestApprove:
 
         bridge.approve(decision_id, decided_by="admin", reason="Override approved")
 
-        # Read back to verify (it's no longer in pending)
-        wf = db.create_workflow("read_decision")
-        db.add_node(wf, "AgenticDecision", "Read", "read", {"id": decision_id})
-        results, _ = db.execute_workflow(wf)
-        dec = results["read"]
+        # Read back to verify via the in-memory store
+        dec = mock_db.express_sync.read("AgenticDecision", decision_id)
+        assert dec is not None
         assert dec["status"] == "approved"
         assert dec["decided_by"] == "admin"
         assert dec["decision_reason"] == "Override approved"
 
     def test_approve_rejects_empty_decision_id(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         with pytest.raises(ValueError, match="decision_id must not be empty"):
             bridge.approve("", decided_by="admin", reason="test")
 
     def test_approve_rejects_empty_decided_by(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         with pytest.raises(ValueError, match="decided_by must not be empty"):
             bridge.approve("dec-123", decided_by="", reason="test")
 
@@ -254,7 +322,8 @@ class TestReject:
     """Test the reject method."""
 
     def test_reject_updates_status(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
         decision_id = bridge.create_decision(
             role_address="D1-R1",
@@ -264,21 +333,21 @@ class TestReject:
 
         bridge.reject(decision_id, decided_by="compliance", reason="Too risky")
 
-        wf = db.create_workflow("read_decision")
-        db.add_node(wf, "AgenticDecision", "Read", "read", {"id": decision_id})
-        results, _ = db.execute_workflow(wf)
-        dec = results["read"]
+        dec = mock_db.express_sync.read("AgenticDecision", decision_id)
+        assert dec is not None
         assert dec["status"] == "rejected"
         assert dec["decided_by"] == "compliance"
         assert dec["decision_reason"] == "Too risky"
 
     def test_reject_rejects_empty_decision_id(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         with pytest.raises(ValueError, match="decision_id must not be empty"):
             bridge.reject("", decided_by="admin", reason="test")
 
     def test_reject_rejects_empty_decided_by(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         with pytest.raises(ValueError, match="decided_by must not be empty"):
             bridge.reject("dec-123", decided_by="", reason="test")
 
@@ -292,7 +361,8 @@ class TestGetPending:
     """Test the pending decisions listing."""
 
     def test_get_pending_returns_only_pending(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
 
         # Create two decisions
@@ -317,7 +387,8 @@ class TestGetPending:
         assert id_a not in pending_ids
 
     def test_get_pending_respects_limit(self):
-        bridge = ApprovalBridge(db)
+        mock_db = MockDB()
+        bridge = ApprovalBridge(mock_db)
         verdict = _make_verdict()
 
         for i in range(5):

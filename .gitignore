@@ -63,7 +63,7 @@ secrets/
 
 # Local settings (user-specific)
 .claude/settings.local.json
-apps/web/node_modules/
+node_modules/
 
 # Next.js build output
 apps/web/.next/

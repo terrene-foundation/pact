@@ -375,12 +375,8 @@ class SupervisorOrchestrator:
         ended_iso = ended_at.isoformat() if ended_at else ""
 
         try:
-            wf = self._db.create_workflow("record_run")
-            self._db.add_node(
-                wf,
+            self._db.express_sync.create(
                 "Run",
-                "Create",
-                "create_run",
                 {
                     "id": run_id,
                     "request_id": request_id,
@@ -400,9 +396,8 @@ class SupervisorOrchestrator:
                     "updated_at": now_iso,
                 },
             )
-            self._db.execute_workflow(wf)
         except Exception:
             logger.exception(
-                "Orchestrator: failed to record Run '%s' -- " "run data may be lost",
+                "Orchestrator: failed to record Run '%s' -- run data may be lost",
                 run_id,
             )

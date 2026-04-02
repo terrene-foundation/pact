@@ -37,13 +37,19 @@ if _DATABASE_URL and _DATABASE_URL.startswith("postgres"):
         conn = psycopg2.connect(_DATABASE_URL)
         conn.close()
         _pg_available = True
+    except ImportError:
+        _skip_reason = "psycopg2 not installed — PostgreSQL not available"
     except Exception as exc:
         _skip_reason = f"PostgreSQL not reachable: {exc}"
 
 pytestmark = pytest.mark.skipif(not _pg_available, reason=_skip_reason)
 
-from pact_platform.trust.store.postgresql_store import PostgreSQLTrustStore
 from pact_platform.trust.store.store import TrustStore
+
+if _pg_available:
+    from pact_platform.trust.store.postgresql_store import PostgreSQLTrustStore
+else:
+    PostgreSQLTrustStore = None  # type: ignore[assignment, misc]
 
 # ---------------------------------------------------------------------------
 # Helpers
