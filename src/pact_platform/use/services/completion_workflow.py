@@ -4,7 +4,7 @@
 
 Manages the tail end of work: recording artifacts, submitting them for
 review, capturing findings, and finalizing review verdicts.  All state
-is persisted through DataFlow workflows.
+is persisted through DataFlow Express.
 """
 
 from __future__ import annotations
@@ -66,45 +66,22 @@ class CompletionWorkflowService:
         now_iso = datetime.now(UTC).isoformat()
 
         # Read session to get request_id
-        wf_read = self._db.create_workflow("read_session")
-        self._db.add_node(
-            wf_read,
-            "AgenticWorkSession",
-            "Read",
-            "read",
-            {"id": session_id},
-        )
-        results, _ = self._db.execute_workflow(wf_read)
-        session_record = results.get("read", {})
+        session_record = self._db.express_sync.read("AgenticWorkSession", session_id)
         request_id = session_record.get("request_id", "")
 
         # Mark session completed
-        wf_complete = self._db.create_workflow("complete_session")
-        self._db.add_node(
-            wf_complete,
+        self._db.express_sync.update(
             "AgenticWorkSession",
-            "Update",
-            "complete",
-            {
-                "filter": {"id": session_id},
-                "fields": {
-                    "status": "completed",
-                    "ended_at": now_iso,
-                },
-            },
+            session_id,
+            {"status": "completed", "ended_at": now_iso},
         )
-        self._db.execute_workflow(wf_complete)
 
         # Create artifacts
         artifact_ids: list[str] = []
         for art in artifacts:
             artifact_id = f"art-{uuid4().hex[:12]}"
-            wf_art = self._db.create_workflow("create_artifact")
-            self._db.add_node(
-                wf_art,
+            self._db.express_sync.create(
                 "AgenticArtifact",
-                "Create",
-                "create",
                 {
                     "id": artifact_id,
                     "request_id": request_id,
@@ -117,7 +94,6 @@ class CompletionWorkflowService:
                     "status": "draft",
                 },
             )
-            self._db.execute_workflow(wf_art)
             artifact_ids.append(artifact_id)
 
         logger.info(
@@ -164,14 +140,9 @@ class CompletionWorkflowService:
             raise ValueError("reviewer_address must not be empty")
 
         review_id = f"rev-{uuid4().hex[:12]}"
-        now_iso = datetime.now(UTC).isoformat()
 
-        wf = self._db.create_workflow("submit_review")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.create(
             "AgenticReviewDecision",
-            "Create",
-            "create",
             {
                 "id": review_id,
                 "request_id": request_id,
@@ -183,21 +154,9 @@ class CompletionWorkflowService:
                 "comments": "",
             },
         )
-        self._db.execute_workflow(wf)
 
         # Mark the artifact as submitted for review
-        wf_art = self._db.create_workflow("mark_artifact_submitted")
-        self._db.add_node(
-            wf_art,
-            "AgenticArtifact",
-            "Update",
-            "update_status",
-            {
-                "filter": {"id": artifact_id},
-                "fields": {"status": "submitted"},
-            },
-        )
-        self._db.execute_workflow(wf_art)
+        self._db.express_sync.update("AgenticArtifact", artifact_id, {"status": "submitted"})
 
         logger.info(
             "Review %s created for artifact %s (type=%s, reviewer=%s)",
@@ -249,14 +208,9 @@ class CompletionWorkflowService:
             )
 
         finding_id = f"fnd-{uuid4().hex[:12]}"
-        now_iso = datetime.now(UTC).isoformat()
 
-        wf = self._db.create_workflow("record_finding")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.create(
             "AgenticFinding",
-            "Create",
-            "create",
             {
                 "id": finding_id,
                 "review_id": review_id,
@@ -269,34 +223,15 @@ class CompletionWorkflowService:
                 "status": "open",
             },
         )
-        self._db.execute_workflow(wf)
 
         # Increment findings_count on the review
-        wf_read = self._db.create_workflow("read_review_for_count")
-        self._db.add_node(
-            wf_read,
+        review_record = self._db.express_sync.read("AgenticReviewDecision", review_id)
+        current_count = review_record.get("findings_count", 0)
+        self._db.express_sync.update(
             "AgenticReviewDecision",
-            "Read",
-            "read",
-            {"id": review_id},
+            review_id,
+            {"findings_count": current_count + 1},
         )
-        read_results, _ = self._db.execute_workflow(wf_read)
-        current_count = read_results.get("read", {}).get("findings_count", 0)
-
-        wf_update = self._db.create_workflow("increment_findings_count")
-        self._db.add_node(
-            wf_update,
-            "AgenticReviewDecision",
-            "Update",
-            "update_count",
-            {
-                "filter": {"id": review_id},
-                "fields": {
-                    "findings_count": current_count + 1,
-                },
-            },
-        )
-        self._db.execute_workflow(wf_update)
 
         logger.info(
             "Finding %s recorded on review %s (severity=%s)",
@@ -337,65 +272,24 @@ class CompletionWorkflowService:
             )
 
         # Read current state
-        wf_read = self._db.create_workflow("read_review")
-        self._db.add_node(
-            wf_read,
-            "AgenticReviewDecision",
-            "Read",
-            "read",
-            {"id": review_id},
-        )
-        results, _ = self._db.execute_workflow(wf_read)
-        record = results.get("read", {})
+        record = self._db.express_sync.read("AgenticReviewDecision", review_id)
 
-        if not record.get("found", False) and not record.get("id"):
+        if not record:
             raise ValueError(f"Review '{review_id}' not found")
 
         now_iso = datetime.now(UTC).isoformat()
-        wf_update = self._db.create_workflow("finalize_review")
-        self._db.add_node(
-            wf_update,
+        self._db.express_sync.update(
             "AgenticReviewDecision",
-            "Update",
-            "update_verdict",
-            {
-                "filter": {"id": review_id},
-                "fields": {
-                    "verdict": verdict,
-                    "comments": comments,
-                },
-            },
+            review_id,
+            {"verdict": verdict, "comments": comments},
         )
-        self._db.execute_workflow(wf_update)
 
         # If verdict is approved, update the artifact status too
         artifact_id = record.get("artifact_id", "")
         if verdict == "approved" and artifact_id:
-            wf_art = self._db.create_workflow("approve_artifact")
-            self._db.add_node(
-                wf_art,
-                "AgenticArtifact",
-                "Update",
-                "approve",
-                {
-                    "filter": {"id": artifact_id},
-                    "fields": {"status": "approved"},
-                },
-            )
-            self._db.execute_workflow(wf_art)
+            self._db.express_sync.update("AgenticArtifact", artifact_id, {"status": "approved"})
         elif verdict == "rejected" and artifact_id:
-            wf_art = self._db.create_workflow("reject_artifact")
-            self._db.add_node(
-                wf_art,
-                "AgenticArtifact",
-                "Update",
-                "reject",
-                {
-                    "filter": {"id": artifact_id},
-                    "fields": {"status": "rejected"},
-                },
-            )
-            self._db.execute_workflow(wf_art)
+            self._db.express_sync.update("AgenticArtifact", artifact_id, {"status": "rejected"})
 
         logger.info(
             "Review %s finalized: verdict=%s",

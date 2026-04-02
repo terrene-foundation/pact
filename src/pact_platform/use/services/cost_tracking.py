@@ -81,12 +81,8 @@ class CostTrackingService:
 
         now_iso = datetime.now(UTC).isoformat()
 
-        wf = self._db.create_workflow("record_run_cost")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.create(
             "Run",
-            "Create",
-            "create_run",
             {
                 "id": run_id,
                 "session_id": session_id,
@@ -103,7 +99,6 @@ class CostTrackingService:
                 "metadata": {"provider": provider, "model_name": model_name},
             },
         )
-        self._db.execute_workflow(wf)
 
         logger.info(
             "Run cost recorded: run_id=%s agent=%s cost=$%.6f tokens=%d/%d",
@@ -146,16 +141,9 @@ class CostTrackingService:
             raise ValueError("objective_id must not be empty")
 
         # Get all requests for this objective
-        wf_req = self._db.create_workflow("list_requests")
-        self._db.add_node(
-            wf_req,
-            "AgenticRequest",
-            "List",
-            "requests",
-            {"filter": {"objective_id": objective_id}, "limit": 10000},
+        requests = self._db.express_sync.list(
+            "AgenticRequest", {"objective_id": objective_id}, limit=10000
         )
-        req_results, _ = self._db.execute_workflow(wf_req)
-        requests = req_results.get("requests", {}).get("records", [])
         request_ids = [r["id"] for r in requests]
 
         if not request_ids:
@@ -174,16 +162,7 @@ class CostTrackingService:
         run_count = 0
 
         for req_id in request_ids:
-            wf_runs = self._db.create_workflow("list_runs")
-            self._db.add_node(
-                wf_runs,
-                "Run",
-                "List",
-                "runs",
-                {"filter": {"request_id": req_id}, "limit": 10000},
-            )
-            run_results, _ = self._db.execute_workflow(wf_runs)
-            runs = run_results.get("runs", {}).get("records", [])
+            runs = self._db.express_sync.list("Run", {"request_id": req_id}, limit=10000)
 
             for run in runs:
                 all_costs.append(run.get("cost_usd", 0.0))
@@ -221,16 +200,7 @@ class CostTrackingService:
         if not agent_address:
             raise ValueError("agent_address must not be empty")
 
-        wf = self._db.create_workflow("list_agent_runs")
-        self._db.add_node(
-            wf,
-            "Run",
-            "List",
-            "runs",
-            {"filter": {"agent_address": agent_address}, "limit": 10000},
-        )
-        results, _ = self._db.execute_workflow(wf)
-        runs = results.get("runs", {}).get("records", [])
+        runs = self._db.express_sync.list("Run", {"agent_address": agent_address}, limit=10000)
 
         # C3/M3 fix: NaN-safe summation
         total_cost = safe_sum_finite([run.get("cost_usd", 0.0) for run in runs])
@@ -263,16 +233,7 @@ class CostTrackingService:
             raise ValueError("objective_id must not be empty")
 
         # Read the objective to get budget_usd
-        wf_obj = self._db.create_workflow("read_objective")
-        self._db.add_node(
-            wf_obj,
-            "AgenticObjective",
-            "Read",
-            "read",
-            {"id": objective_id},
-        )
-        obj_results, _ = self._db.execute_workflow(wf_obj)
-        obj_record = obj_results.get("read", {})
+        obj_record = self._db.express_sync.read("AgenticObjective", objective_id)
 
         budget_usd = float(obj_record.get("budget_usd", 0.0))
 

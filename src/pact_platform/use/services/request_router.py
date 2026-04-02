@@ -191,12 +191,8 @@ class RequestRouterService:
         """Persist an ``AgenticDecision`` for a HELD verdict."""
         decision_id = f"dec-{uuid4().hex[:12]}"
 
-        wf = self._db.create_workflow("create_hold_decision")
-        self._db.add_node(
-            wf,
+        self._db.express_sync.create(
             "AgenticDecision",
-            "Create",
-            "create_decision",
             {
                 "id": decision_id,
                 "request_id": request_id,
@@ -209,7 +205,6 @@ class RequestRouterService:
                 "envelope_version": int(envelope_version) if envelope_version else 0,
             },
         )
-        self._db.execute_workflow(wf)
         return decision_id
 
     def _assign_to_pool(self, request_id: str, org_address: str) -> str:
@@ -223,18 +218,9 @@ class RequestRouterService:
         # address.
         org_id = org_address.split("-")[0] if "-" in org_address else org_address
 
-        wf = self._db.create_workflow("find_pool")
-        self._db.add_node(
-            wf,
-            "AgenticPool",
-            "List",
-            "list_pools",
-            {"filter": {"org_id": org_id, "status": "active"}, "limit": 1},
+        records = self._db.express_sync.list(
+            "AgenticPool", {"org_id": org_id, "status": "active"}, limit=1
         )
-        results, _ = self._db.execute_workflow(wf)
-
-        pool_data = results.get("list_pools", {})
-        records = pool_data.get("records", [])
 
         if not records:
             logger.warning(
@@ -247,21 +233,14 @@ class RequestRouterService:
         pool_id = records[0]["id"]
 
         # Update the request's assignment
-        wf2 = self._db.create_workflow("assign_request")
-        self._db.add_node(
-            wf2,
+        self._db.express_sync.update(
             "AgenticRequest",
-            "Update",
-            "assign",
+            request_id,
             {
-                "filter": {"id": request_id},
-                "fields": {
-                    "assigned_to": pool_id,
-                    "assigned_type": "pool",
-                    "status": "assigned",
-                },
+                "assigned_to": pool_id,
+                "assigned_type": "pool",
+                "status": "assigned",
             },
         )
-        self._db.execute_workflow(wf2)
 
         return pool_id

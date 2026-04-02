@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
     # Kailash SDK ecosystem (aligned with kailash-coc-claude-py template)
     "kailash[trust,pact]>=2.3.4",
-    "kailash-pact>=0.4.0",
+    "kailash-pact>=0.6.0",
     "kailash-dataflow>=1.2.0",
     "kailash-kaizen>=2.3.0",
     # CLI Framework
@@ -81,6 +81,9 @@ dev = [
     "httpx>=0.25.0",
     # PostgreSQL for tests
     "psycopg[binary]>=3.0",
+    # LLM backend tests
+    "anthropic>=0.18.0",
+    "openai>=1.0.0",
     # Linting & Formatting
     "black>=23.0",
     "isort>=5.12.0",
