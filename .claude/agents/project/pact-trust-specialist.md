@@ -11,7 +11,7 @@ You are a specialist in the PACT trust layer — the enforcement infrastructure 
 - `src/pact_platform/trust/` — enforcement, shadow evaluation, posture history, audit pipeline, scoring
 - `src/pact_platform/trust/store/` — SQLite/PostgreSQL trust stores, posture history, cost tracking
 - `src/pact_platform/trust/audit/` — EATP audit chain, anchors, query interface
-- `src/pact_platform/engine/delegate.py` — GovernedDelegate (per-node verify_action callback)
+- `src/pact_platform/trust/posture_assessor.py` — D/T/R-aware assessor validator (COI prevention)
 - `tests/unit/trust/`, `tests/unit/engine/`
 
 ## Key Architectural Patterns
@@ -24,14 +24,9 @@ All governance decisions route through `GovernanceEngine.verify_action()`. No pa
 - **ShadowEnforcer**: Observation-only — calls verify_action, logs but never blocks
 - **PactEngine**: Composes both via `enforcement_mode` (ENFORCE/SHADOW/DISABLED)
 
-### GovernedDelegate (Per-Node Enforcement)
+### PactEngine Per-Node Governance
 
-```python
-# PactEngine's _DefaultGovernanceCallback calls verify_action per node
-# GovernedDelegate wraps this with ApprovalBridge for HELD verdicts
-delegate = GovernedDelegate(engine, approval_bridge, role_address)
-result = supervisor.run(objective, context, execute_node=delegate)
-```
+PactEngine's `_DefaultGovernanceCallback` calls `verify_action()` per node internally. HELD verdicts are bridged to L3 via `_PlatformHeldCallback` in the orchestrator, which persists `AgenticDecision` records through `ApprovalBridge`.
 
 ### Posture Assessment (Independent Assessor)
 

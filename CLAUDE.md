@@ -79,9 +79,9 @@ Every implementation decision must align with the CARE, PACT, EATP, and CO speci
 | Component              | Location                         | What                                                                                                                            |
 | ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | DataFlow Models (11)   | `pact_platform/models/`          | AgenticObjective, Request, WorkSession, Artifact, Decision, ReviewDecision, Finding, Pool, PoolMembership, Run, ExecutionMetric |
-| API Routers (7)        | `pact_platform/use/api/routers/` | objectives, requests, sessions, decisions, pools, reviews, metrics (42+ endpoints)                                              |
+| API Routers (13)       | `pact_platform/use/api/routers/` | objectives, requests, sessions, decisions, pools, reviews, metrics, org, clearance, ksp, envelopes, access, emergency-bypass    |
 | Services (5)           | `pact_platform/use/services/`    | RequestRouter, ApprovalQueue, CompletionWorkflow, CostTracking, NotificationDispatch                                            |
-| Engine (6)             | `pact_platform/engine/`          | EnvelopeAdapter, GovernedDelegate, ApprovalBridge, EventBridge, SupervisorOrchestrator, AutoSeed                                |
+| Engine (6)             | `pact_platform/engine/`          | SupervisorOrchestrator, ApprovalBridge, EventBridge, EmergencyBypass, PlatformSettings, AutoSeed                                |
 | Integrations (6)       | `pact_platform/integrations/`    | NotificationAdapter, Slack/Discord/Teams webhooks, LLMProviderManager                                                           |
 | CLI (10 commands)      | `pact_platform/cli.py`           | quickstart, org, role, clearance, bridge, envelope, agent, audit, validate, status                                              |
 | Web Dashboard (4 new)  | `apps/web/app/`                  | objectives, requests, pools, org-builder pages                                                                                  |
@@ -102,7 +102,7 @@ from pact_platform.build.config.schema import OrgDefinition, AgentConfig, Constr
 from pact_platform.models import db, validate_finite
 
 # Engine wiring (from this repo — L3)
-from pact_platform.engine import SupervisorOrchestrator, PlatformEnvelopeAdapter
+from pact_platform.engine import SupervisorOrchestrator, EmergencyBypass
 
 # Trust layer (kailash[trust] — L1)
 from kailash.trust import TrustOperations, generate_keypair
