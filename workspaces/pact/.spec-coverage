@@ -1,0 +1,38 @@
+# RT30 Spec Coverage — 2026-04-02
+# All L3 items from 003-rt26-spec-conformance verified
+
+## Outstanding Items (Previous Session)
+gradient_thresholds_wiring: IMPLEMENTED (schema re-export, API, CLI, example, 24 tests)
+multi_process_bypass: IMPLEMENTED (SqliteRateLimitStore, 16 tests)
+envelope_router_consolidation: IMPLEMENTED (separate /api/v1/governance/envelopes prefix)
+kailash_sdk_upgrade: NOT_UPGRADED (>=2.3.4 minimum pin, low priority — kailash-pact>=0.6.0 covers governance)
+
+## M0: Emergency Bypass (L3)
+todo_01_tier4_reject_72h: IMPLEMENTED (emergency_bypass.py, 3 tests)
+todo_02_validate_bypass_scope: IMPLEMENTED (5 dimension validation, 7 tests)
+todo_03_validate_dtr_authority: IMPLEMENTED (accountability chain depth, 6 tests)
+todo_04_bypass_rate_limiting: IMPLEMENTED (per-role 3/7d limit + cooldown, 7 tests)
+
+## M5: L1→L3 Wiring
+todo_18_posture_assessor: IMPLEMENTED (posture_assessor.py, 19 tests)
+todo_21_degenerate_envelope: IMPLEMENTED (CLI validate + orchestrator init + runtime warn, 8 tests)
+todo_22_pact_mcp: IMPLEMENTED (PlatformMcpGovernance bridge + router + CLI)
+todo_23_shadow_mode: IMPLEMENTED (EnforcementMode enum, 3-way delegate routing, audit trail, 8 tests)
+todo_24_calibrate_cli: IMPLEMENTED (shadow mode calibration + ratio reporting)
+todo_25_toctou_comparison: IMPLEMENTED (audit_toctou_check + CLI pact audit toctou)
+
+## L1 Upstream (blocked — kailash-py issues)
+todo_05_09_eatp_records: UPSTREAM (kailash-py#199)
+todo_10_13_envelope_gradient: UPSTREAM (kailash-py#200)
+todo_14_17_grammar_bridges: UPSTREAM (kailash-py#201)
+todo_19_20_vacancy_posture: UPSTREAM (kailash-py#202)
+todo_26_bilateral_atomicity: UPSTREAM (blocked by todo_08)
+
+## RT30 Security Fixes
+H1_shadow_audit_trail: FIXED (AuditChain.append with correct API, shadow=True metadata)
+H2_recursion_depth_limit: FIXED (_validate_envelope_numerics max 10 levels)
+M2_gradient_numeric_validation: FIXED (_validate_envelope_numerics on gt_raw before construction)
+M4_unused_import: FIXED (_PHS removed, PostureHistoryStore in TYPE_CHECKING)
+M5_warning_cap: FIXED (max 50 degenerate warnings + summary)
+
+## Summary: 13/14 L3 items DONE (93%), 1 low-priority SDK pin remaining

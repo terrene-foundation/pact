@@ -1,6 +1,6 @@
 ---
 name: kailash-mcp
-description: "Kailash MCP (Model Context Protocol) - production-ready MCP server implementation for AI agent integration. Use when asking about 'MCP', 'Model Context Protocol', 'MCP server', 'MCP client', 'MCP tools', 'MCP resources', 'MCP prompts', 'MCP authentication', 'MCP transports', 'stdio transport', 'SSE transport', 'HTTP transport', 'MCP testing', 'progress reporting', or 'structured tools'."
+description: "Kailash MCP — production-ready MCP server, platform server, tools, resources, transports. Use for MCP integration, platform config, security tiers."
 ---
 
 # Kailash MCP - Model Context Protocol Integration
@@ -42,10 +42,20 @@ server.run()
 
 ## Reference Documentation
 
-### Getting Started
+### Platform Server (kailash-mcp)
+
+- **[mcp-platform-overview](mcp-platform-overview.md)** - Architecture: FastMCP, contributor pattern, transport modes
+- **[mcp-tool-catalog](mcp-tool-catalog.md)** - Complete list of all 26 tools by framework and security tier
+- **[mcp-contributor-pattern](mcp-contributor-pattern.md)** - How to write a new framework contributor module
+- **[mcp-security-tiers](mcp-security-tiers.md)** - T1-T4 security model, env var controls, tier escalation
+- **[mcp-claude-code-config](mcp-claude-code-config.md)** - Claude Code mcpServers setup (stdio + SSE), troubleshooting
+- **[mcp-platform-map](mcp-platform-map.md)** - platform_map() output schema, connection detection, debugging
+- **[mcp-migration-guide](mcp-migration-guide.md)** - Migrating from MCPServer/MCPServerBase to platform server
+
+### MCP Protocol Patterns
 
 - **[mcp-transports-quick](mcp-transports-quick.md)** - Transport configuration (stdio, SSE, HTTP)
-- **[mcp-structured-tools](mcp-structured-tools.md)** - Defining MCP tools
+- **[mcp-structured-tools](mcp-structured-tools.md)** - Defining MCP tools with JSON Schema
 - **[mcp-resources](mcp-resources.md)** - Exposing resources to agents
 
 ### Security & Operations
@@ -187,15 +197,15 @@ def analyze_tool(text: str) -> str:
 
 ## Related Skills
 
-- **[01-core-sdk](../../01-core-sdk/SKILL.md)** - Core workflow patterns
-- **[03-nexus](../nexus/SKILL.md)** - Nexus includes MCP channel
-- **[04-kaizen](../kaizen/SKILL.md)** - AI agents as MCP tools
-- **[02-dataflow](../dataflow/SKILL.md)** - Database resources
+- **[01-core-sdk](../01-core-sdk/SKILL.md)** - Core workflow patterns
+- **[03-nexus](../03-nexus/SKILL.md)** - Nexus includes MCP channel
+- **[04-kaizen](../04-kaizen/SKILL.md)** - AI agents as MCP tools
+- **[02-dataflow](../02-dataflow/SKILL.md)** - Database resources
 
 ## Support
 
 For MCP-specific questions, invoke:
 
-- `mcp-specialist` - MCP server implementation
+- `mcp-platform-specialist` - Platform server, contributor plugins, security tiers, platform_map
+- `mcp-specialist` - General MCP protocol, custom servers, auth, transports
 - `testing-specialist` - MCP testing strategies
-- `framework-advisor` - MCP integration architecture

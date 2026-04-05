@@ -423,11 +423,13 @@ def org_create(yaml_file: str) -> None:
             data_access=DataAccessConstraintConfig(**(spec.data_access or {})),
             communication=CommunicationConstraintConfig(**(spec.communication or {})),
         )
+        gt = spec.gradient_thresholds
         role_env = RoleEnvelope(
             id=f"env-{spec.target}",
             defining_role_address=definer_node.address,
             target_role_address=target_node.address,
             envelope=env_config,
+            gradient_thresholds=gt,
         )
         engine.set_role_envelope(role_env)
         applied_envelopes += 1
@@ -1841,11 +1843,13 @@ def calibrate(org_file: str) -> None:
             data_access=DataAccessConstraintConfig(**(spec.data_access or {})),
             communication=CommunicationConstraintConfig(**(spec.communication or {})),
         )
+        gt = spec.gradient_thresholds
         role_env = RoleEnvelope(
             id=f"env-{spec.target}",
             defining_role_address=definer_node.address,
             target_role_address=target_node.address,
             envelope=env_config,
+            gradient_thresholds=gt,
         )
         engine.set_role_envelope(role_env)
 

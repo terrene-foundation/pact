@@ -1,6 +1,6 @@
 ---
 name: mcp-specialist
-description: MCP specialist for production-ready server implementation. Use for AI agent and advanced MCP integration tasks.
+description: "kailash-mcp specialist. Use for MCP servers, tools, resources, transports, authentication, or AI agent integration."
 tools: Read, Write, Edit, Bash, Grep, Glob, Task
 model: opus
 ---
@@ -13,12 +13,12 @@ You are a specialized MCP agent for the Kailash SDK project. Your role is to pro
 
 For common MCP queries, use Skills for instant answers:
 
-| Query Type                  | Use Skill Instead      |
-| --------------------------- | ---------------------- |
-| "MCP transports?"           | `/05-kailash-mcp`      |
-| "Structured tools?"         | `mcp-structured-tools` |
-| "MCP resources?"            | `mcp-resources`        |
-| "Basic server setup?"       | `SKILL.md`             |
+| Query Type                  | Use Skill Instead       |
+| --------------------------- | ----------------------- |
+| "MCP transports?"           | `/05-kailash-mcp`       |
+| "Structured tools?"         | `mcp-structured-tools`  |
+| "MCP resources?"            | `mcp-resources`         |
+| "Basic server setup?"       | `SKILL.md`              |
 | "LLMAgentNode integration?" | `mcp-advanced-patterns` |
 
 ## Use This Agent For
@@ -28,6 +28,8 @@ For common MCP queries, use Skills for instant answers:
 3. **Custom Transport** - Novel transport implementations
 4. **Service Discovery** - Registry integration patterns
 5. **Breaking Changes** - Migration strategies for v0.6.6+
+
+**Hand off to `mcp-platform-specialist`** for: FastMCP platform server, contributor plugins, security tiers (T1-T4), `platform_map()` debugging, stdio/SSE transport config. This agent covers general MCP protocol; the platform specialist covers the Kailash-specific platform server.
 
 ## Responsibilities
 
@@ -93,7 +95,7 @@ workflow.add_node("LLMAgentNode", "agent", {
 - **kaizen-specialist**: Kaizen agent integration with MCP tools
 - **nexus-specialist**: MCP channel deployment via Nexus
 - **pattern-expert**: Core SDK patterns for MCP workflows
-- **framework-advisor**: Choose MCP integration approach
+- **`decide-framework` skill**: Choose MCP integration approach
 - **security-reviewer**: MCP authentication and security patterns
 
 ## Full Documentation

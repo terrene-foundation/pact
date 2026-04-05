@@ -1,10 +1,16 @@
+---
+paths:
+  - "**/kaizen/**"
+  - "**/*agent*"
+  - "**/agents/**"
+---
+
 # Agent Reasoning Architecture — LLM-First Rule
 
 ## Scope
 
 These rules apply to ALL agent code, ALL Kaizen implementations, ALL AI agent patterns, and ALL codegen that produces agent logic. This includes:
 
-- `packages/kailash-kaizen/**`
 - Any file creating, extending, or configuring a `BaseAgent`
 - Any file implementing agent routing, dispatch, classification, or decision-making
 - Any code that processes user input to determine agent behavior
@@ -51,35 +57,13 @@ Under NO circumstances shall the following be used for agent decision-making:
 
 **UNLESS the user EXPLICITLY says**: "use deterministic logic here", "use keyword matching", "use regex", "this needs to be rule-based", or equivalent explicit opt-in.
 
-## WARNING TO CODEGEN
-
-```
-+================================================================+
-|                                                                  |
-|   WARNING: DETERMINISTIC AGENT LOGIC DETECTED                   |
-|                                                                  |
-|   You are writing if-else/regex/keyword logic inside an agent.   |
-|   This is ALMOST CERTAINLY WRONG.                                |
-|                                                                  |
-|   An AI agent's entire purpose is to REASON using an LLM.        |
-|   If you're writing conditionals to route, classify, extract,    |
-|   or decide — you're building a script, not an agent.            |
-|                                                                  |
-|   The LLM handles: routing, classification, extraction,          |
-|                     evaluation, decision-making                  |
-|   Tools handle:     fetching data, writing data, calling APIs    |
-|                                                                  |
-|   STOP. Let the LLM reason. Use self.run() with a clear          |
-|   signature that describes what you need.                        |
-|                                                                  |
-+================================================================+
-```
-
 ## MUST Rules
 
 ### 1. LLM-First for All Agent Decisions
 
 Every agent decision — routing, classification, extraction, evaluation — MUST go through an LLM call (`self.run()`, `self.run_async()`), NOT through code conditionals.
+
+**Why:** Code conditionals for agent decisions create brittle keyword-matching systems that fail on paraphrased input, while LLMs generalize across natural language variations.
 
 ```python
 # DO: Let the LLM reason about intent
@@ -111,6 +95,8 @@ class CustomerServiceAgent(BaseAgent):
 
 Tools MUST be pure data operations. They fetch, store, transform, or relay. They MUST NOT contain decision logic, routing, or classification.
 
+**Why:** Decision logic in tools is invisible to the LLM's reasoning trace, making agent behavior unexplainable, untestable, and impossible to improve via prompt engineering.
+
 ```python
 # DO: Tool that fetches data — no decisions
 async def get_order(order_id: str) -> dict:
@@ -137,6 +123,8 @@ async def handle_order_issue(order_id: str, message: str) -> dict:
 
 Agent signatures MUST describe the reasoning the LLM should perform. The code around `self.run()` MUST NOT pre-filter, pre-classify, or pre-route before the LLM sees the input.
 
+**Why:** Minimal signatures force developers to embed intelligence in code, defeating the purpose of LLM-based agents and producing agents that are just glorified if-else chains.
+
 ```python
 # DO: Rich signature that tells the LLM what to reason about
 class TriageSignature(Signature):
@@ -158,6 +146,8 @@ class TriageSignature(Signature):
 
 When an agent needs to perform multi-step reasoning, use ReAct patterns or multi-cycle strategies — NOT imperative code loops with conditionals.
 
+**Why:** Hardcoded step sequences cannot adapt when intermediate results change the plan, while ReAct agents re-evaluate strategy after each observation.
+
 ```python
 # DO: ReAct agent reasons about each step
 agent = ReActAgent(config=config, tools="all")
@@ -176,6 +166,8 @@ def investigate(self, query: str):
 ### 5. Router Agents Use LLM Routing, Not Dispatch Tables
 
 When routing between multiple agents, the router MUST use LLM reasoning to select the target — NOT a dispatch table or keyword map.
+
+**Why:** Dispatch tables require enumerating every possible intent upfront and break silently on new intents, while LLM routing generalizes to unseen queries using capability cards.
 
 ```python
 # DO: LLM-based routing via Pipeline.router()
@@ -203,17 +195,25 @@ def route(self, message: str) -> Agent:
 
 No `if`, `elif`, `match`, or ternary expressions that route agent behavior based on input content analysis performed in code. The LLM analyzes content. Code routes based on LLM output structure (e.g., calling a tool the LLM selected is fine).
 
+**Why:** Code-based routing silently drops any input that doesn't match a hardcoded branch, creating a class of "agent doesn't respond" bugs that are invisible in testing.
+
 ### 2. MUST NOT Use Keyword/Regex Matching on Agent Inputs
 
 No `in` operator, `str.contains()`, `re.match()`, `re.search()`, `re.findall()` on user input or message content for the purpose of making agent decisions.
+
+**Why:** Keyword/regex matching fails on synonyms, typos, multilingual input, and context-dependent meaning — exactly the cases where users most need the agent to work.
 
 ### 3. MUST NOT Put Decision Logic in Tools
 
 Tools are data endpoints. If a tool contains `if-else` logic that determines what the agent should do next, that logic belongs in the LLM's signature, not the tool.
 
+**Why:** Decision logic hidden in tools splits the agent's reasoning across two execution models (LLM + code), making behavior unpredictable and impossible to debug from the prompt alone.
+
 ### 4. MUST NOT Pre-Filter Input Before LLM Sees It
 
 Do not strip, classify, categorize, or route input before passing it to `self.run()`. The LLM sees the raw input and reasons about it.
+
+**Why:** Pre-filtering discards context the LLM needs for nuanced reasoning — a message classified as "simple" by code may contain subtle cues only the LLM would catch.
 
 ```python
 # BLOCKED: Pre-classification before LLM
@@ -271,30 +271,3 @@ def tool_handler(data):
     if data["type"] == "urgent":         # BLOCKED — LLM determines urgency
         return escalate(data)
 ```
-
-## Enforcement
-
-- **intermediate-reviewer agent** — MUST flag deterministic agent logic as CRITICAL finding during code review
-- **kaizen-specialist agent** — MUST refuse to generate agent code with deterministic routing unless user explicitly opts in
-- **validate-workflow.js hook** — Agent files containing keyword/regex routing patterns in decision paths produce WARNING
-- **Red-team agents** — During /redteam, MUST check all agent implementations for deterministic reasoning anti-patterns
-
-## Why This Matters
-
-Every `if "keyword" in message` you write is:
-
-- **Fragile** — Breaks on synonyms, typos, rephrasing, multilingual input
-- **Incomplete** — Misses cases you didn't anticipate (the long tail is infinite)
-- **Wasteful** — You're paying for an LLM and not using it
-- **Unmaintainable** — Every new case needs a new branch; the code grows forever
-- **Defeating the purpose** — You built an agent to reason; then you lobotomized it with a script
-
-The LLM handles ALL of these naturally. It generalizes. It understands intent, not keywords. It handles edge cases you never imagined. **Let it do its job.**
-
-## Cross-References
-
-- `rules/no-stubs.md` — No deferred implementation (related: don't stub reasoning with if-else)
-- `rules/zero-tolerance.md` — Pre-existing deterministic routing MUST be refactored when found
-- `rules/agents.md` Rule 3 — Framework specialist required for Kaizen work
-- `.claude/agents/frameworks/kaizen-specialist.md` — Kaizen agent definition (enforces this rule)
-- `.claude/skills/04-kaizen/kaizen-baseagent-quick.md` — BaseAgent quick reference

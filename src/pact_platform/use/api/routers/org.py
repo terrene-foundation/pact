@@ -153,6 +153,11 @@ async def deploy_org(request: Request, body: dict[str, Any]) -> dict:
 
                 engine = _create_engine(loaded.org_definition, audit_chain=audit_chain)
             except ImportError:
+                logger.warning(
+                    "deploy_org: _create_engine not available — using bare "
+                    "GovernanceEngine (EATP emitter, vacancy deadline, and "
+                    "bilateral consent config will not be applied)"
+                )
                 engine = GovernanceEngine(loaded.org_definition, audit_chain=audit_chain)
             compiled = engine.get_org()
 
@@ -231,11 +236,13 @@ def _apply_governance_specs(engine: Any, loaded: Any, compiled: Any) -> None:
                 data_access=DataAccessConstraintConfig(**(spec.data_access or {})),
                 communication=CommunicationConstraintConfig(**(spec.communication or {})),
             )
+            gt = spec.gradient_thresholds
             role_env = RoleEnvelope(
                 id=f"env-{spec.target}",
                 defining_role_address=definer_node.address,
                 target_role_address=target_node.address,
                 envelope=env_config,
+                gradient_thresholds=gt,
             )
             engine.set_role_envelope(role_env)
         except Exception:

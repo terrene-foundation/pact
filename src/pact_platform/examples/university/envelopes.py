@@ -21,7 +21,9 @@ from typing import Any
 
 from pact_platform.build.config.schema import (
     ConstraintEnvelopeConfig,
+    DimensionThresholds,
     FinancialConstraintConfig,
+    GradientThresholdsConfig,
     OperationalConstraintConfig,
 )
 from pact.governance import CompiledOrg, RoleEnvelope
@@ -102,6 +104,11 @@ def create_university_envelopes(compiled_org: CompiledOrg) -> list[RoleEnvelope]
 
     # --- CS Chair envelope (set by Dean of Engineering) ---
     # CS Chair can spend up to $10,000 (tighter than Dean's $25,000)
+    # Includes gradient thresholds for automatic cost-based verification:
+    #   - Below $500: auto-approved
+    #   - $500-$2,000: flagged for review
+    #   - $2,000-$5,000: held pending approval
+    #   - Above $5,000: blocked
     envelopes.append(
         RoleEnvelope(
             id="env-cs-chair",
@@ -115,6 +122,13 @@ def create_university_envelopes(compiled_org: CompiledOrg) -> list[RoleEnvelope]
                 ),
                 operational=OperationalConstraintConfig(
                     allowed_actions=["read", "write", "approve"],
+                ),
+            ),
+            gradient_thresholds=GradientThresholdsConfig(
+                financial=DimensionThresholds(
+                    auto_approve_threshold=500.0,
+                    flag_threshold=2000.0,
+                    hold_threshold=5000.0,
                 ),
             ),
         )

@@ -99,17 +99,17 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-### Docker/FastAPI Template (Async)
+### Docker/async Template (Async)
 
 ```python
-"""FastAPI Workflow Template for asynchronous execution"""
+"""Nexus Workflow Template for asynchronous execution"""
 
 from kailash.workflow.builder import WorkflowBuilder
 from kailash.runtime import AsyncLocalRuntime
-from fastapi import FastAPI, HTTPException
+from nexus import Nexus, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI()
+app = Nexus()
 
 class WorkflowRequest(BaseModel):
     input_data: dict = {}
@@ -200,15 +200,15 @@ if __name__ == "__main__":
 
 Replace placeholders with actual node types based on your needs:
 
-| Need               | Node Type              | Example Config                                 |
-| ------------------ | ---------------------- | ---------------------------------------------- |
-| **Read CSV**       | `CSVReaderNode`        | `{"file_path": "data.csv"}`                    |
-| **Read JSON**      | `JSONReaderNode`       | `{"file_path": "data.json"}`                   |
-| **API Call**       | `HTTPRequestNode`      | `{"url": "https://...", "method": "GET"}`      |
-| **Database Query** | `AsyncSQLDatabaseNode` | `{"connection_string": "...", "query": "..."}` |
-| **LLM Processing** | `LLMAgentNode`         | `{"provider": "openai", "model": "gpt-4"}`     |
-| **Custom Logic**   | `PythonCodeNode`       | `{"code": "result = {...}"}`                   |
-| **Write CSV**      | `CSVWriterNode`        | `{"file_path": "output.csv"}`                  |
+| Need               | Node Type              | Example Config                                                           |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------ |
+| **Read CSV**       | `CSVReaderNode`        | `{"file_path": "data.csv"}`                                              |
+| **Read JSON**      | `JSONReaderNode`       | `{"file_path": "data.json"}`                                             |
+| **API Call**       | `HTTPRequestNode`      | `{"url": "https://...", "method": "GET"}`                                |
+| **Database Query** | `AsyncSQLDatabaseNode` | `{"connection_string": "...", "query": "..."}`                           |
+| **LLM Processing** | `PythonCodeNode`       | Use Kaizen agents for production LLM integration (see skills/04-kaizen/) |
+| **Custom Logic**   | `PythonCodeNode`       | `{"code": "result = {...}"}`                                             |
+| **Write CSV**      | `CSVWriterNode`        | `{"file_path": "output.csv"}`                                            |
 
 ### Step 2: Define Data Flow
 

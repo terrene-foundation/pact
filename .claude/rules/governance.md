@@ -1,3 +1,10 @@
+---
+paths:
+  - "src/pact_platform/build/org/**"
+  - "src/pact_platform/build/config/schema.py"
+  - "**/governance/**"
+---
+
 # Governance Layer Rules
 
 ## Scope
@@ -248,7 +255,7 @@ The dependency direction is: `governance` -> `build.config.schema` (downward) an
 # src/pact/trust/constraint/enforcement.py imports from src/pact/governance/envelopes.py
 ```
 
-**Why**: If execution runtime needs governance envelopes, use the adapter in `governance/envelope_adapter.py`. Bidirectional imports between governance and trust create circular dependencies and conflate policy (governance) with enforcement (trust).
+**Why**: PactEngine handles envelope adaptation internally via `_adapt_envelope()`. Bidirectional imports between governance and trust create circular dependencies and conflate policy (governance) with enforcement (trust).
 
 ### 2. MUST NOT Pass Mutable State to Agents
 

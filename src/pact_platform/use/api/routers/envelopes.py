@@ -30,15 +30,21 @@ def set_engine(engine: Any) -> None:
     _engine = engine
 
 
-def _validate_envelope_numerics(config: dict[str, Any]) -> None:
+def _validate_envelope_numerics(config: dict[str, Any], _depth: int = 0) -> None:
     """Validate all numeric fields in an envelope config dict.
 
     Recursively checks nested dicts (financial, operational, temporal,
-    data_access, communication) for NaN/Inf values.
+    data_access, communication, gradient_thresholds) for NaN/Inf values.
+
+    Args:
+        config: The envelope configuration dict to validate.
+        _depth: Internal recursion depth counter (max 10).
     """
+    if _depth > 10:
+        raise ValueError("Envelope config nesting too deep (max 10 levels)")
     for key, value in config.items():
         if isinstance(value, dict):
-            _validate_envelope_numerics(value)
+            _validate_envelope_numerics(value, _depth + 1)
         elif isinstance(value, (int, float)):
             validate_finite(**{key: value})
 
@@ -151,7 +157,9 @@ async def set_role_envelope(request: Request, role_address: str, body: dict[str,
             CommunicationConstraintConfig,
             ConstraintEnvelopeConfig,
             DataAccessConstraintConfig,
+            DimensionThresholds,
             FinancialConstraintConfig,
+            GradientThresholdsConfig,
             OperationalConstraintConfig,
             TemporalConstraintConfig,
         )
@@ -167,11 +175,24 @@ async def set_role_envelope(request: Request, role_address: str, body: dict[str,
                 **(envelope_dict.get("communication") or {})
             ),
         )
+
+        # Extract and validate gradient_thresholds from body if present
+        gradient_thresholds = None
+        gt_raw = envelope_dict.get("gradient_thresholds")
+        if gt_raw and isinstance(gt_raw, dict):
+            _validate_envelope_numerics(gt_raw)
+            fin_raw = gt_raw.get("financial")
+            financial_dt = None
+            if fin_raw and isinstance(fin_raw, dict):
+                financial_dt = DimensionThresholds(**fin_raw)
+            gradient_thresholds = GradientThresholdsConfig(financial=financial_dt)
+
         role_env = RoleEnvelope(
             id=env_id,
             defining_role_address=defining_role,
             target_role_address=role_address,
             envelope=env_config,
+            gradient_thresholds=gradient_thresholds,
         )
         _engine.set_role_envelope(role_env)
     except HTTPException:

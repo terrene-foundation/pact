@@ -1,28 +1,25 @@
 # Copyright 2026 Terrene Foundation
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for SupervisorOrchestrator.
+"""Unit tests for SupervisorOrchestrator (PactEngine migration).
 
 Covers:
 - Input validation (empty request_id, empty role_address)
 - NaN/Inf guard on context cost values
-- Envelope resolution failure returns generic error (H4)
+- PactEngine submission failure returns generic error (H4)
 - NaN-guarded budget values in _record_run
 - Successful execution records Run and emits completion event
-- Supervisor creation failure returns appropriate error
-- Property accessors (approval_bridge, event_bridge)
+- Property accessors (approval_bridge, event_bridge, pact_engine)
+- GovernanceEngine backward-compat wrapping
 
-Note: GovernedSupervisor is a kaizen-agents dependency that requires
-LLM API keys. Tests that exercise the full pipeline mock the supervisor
-import. Tests for individual sub-components (delegate, adapter, bridge)
-are in their own test files.
+Note: PactEngine.submit() is an async method; tests mock _submit_sync
+to isolate orchestrator logic from the full PactEngine pipeline.
 """
 
 from __future__ import annotations
 
 import math
-import sys
 from dataclasses import dataclass, field
-from types import ModuleType
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -35,11 +32,12 @@ from pact.governance import (
     NodeType,
     OrgNode,
 )
+from pact.work import WorkResult
 from pact_platform.engine.orchestrator import SupervisorOrchestrator
 
 
 # ---------------------------------------------------------------------------
-# Helpers — MockExpressSync
+# Helpers -- MockExpressSync
 # ---------------------------------------------------------------------------
 
 
@@ -97,7 +95,7 @@ class MockDB:
 
 
 # ---------------------------------------------------------------------------
-# Helpers — Governance + Supervisor fakes
+# Helpers -- Governance engine factory
 # ---------------------------------------------------------------------------
 
 
@@ -120,44 +118,23 @@ def _make_engine() -> GovernanceEngine:
     return GovernanceEngine(compiled)
 
 
-@dataclass
-class _FakeSupervisorResult:
-    """Mimics the result object returned by GovernedSupervisor.run()."""
-
-    success: bool = True
-    results: dict[str, Any] = field(default_factory=dict)
-    budget_consumed: float = 0.05
-    budget_allocated: float = 1.0
-    audit_trail: list[dict[str, Any]] = field(default_factory=list)
-    modifications: list[Any] = field(default_factory=list)
-
-
-class _FakeSupervisor:
-    """Fake GovernedSupervisor that returns a configurable result."""
-
-    def __init__(self, result: _FakeSupervisorResult | None = None, **kwargs: Any) -> None:
-        self._result = result or _FakeSupervisorResult()
-        self._init_kwargs = kwargs
-
-    def run(
-        self,
-        objective: str,
-        context: dict[str, Any],
-        execute_node: Any = None,
-    ) -> _FakeSupervisorResult:
-        return self._result
-
-
-def _mock_kaizen_module(supervisor_class: type) -> dict[str, ModuleType]:
-    """Create a fake kaizen_agents module with a given GovernedSupervisor class.
-
-    Returns a dict suitable for ``patch.dict(sys.modules, ...)``.
-    The lazy import ``from kaizen_agents import GovernedSupervisor`` inside
-    ``orchestrator.py`` will resolve to the provided class.
-    """
-    fake_mod = ModuleType("kaizen_agents")
-    fake_mod.GovernedSupervisor = supervisor_class  # type: ignore[attr-defined]
-    return {"kaizen_agents": fake_mod}
+def _make_work_result(
+    success: bool = True,
+    results: dict[str, Any] | None = None,
+    cost_usd: float = 0.05,
+    error: str | None = None,
+    governance_verdicts: list[dict[str, Any]] | None = None,
+    governance_shadow: bool = False,
+) -> WorkResult:
+    """Create a WorkResult for testing."""
+    return WorkResult(
+        success=success,
+        results=results or {},
+        cost_usd=cost_usd,
+        error=error,
+        governance_verdicts=governance_verdicts or [],
+        governance_shadow=governance_shadow,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -242,20 +219,19 @@ class TestContextNaNGuard:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Envelope resolution failure
+# Tests: PactEngine submission failure
 # ---------------------------------------------------------------------------
 
 
-class TestEnvelopeResolutionFailure:
-    """Envelope resolution failure must return a generic error (H4 fix)."""
+class TestSubmissionFailure:
+    """PactEngine submission failure must return a generic error (H4 fix)."""
 
-    def test_envelope_failure_returns_success_false(self):
+    def test_submission_failure_returns_success_false(self):
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        # Patch the adapter's adapt method to raise an exception
-        with patch.object(orch._adapter, "adapt", side_effect=RuntimeError("Connection lost")):
+        with patch.object(orch, "_submit_sync", side_effect=RuntimeError("Connection lost")):
             result = orch.execute_request(
                 request_id="req-fail",
                 role_address="D1-R1",
@@ -265,15 +241,15 @@ class TestEnvelopeResolutionFailure:
         assert result["success"] is False
         assert result["request_id"] == "req-fail"
         # H4: generic error, not the internal exception message
-        assert result["error"] == "Envelope resolution failed"
+        assert result["error"] == "Execution failed"
         assert result["budget_consumed"] == 0.0
 
-    def test_envelope_failure_records_run(self):
+    def test_submission_failure_records_run(self):
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        with patch.object(orch._adapter, "adapt", side_effect=RuntimeError("DB down")):
+        with patch.object(orch, "_submit_sync", side_effect=RuntimeError("DB down")):
             result = orch.execute_request(
                 request_id="req-fail-run",
                 role_address="D1-R1",
@@ -285,92 +261,30 @@ class TestEnvelopeResolutionFailure:
         run = mock_db.express_sync.read("Run", run_id)
         assert run is not None
         assert run["status"] == "failed"
-        assert "Envelope resolution failed" in run["error_message"]
+        assert "PactEngine submission failed" in run["error_message"]
 
 
 # ---------------------------------------------------------------------------
-# Tests: Supervisor creation failure
-# ---------------------------------------------------------------------------
-
-
-class TestSupervisorCreationFailure:
-    """Supervisor creation failure must return error with allocated budget."""
-
-    def test_supervisor_creation_failure(self):
-        engine = _make_engine()
-        mock_db = MockDB()
-        orch = SupervisorOrchestrator(engine, mock_db)
-
-        class _BrokenSupervisor:
-            def __init__(self, **kwargs):
-                raise RuntimeError("Invalid config")
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 10.0,
-                    "tools": [],
-                    "data_clearance": "public",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_BrokenSupervisor)),
-        ):
-            result = orch.execute_request(
-                request_id="req-no-supervisor",
-                role_address="D1-R1",
-                objective="test objective",
-            )
-
-        assert result["success"] is False
-        assert result["error"] == "Supervisor creation failed"
-
-
-# ---------------------------------------------------------------------------
-# Tests: Successful execution
+# Tests: Successful execution via PactEngine
 # ---------------------------------------------------------------------------
 
 
 class TestSuccessfulExecution:
-    """Full pipeline with a fake supervisor."""
+    """Full pipeline with mocked PactEngine.submit_sync()."""
 
     def test_success_returns_results(self):
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        fake_result = _FakeSupervisorResult(
+        work_result = _make_work_result(
             success=True,
             results={"node-1": {"output": "done"}},
-            budget_consumed=0.03,
-            budget_allocated=1.0,
-            audit_trail=[{"action": "read", "verdict": "auto_approved"}],
-            modifications=["file.txt"],
+            cost_usd=0.03,
+            governance_verdicts=[{"action": "read", "verdict": "auto_approved"}],
         )
 
-        class _GoodSupervisor(_FakeSupervisor):
-            def __init__(self, **kwargs):
-                super().__init__(fake_result)
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 1.0,
-                    "tools": ["web_search"],
-                    "data_clearance": "restricted",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_GoodSupervisor)),
-        ):
+        with patch.object(orch, "_submit_sync", return_value=work_result):
             result = orch.execute_request(
                 request_id="req-success",
                 role_address="D1-R1",
@@ -380,41 +294,22 @@ class TestSuccessfulExecution:
         assert result["success"] is True
         assert result["request_id"] == "req-success"
         assert result["run_id"].startswith("run-")
-        assert result["budget_consumed"] == 0.03
-        assert result["budget_allocated"] == 1.0
+        assert result["budget_consumed"] == pytest.approx(0.03, abs=0.001)
         assert result["error"] is None
+        assert result["audit_trail"] == [{"action": "read", "verdict": "auto_approved"}]
 
     def test_success_records_run_in_dataflow(self):
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        fake_result = _FakeSupervisorResult(
+        work_result = _make_work_result(
             success=True,
             results={"n1": {}},
-            budget_consumed=0.01,
-            budget_allocated=0.5,
+            cost_usd=0.01,
         )
 
-        class _GoodSupervisor2(_FakeSupervisor):
-            def __init__(self, **kwargs):
-                super().__init__(fake_result)
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 0.5,
-                    "tools": [],
-                    "data_clearance": "public",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_GoodSupervisor2)),
-        ):
+        with patch.object(orch, "_submit_sync", return_value=work_result):
             result = orch.execute_request(
                 request_id="req-run-check",
                 role_address="D1-R1",
@@ -428,46 +323,48 @@ class TestSuccessfulExecution:
         assert run["status"] == "completed"
         assert run["cost_usd"] == pytest.approx(0.01, abs=0.001)
 
-
-# ---------------------------------------------------------------------------
-# Tests: NaN budget values from supervisor result
-# ---------------------------------------------------------------------------
-
-
-class TestNaNBudgetFromSupervisor:
-    """NaN/Inf budget values from the supervisor must be sanitized to 0.0."""
-
-    def test_nan_budget_consumed_recorded_as_zero(self):
+    def test_pact_engine_is_used_for_execution(self):
+        """Verify that execute_request calls _submit_sync (PactEngine path)."""
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        fake_result = _FakeSupervisorResult(
+        work_result = _make_work_result(success=True)
+
+        with patch.object(orch, "_submit_sync", return_value=work_result) as mock_submit:
+            orch.execute_request(
+                request_id="req-pact",
+                role_address="D1-R1",
+                objective="Test PactEngine path",
+            )
+
+        mock_submit.assert_called_once()
+        call_args = mock_submit.call_args
+        # _submit_sync is called with positional args: (objective, role, context)
+        assert call_args[0][0] == "Test PactEngine path"  # objective
+        assert call_args[0][1] == "D1-R1"  # role
+        assert call_args[0][2]["request_id"] == "req-pact"  # context
+
+
+# ---------------------------------------------------------------------------
+# Tests: NaN budget values from PactEngine result
+# ---------------------------------------------------------------------------
+
+
+class TestNaNBudgetFromPactEngine:
+    """NaN/Inf budget values from PactEngine must be sanitized to 0.0."""
+
+    def test_nan_cost_usd_recorded_as_zero(self):
+        engine = _make_engine()
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
+
+        work_result = _make_work_result(
             success=True,
-            results={},
-            budget_consumed=float("nan"),
-            budget_allocated=1.0,
+            cost_usd=float("nan"),
         )
 
-        class _NanSupervisor(_FakeSupervisor):
-            def __init__(self, **kwargs):
-                super().__init__(fake_result)
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 1.0,
-                    "tools": [],
-                    "data_clearance": "public",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_NanSupervisor)),
-        ):
+        with patch.object(orch, "_submit_sync", return_value=work_result):
             result = orch.execute_request(
                 request_id="req-nan-budget",
                 role_address="D1-R1",
@@ -476,44 +373,24 @@ class TestNaNBudgetFromSupervisor:
 
         assert result["budget_consumed"] == 0.0
 
-    def test_inf_budget_allocated_recorded_as_zero(self):
+    def test_inf_cost_usd_recorded_as_zero(self):
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        fake_result = _FakeSupervisorResult(
+        work_result = _make_work_result(
             success=True,
-            results={},
-            budget_consumed=0.0,
-            budget_allocated=float("inf"),
+            cost_usd=float("inf"),
         )
 
-        class _InfSupervisor(_FakeSupervisor):
-            def __init__(self, **kwargs):
-                super().__init__(fake_result)
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 1.0,
-                    "tools": [],
-                    "data_clearance": "public",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_InfSupervisor)),
-        ):
+        with patch.object(orch, "_submit_sync", return_value=work_result):
             result = orch.execute_request(
                 request_id="req-inf-budget",
                 role_address="D1-R1",
                 objective="Inf test",
             )
 
-        assert result["budget_allocated"] == 0.0
+        assert result["budget_consumed"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -529,10 +406,7 @@ class TestRecordRunNaNGuard:
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
 
-        from datetime import UTC, datetime
-
         now = datetime.now(UTC)
-        # Calling _record_run directly to test its NaN guard
         orch._record_run(
             run_id="run-nan-cost",
             request_id="req-nan",
@@ -542,7 +416,6 @@ class TestRecordRunNaNGuard:
             cost_usd=float("nan"),
         )
 
-        # Read back the run
         run = mock_db.express_sync.read("Run", "run-nan-cost")
         assert run is not None
         assert run["cost_usd"] == 0.0
@@ -551,8 +424,6 @@ class TestRecordRunNaNGuard:
         engine = _make_engine()
         mock_db = MockDB()
         orch = SupervisorOrchestrator(engine, mock_db)
-
-        from datetime import UTC, datetime
 
         now = datetime.now(UTC)
         orch._record_run(
@@ -575,7 +446,7 @@ class TestRecordRunNaNGuard:
 
 
 class TestPropertyAccessors:
-    """Verify orchestrator exposes approval_bridge and event_bridge."""
+    """Verify orchestrator exposes approval_bridge, event_bridge, pact_engine."""
 
     def test_approval_bridge_accessible(self):
         engine = _make_engine()
@@ -595,51 +466,75 @@ class TestPropertyAccessors:
         orch = SupervisorOrchestrator(engine, mock_db, event_bus=None)
         assert orch.event_bridge._bus is None
 
+    def test_pact_engine_property(self):
+        """The pact_engine property should return the underlying PactEngine."""
+        engine = _make_engine()
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
+        from pact.engine import PactEngine
+
+        assert isinstance(orch.pact_engine, PactEngine)
+
 
 # ---------------------------------------------------------------------------
-# Tests: Supervisor execution failure
+# Tests: GovernanceEngine backward compatibility
 # ---------------------------------------------------------------------------
 
 
-class TestSupervisorExecutionFailure:
-    """When supervisor.run() raises, must return error and emit completion."""
+class TestGovernanceEngineBackwardCompat:
+    """Verify that passing a bare GovernanceEngine still works."""
 
-    def test_supervisor_run_exception(self):
+    def test_bare_governance_engine_wraps_in_pact_engine(self):
+        engine = _make_engine()
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(engine, mock_db)
+
+        from pact.engine import PactEngine
+
+        assert isinstance(orch._pact, PactEngine)
+        # The admin governance should be the original engine
+        assert orch._pact._admin_governance is engine
+
+    def test_pact_engine_passed_directly(self):
+        """Passing a PactEngine directly should use it as-is."""
+        from pact.engine import PactEngine
+
+        engine = _make_engine()
+        compiled_org = engine.get_org()
+        pact = PactEngine(
+            org={
+                "org_id": compiled_org.org_id,
+                "name": compiled_org.org_id,
+            },
+        )
+
+        mock_db = MockDB()
+        orch = SupervisorOrchestrator(pact, mock_db)
+        assert orch._pact is pact
+
+
+# ---------------------------------------------------------------------------
+# Tests: Completion event bridging
+# ---------------------------------------------------------------------------
+
+
+class TestCompletionEventBridging:
+    """When PactEngine.submit() raises, must return error and emit completion."""
+
+    def test_submission_exception_emits_completion(self):
         engine = _make_engine()
         mock_db = MockDB()
 
-        # Track completion events
         events: list[dict[str, Any]] = []
 
         class _TrackingBridge:
-            def on_completion_event(self, **kwargs):
+            def on_completion_event(self, **kwargs: Any) -> None:
                 events.append(kwargs)
 
         orch = SupervisorOrchestrator(engine, mock_db)
         orch._event_bridge = _TrackingBridge()
 
-        class _ExplodingSupervisor:
-            def __init__(self, **kwargs):
-                pass
-
-            def run(self, **kwargs):
-                raise RuntimeError("LLM provider timeout")
-
-        with (
-            patch.object(
-                orch._adapter,
-                "adapt",
-                return_value={
-                    "budget_usd": 1.0,
-                    "tools": [],
-                    "data_clearance": "public",
-                    "timeout_seconds": 300,
-                    "max_children": 10,
-                    "max_depth": 5,
-                },
-            ),
-            patch.dict(sys.modules, _mock_kaizen_module(_ExplodingSupervisor)),
-        ):
+        with patch.object(orch, "_submit_sync", side_effect=RuntimeError("LLM timeout")):
             result = orch.execute_request(
                 request_id="req-explode",
                 role_address="D1-R1",
@@ -647,7 +542,33 @@ class TestSupervisorExecutionFailure:
             )
 
         assert result["success"] is False
-        assert result["error"] == "Supervisor execution failed"
-        # Completion event should have been emitted
+        assert result["error"] == "Execution failed"
         assert len(events) == 1
         assert events[0]["success"] is False
+
+    def test_successful_execution_emits_completion(self):
+        engine = _make_engine()
+        mock_db = MockDB()
+
+        events: list[dict[str, Any]] = []
+
+        class _TrackingBridge:
+            def on_completion_event(self, **kwargs: Any) -> None:
+                events.append(kwargs)
+
+        orch = SupervisorOrchestrator(engine, mock_db)
+        orch._event_bridge = _TrackingBridge()
+
+        work_result = _make_work_result(success=True, cost_usd=0.02)
+
+        with patch.object(orch, "_submit_sync", return_value=work_result):
+            result = orch.execute_request(
+                request_id="req-ok",
+                role_address="D1-R1",
+                objective="Good task",
+            )
+
+        assert result["success"] is True
+        assert len(events) == 1
+        assert events[0]["success"] is True
+        assert events[0]["budget_consumed"] == pytest.approx(0.02, abs=0.001)

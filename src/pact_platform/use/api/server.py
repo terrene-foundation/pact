@@ -963,6 +963,7 @@ def create_app(
         access_router,
         clearance_router,
         decisions_router,
+        emergency_bypass_router,
         envelopes_router,
         ksp_router,
         metrics_router,
@@ -987,6 +988,7 @@ def create_app(
     app.include_router(ksp_router, dependencies=_auth_deps)
     app.include_router(envelopes_router, dependencies=_auth_deps)
     app.include_router(access_router, dependencies=_auth_deps)
+    app.include_router(emergency_bypass_router, dependencies=_auth_deps)
 
     # Inject governance engine into new routers (same pattern as org.py)
     from pact_platform.use.api.routers.access import set_engine as _set_access_engine

@@ -17,10 +17,12 @@ from datetime import datetime
 from typing import Optional
 
 from dataflow import DataFlow
+from dataflow.engine import DataFlowEngine, QueryEngine
 from fastapi import HTTPException
 
 __all__ = [
     "db",
+    "db_engine",
     "validate_finite",
     "safe_sum_finite",
     "validate_string_length",
@@ -59,6 +61,19 @@ db = DataFlow(
     auto_migrate=True,
     pool_recycle=3600,
     cache_enabled=False,
+)
+
+# Wrap DataFlow in DataFlowEngine for enterprise features:
+# - QueryEngine: slow query detection (>1s default threshold)
+# - ValidationLayer: available for per-field validators (opt-in)
+# - ClassificationPolicy: available for PII/sensitivity tagging (opt-in)
+#
+# All existing code uses `db` (the DataFlow primitive) for Express CRUD.
+# The engine provides observability and governance without changing call sites.
+_SLOW_QUERY_THRESHOLD = float(os.getenv("PACT_SLOW_QUERY_THRESHOLD", "1.0"))
+db_engine = DataFlowEngine(
+    dataflow=db,
+    query_engine=QueryEngine(slow_query_threshold=_SLOW_QUERY_THRESHOLD),
 )
 
 

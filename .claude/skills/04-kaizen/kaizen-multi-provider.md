@@ -8,14 +8,14 @@ kaizen-agents supports OpenAI, Anthropic, Google, and Ollama via a unified `Stre
 from kaizen_agents import Delegate
 
 # Auto-detect from model name prefix:
-d1 = Delegate(model="gpt-4o")              # → OpenAI adapter
-d2 = Delegate(model="claude-sonnet-4-20250514")  # → Anthropic adapter
+d1 = Delegate(model=os.environ["LLM_MODEL"])              # → OpenAI adapter
+d2 = Delegate(model=os.environ["LLM_MODEL"])  # → Anthropic adapter
 d3 = Delegate(model="gemini-2.0-flash")    # → Google adapter
 d4 = Delegate(model="llama3:latest")       # → Ollama adapter (localhost)
 
 # Explicit via config:
 from kaizen_agents.delegate.adapters import get_adapter
-adapter = get_adapter(provider="anthropic", model="claude-sonnet-4-20250514")
+adapter = get_adapter(provider="anthropic", model=os.environ["LLM_MODEL"])
 ```
 
 ## StreamingChatAdapter Protocol
