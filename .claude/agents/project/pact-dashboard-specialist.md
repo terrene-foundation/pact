@@ -1,6 +1,6 @@
 ---
 name: pact-dashboard-specialist
-description: "Use when working with the PACT web dashboard — Next.js pages, React components, API integration, WebSocket events, design system. Knows the governance dashboard patterns and CARE-specific UI conventions."
+description: "Use when editing PACT web dashboard — Next.js pages, React components, API integration, WebSocket events."
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 ---
 

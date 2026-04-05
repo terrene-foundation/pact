@@ -19,22 +19,11 @@ from __future__ import annotations
 
 import logging
 import os
-from enum import Enum
 
+from pact.enforcement import EnforcementMode
 from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
-
-
-class EnforcementMode(str, Enum):
-    """Governance enforcement mode.
-
-    Controls how governance verdicts are applied at runtime.
-    """
-
-    ENFORCE = "enforce"
-    SHADOW = "shadow"
-    DISABLED = "disabled"
 
 
 class PlatformSettings(BaseModel):

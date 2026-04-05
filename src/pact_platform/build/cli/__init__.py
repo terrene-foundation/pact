@@ -80,6 +80,50 @@ def validate(config_file: str) -> None:
     )
     console.print(table)
 
+    # Surface degenerate envelope warnings via L1 check
+    degenerate_warnings = _check_envelopes_degenerate(config.constraint_envelopes)
+    if degenerate_warnings:
+        warn_table = Table(
+            title="Degenerate Envelope Warnings",
+            show_header=True,
+            header_style="bold yellow",
+        )
+        warn_table.add_column("Envelope", style="cyan")
+        warn_table.add_column("Warning")
+        for env_id, warning_msg in degenerate_warnings:
+            warn_table.add_row(env_id, warning_msg)
+        console.print()
+        console.print(warn_table)
+        console.print(
+            f"\n  [yellow]{len(degenerate_warnings)} degenerate envelope warning(s) "
+            f"found.[/yellow] These envelopes may be too restrictive for meaningful "
+            f"agent operation."
+        )
+
+
+def _check_envelopes_degenerate(
+    envelopes: list,
+) -> list[tuple[str, str]]:
+    """Run L1 degenerate envelope detection on a list of ConstraintEnvelopeConfigs.
+
+    Returns a list of (envelope_id, warning_message) tuples.
+    """
+    results: list[tuple[str, str]] = []
+    try:
+        from pact.governance import check_degenerate_envelope
+
+        for env in envelopes:
+            warnings = check_degenerate_envelope(env)
+            for warning_msg in warnings:
+                env_id = getattr(env, "id", str(env))
+                results.append((env_id, str(warning_msg)))
+    except ImportError:
+        logger.debug(
+            "pact.governance.check_degenerate_envelope not available; "
+            "skipping degenerate envelope detection in CLI validate"
+        )
+    return results
+
 
 @main.command()
 def status() -> None:

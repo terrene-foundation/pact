@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pact_platform.use.api.routers.access import router as access_router
 from pact_platform.use.api.routers.clearance import router as clearance_router
+from pact_platform.use.api.routers.emergency_bypass import router as emergency_bypass_router
 from pact_platform.use.api.routers.decisions import router as decisions_router
 from pact_platform.use.api.routers.envelopes import router as envelopes_router
 from pact_platform.use.api.routers.ksp import router as ksp_router
@@ -35,4 +36,5 @@ __all__ = [
     "ksp_router",
     "envelopes_router",
     "access_router",
+    "emergency_bypass_router",
 ]

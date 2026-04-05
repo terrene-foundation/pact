@@ -3,18 +3,16 @@
 """PACT Engine — Dual Plane bridge connecting governance to execution.
 
 Components:
-- PlatformEnvelopeAdapter: Converts governance envelopes to supervisor params
-- GovernedDelegate: execute_node callback enforcing governance before execution
+- SupervisorOrchestrator: End-to-end request execution (composes PactEngine)
 - ApprovalBridge: Creates AgenticDecisions from HELD verdicts
 - EventBridge: Pipes supervisor events to platform EventBus
-- SupervisorOrchestrator: End-to-end request execution
+- EmergencyBypass: 3-tier bypass with rate limiting
 - seed_demo_data / seed_if_empty: Auto-seeding for first boot
 """
 
 from __future__ import annotations
 
 from pact_platform.engine.approval_bridge import ApprovalBridge
-from pact_platform.engine.delegate import GovernedDelegate
 from pact_platform.engine.emergency_bypass import (
     AuthorityLevel,
     BypassRecord,
@@ -24,7 +22,6 @@ from pact_platform.engine.emergency_bypass import (
     RateLimitStore,
     SqliteRateLimitStore,
 )
-from pact_platform.engine.envelope_adapter import PlatformEnvelopeAdapter
 from pact_platform.engine.event_bridge import EventBridge
 from pact_platform.engine.orchestrator import SupervisorOrchestrator
 from pact_platform.engine.seed import seed_demo_data, seed_if_empty
@@ -43,9 +40,7 @@ __all__ = [
     "EmergencyBypass",
     "EnforcementMode",
     "EventBridge",
-    "GovernedDelegate",
     "MemoryRateLimitStore",
-    "PlatformEnvelopeAdapter",
     "PlatformSettings",
     "RateLimitStore",
     "SqliteRateLimitStore",

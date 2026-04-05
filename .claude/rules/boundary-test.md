@@ -1,3 +1,8 @@
+---
+paths:
+  - "src/pact_platform/**"
+---
+
 # Boundary Test Rule
 
 ## Scope

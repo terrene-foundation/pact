@@ -1,3 +1,10 @@
+---
+paths:
+  - "src/pact_platform/build/org/**"
+  - "src/pact_platform/build/config/schema.py"
+  - "**/governance/**"
+---
+
 # Governance Layer Rules
 
 ## Scope
