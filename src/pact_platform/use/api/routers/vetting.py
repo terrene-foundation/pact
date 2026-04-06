@@ -486,29 +486,17 @@ async def suspend_vetting(
         },
     )
 
-    # Update L1 clearance vetting_status if engine is available
+    # Transition L1 clearance to SUSPENDED via FSM-validated transition_clearance()
     if _engine is not None:
         role_address = record.get("role_address", "")
         try:
-            ctx = _engine.get_context(role_address)
-            clearance = getattr(ctx, "clearance", None)
-            if clearance is not None and hasattr(clearance, "vetting_status"):
-                from pact.governance import RoleClearance
-                from pact_platform.build.config.schema import ConfidentialityLevel
+            from pact.governance import VettingStatus
 
-                compartment_values = record.get("requested_compartments", {}).get("values", [])
-                updated_clr = RoleClearance(
-                    role_address=role_address,
-                    max_clearance=ConfidentialityLevel(record.get("requested_level", "public")),
-                    compartments=frozenset(compartment_values),
-                    nda_signed=record.get("nda_signed", False),
-                    vetting_status="suspended",
-                )
-                _engine.grant_clearance(role_address, updated_clr)
-                logger.info("L1 clearance vetting_status set to suspended for %s", role_address)
+            _engine.transition_clearance(role_address, VettingStatus.SUSPENDED)
+            logger.info("L1 clearance transitioned to SUSPENDED for %s", role_address)
         except Exception as exc:
             logger.warning(
-                "Failed to update L1 clearance vetting_status for %s: %s",
+                "Failed to transition L1 clearance for %s: %s",
                 role_address,
                 exc,
             )
