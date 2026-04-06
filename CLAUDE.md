@@ -129,24 +129,22 @@ from kailash.trust.chain import VerificationLevel, VerificationResult
 
 ## Rules Index
 
-| Concern                          | Rule File                 | Scope                                               |
-| -------------------------------- | ------------------------- | --------------------------------------------------- |
-| **Foundation independence**      | `rules/independence.md`   | **Global — overrides all**                          |
-| Plain-language communication     | `rules/communication.md`  | Global                                              |
-| Agent orchestration & reviews    | `rules/agents.md`         | Global                                              |
-| E2E god-mode testing             | `rules/e2e-god-mode.md`   | `tests/e2e/**`, `**/*e2e*`, `**/*playwright*`       |
-| API keys & model names           | `rules/env-models.md`     | `**/*.py`, `**/*.ts`, `**/*.js`, `.env*`            |
-| Deployment operations            | `rules/deployment.md`     | Global                                              |
-| Git commits, branches, PRs       | `rules/git.md`            | Global                                              |
-| No stubs or placeholders         | `rules/zero-tolerance.md` | Global                                              |
-| Kailash SDK execution patterns   | `rules/patterns.md`       | `**/*.py`, `**/*.ts`, `**/*.js`                     |
-| Security (secrets, injection)    | `rules/security.md`       | Global                                              |
-| 3-tier testing strategy          | `rules/testing.md`        | `tests/**`, `**/*test*`, `**/*spec*`, `conftest.py` |
-| Terrene naming & terminology     | `rules/terrene-naming.md` | Global                                              |
-| Documentation & version accuracy | `rules/documentation.md`  | `README.md`, `docs/**`, `CHANGELOG.md`              |
-
-| Boundary test (domain vocabulary) | `rules/boundary-test.md` | `src/pact_platform/**` (excluding `examples/`) |
-| Auto-generated workflow instincts | `rules/learned-instincts.md` | Global |
+| Concern                           | Rule File                    | Scope                                               |
+| --------------------------------- | ---------------------------- | --------------------------------------------------- |
+| **Foundation independence**       | `rules/independence.md`      | **Global — overrides all**                          |
+| Plain-language communication      | `rules/communication.md`     | Global                                              |
+| Agent orchestration & reviews     | `rules/agents.md`            | Global                                              |
+| E2E god-mode testing              | `rules/e2e-god-mode.md`      | `tests/e2e/**`, `**/*e2e*`, `**/*playwright*`       |
+| API keys & model names            | `rules/env-models.md`        | `**/*.py`, `**/*.ts`, `**/*.js`, `.env*`            |
+| Deployment operations             | `rules/deployment.md`        | Global                                              |
+| Git commits, branches, PRs        | `rules/git.md`               | Global                                              |
+| No stubs or placeholders          | `rules/zero-tolerance.md`    | Global                                              |
+| Kailash SDK execution patterns    | `rules/patterns.md`          | `**/*.py`, `**/*.ts`, `**/*.js`                     |
+| Security (secrets, injection)     | `rules/security.md`          | Global                                              |
+| 3-tier testing strategy           | `rules/testing.md`           | `tests/**`, `**/*test*`, `**/*spec*`, `conftest.py` |
+| Terrene naming & terminology      | `rules/terrene-naming.md`    | Global                                              |
+| Documentation & version accuracy  | `rules/documentation.md`     | `README.md`, `docs/**`, `CHANGELOG.md`              |
+| Auto-generated workflow instincts | `rules/learned-instincts.md` | Global                                              |
 
 ## Agents
 
