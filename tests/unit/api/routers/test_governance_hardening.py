@@ -742,6 +742,102 @@ class TestVettingStatusSuspendedL1:
 
 
 # ===========================================================================
+# L1 Upstream Feature Wiring Verification
+# ===========================================================================
+
+
+class TestL1UpstreamFeatureWiring:
+    """Verify all upstream-blocked features (#199-#202) are now operational."""
+
+    def test_eatp_emitter_wired_via_create_engine(self) -> None:
+        """#199: _create_engine initializes GovernanceEngine with EATP emitter."""
+        import os
+        import tempfile
+
+        os.environ["PACT_ENABLE_EATP_EMISSION"] = "true"
+        from pact_platform.cli import _create_engine
+        from pact.governance import load_org_yaml
+
+        yaml_str = (
+            "org_id: test\nname: Test\ndepartments:\n"
+            "  - id: eng\n    name: Eng\n    roles:\n"
+            "      - id: dev\n        name: Dev\n"
+            "      - id: lead\n        name: Lead\n"
+            "envelopes:\n  - target: dev\n    defined_by: lead\n"
+            "    financial:\n      max_budget: 100.0\n"
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_str)
+            tmp = f.name
+        try:
+            loaded = load_org_yaml(tmp)
+            engine = _create_engine(loaded.org_definition)
+            emitter = getattr(engine, "_eatp_emitter", None)
+            assert emitter is not None, "EATP emitter not wired"
+            assert len(emitter.genesis_records) >= 1, "No genesis record emitted"
+        finally:
+            os.unlink(tmp)
+
+    def test_gradient_functions_available(self) -> None:
+        """#200: Per-dimension gradient analysis functions importable."""
+        from pact.governance import (
+            check_degenerate_envelope,
+            check_gradient_dereliction,
+            check_passthrough_envelope,
+        )
+
+        assert callable(check_degenerate_envelope)
+        assert callable(check_gradient_dereliction)
+        assert callable(check_passthrough_envelope)
+
+    def test_bridge_bilateral_consent_api(self) -> None:
+        """#201: GovernanceEngine has approve_bridge/consent_bridge/create_bridge."""
+        from pact.governance import GovernanceEngine
+
+        assert hasattr(GovernanceEngine, "approve_bridge")
+        assert hasattr(GovernanceEngine, "consent_bridge")
+        assert hasattr(GovernanceEngine, "create_bridge")
+        assert hasattr(GovernanceEngine, "reject_bridge")
+
+    def test_vacancy_detection_api(self) -> None:
+        """#202: GovernanceEngine has vacancy detection + acting occupant."""
+        from pact.governance import GovernanceEngine
+
+        assert hasattr(GovernanceEngine, "get_vacancy_designation")
+        assert hasattr(GovernanceEngine, "designate_acting_occupant")
+
+    def test_frozen_governance_context(self) -> None:
+        """GovernanceContext from get_context() is frozen (immutable)."""
+        from pact.governance import GovernanceContext
+
+        assert GovernanceContext.__dataclass_params__.frozen is True
+
+    def test_create_engine_bilateral_consent(self) -> None:
+        """_create_engine passes bilateral consent config."""
+        import os
+        import tempfile
+
+        os.environ["PACT_REQUIRE_BILATERAL_CONSENT"] = "true"
+        from pact_platform.cli import _create_engine
+        from pact.governance import load_org_yaml
+
+        yaml_str = (
+            "org_id: test\nname: Test\ndepartments:\n"
+            "  - id: eng\n    name: Eng\n    roles:\n"
+            "      - id: dev\n        name: Dev\n"
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_str)
+            tmp = f.name
+        try:
+            loaded = load_org_yaml(tmp)
+            engine = _create_engine(loaded.org_definition)
+            assert getattr(engine, "_require_bilateral_consent", None) is True
+        finally:
+            os.unlink(tmp)
+
+
+# ===========================================================================
 # Issue #24: Task Envelope Lifecycle
 # ===========================================================================
 
