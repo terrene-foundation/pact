@@ -961,10 +961,12 @@ def create_app(
     # --- Work management routers (M2) ---
     from pact_platform.use.api.routers import (
         access_router,
+        bootstrap_router,
         clearance_router,
         decisions_router,
         emergency_bypass_router,
         envelopes_router,
+        knowledge_router,
         ksp_router,
         metrics_router,
         objectives_router,
@@ -973,6 +975,8 @@ def create_app(
         requests_router,
         reviews_router,
         sessions_router,
+        task_envelopes_router,
+        vetting_router,
     )
 
     _auth_deps = [Depends(verify_token)]
@@ -989,12 +993,19 @@ def create_app(
     app.include_router(envelopes_router, dependencies=_auth_deps)
     app.include_router(access_router, dependencies=_auth_deps)
     app.include_router(emergency_bypass_router, dependencies=_auth_deps)
+    app.include_router(knowledge_router, dependencies=_auth_deps)
+    app.include_router(vetting_router, dependencies=_auth_deps)
+    app.include_router(bootstrap_router, dependencies=_auth_deps)
+    app.include_router(task_envelopes_router, dependencies=_auth_deps)
 
     # Inject governance engine into new routers (same pattern as org.py)
     from pact_platform.use.api.routers.access import set_engine as _set_access_engine
+    from pact_platform.use.api.routers.bootstrap import set_engine as _set_bootstrap_engine
     from pact_platform.use.api.routers.clearance import set_engine as _set_clearance_engine
     from pact_platform.use.api.routers.envelopes import set_engine as _set_envelopes_engine
     from pact_platform.use.api.routers.ksp import set_engine as _set_ksp_engine
+    from pact_platform.use.api.routers.task_envelopes import set_engine as _set_task_env_engine
+    from pact_platform.use.api.routers.vetting import set_engine as _set_vetting_engine
 
     # Engine is injected at org deploy time via org.set_engine() which also
     # calls governance.set_engine().  For the new routers, we wire them into
@@ -1006,17 +1017,77 @@ def create_app(
         _orig_org_set_engine = _org_mod.set_engine
 
         def _cascading_set_engine(engine: object) -> None:
-            """Forward engine to org + new governance routers."""
+            """Forward engine to org + all governance routers."""
             if _orig_org_set_engine is not None:
                 _orig_org_set_engine(engine)
             _set_clearance_engine(engine)
             _set_ksp_engine(engine)
             _set_envelopes_engine(engine)
             _set_access_engine(engine)
+            _set_vetting_engine(engine)
+            _set_bootstrap_engine(engine)
+            _set_task_env_engine(engine)
 
         _org_mod.set_engine = _cascading_set_engine
     except Exception:
         logger.warning("Failed to wire cascading set_engine for governance routers")
+
+    # --- Shared services: MultiApproverService + ExpiryScheduler ---
+    from pact_platform.models import db as _db
+    from pact_platform.use.services.expiry_scheduler import ExpiryScheduler
+    from pact_platform.use.services.multi_approver import MultiApproverService
+
+    _approver_svc = MultiApproverService(_db)
+    _expiry_sched = ExpiryScheduler(_db)
+
+    # Register expiry handlers for time-limited records
+    from pact_platform.use.api.routers.bootstrap import (
+        _expire_bootstrap as _bootstrap_expire_callback,
+    )
+
+    _expiry_sched.register_handler(
+        model_name="BootstrapRecord",
+        status_field="status",
+        expires_field="expires_at",
+        active_status="active",
+        expired_status="expired",
+        on_expire_callback=_bootstrap_expire_callback,
+    )
+    _expiry_sched.register_handler(
+        model_name="TaskEnvelopeRecord",
+        status_field="status",
+        expires_field="expires_at",
+        active_status="active",
+        expired_status="expired",
+    )
+    _expiry_sched.register_handler(
+        model_name="AgenticDecision",
+        status_field="status",
+        expires_field="expires_at",
+        active_status="pending",
+        expired_status="expired",
+    )
+
+    # Inject MultiApproverService into routers that need it
+    from pact_platform.use.api.routers.decisions import set_approver_service as _set_dec_approver
+    from pact_platform.use.api.routers.vetting import (
+        set_approver_service as _set_vet_approver,
+    )
+
+    _set_dec_approver(_approver_svc)
+    _set_vet_approver(_approver_svc)
+
+    # Start the expiry scheduler background task on startup
+    @app.on_event("startup")
+    async def _start_expiry_scheduler() -> None:
+        await _expiry_sched.start(interval_seconds=60.0)
+        logger.info("Expiry scheduler started (60s interval)")
+
+    # Stop on shutdown
+    @app.on_event("shutdown")
+    async def _stop_expiry_scheduler() -> None:
+        await _expiry_sched.stop()
+        logger.info("Expiry scheduler stopped")
 
     return app
 

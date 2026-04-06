@@ -59,6 +59,23 @@ async def check_access(request: Request, body: dict[str, Any]) -> dict:
         raise HTTPException(400, detail="role_address is required and must be a non-empty string")
     if not item_id or not isinstance(item_id, str):
         raise HTTPException(400, detail="item_id is required and must be a non-empty string")
+
+    # If classification is not provided but item_id is, look up the
+    # persisted KnowledgeRecord to populate classification, owning_unit,
+    # and compartments.  This allows access checks with just
+    # {"role_address", "item_id"} when the item is in the database.
+    if not classification:
+        from pact_platform.models import db
+
+        kr_records = await db.express.list("KnowledgeRecord", {"item_id": item_id}, limit=1)
+        if kr_records:
+            kr = kr_records[0]
+            classification = kr.get("classification", "")
+            if not owning_unit:
+                owning_unit = kr.get("owning_unit_address", "")
+            if not compartments:
+                compartments = kr.get("compartments", {}).get("values", [])
+
     if not classification or not isinstance(classification, str):
         raise HTTPException(400, detail="classification is required and must be a non-empty string")
     if not owning_unit or not isinstance(owning_unit, str):

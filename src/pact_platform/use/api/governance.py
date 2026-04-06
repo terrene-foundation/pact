@@ -131,6 +131,26 @@ async def governance_gate(
         )
 
     if level == "held":
+        # Look up multi-approver config for this action type
+        required_approvals = 1
+        timeout_hours = 72
+        try:
+            configs = await db.express.list(
+                "ApprovalConfig",
+                {"operation_type": action},
+                limit=1,
+            )
+            if configs:
+                required_approvals = max(1, int(configs[0].get("required_approvals", 1)))
+                timeout_hours = int(configs[0].get("timeout_hours", 72))
+        except Exception:
+            logger.debug("ApprovalConfig lookup failed for action %s -- defaulting to 1", action)
+
+        # Compute expires_at for auto-reject timeout
+        from datetime import timedelta
+
+        expires_at = (datetime.now(UTC) + timedelta(hours=timeout_hours)).isoformat()
+
         # Create a decision record for human review
         decision_id = f"dec-{uuid4().hex[:12]}"
         await db.express.create(
@@ -148,6 +168,9 @@ async def governance_gate(
                     if hasattr(verdict, "envelope_version") and verdict.envelope_version
                     else 0
                 ),
+                "required_approvals": required_approvals,
+                "current_approvals": 0,
+                "expires_at": expires_at,
                 "created_at": datetime.now(UTC).isoformat(),
             },
         )
