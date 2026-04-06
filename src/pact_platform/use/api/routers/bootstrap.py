@@ -18,6 +18,7 @@ Issue #23.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import UTC, datetime, timedelta
@@ -25,6 +26,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from pact_platform.models import (
     MAX_SHORT_STRING,
@@ -41,6 +43,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/org/bootstrap", tags=["bootstrap"])
 
 _engine: Any = None
+_activation_lock = asyncio.Lock()
 
 
 def _is_bootstrap_allowed() -> bool:
@@ -198,7 +201,7 @@ async def activate_bootstrap(request: Request, body: dict[str, Any]) -> dict:
     # Governance gate — bootstrap activation is a high-trust mutation
     held = await governance_gate(org_id, "activate_bootstrap", {"org_id": org_id})
     if held is not None:
-        return held
+        return JSONResponse(content=held, status_code=202)
 
     duration_hours = body.get("duration_hours", _DEFAULT_DURATION_HOURS)
     if not isinstance(duration_hours, (int, float)):
@@ -237,109 +240,112 @@ async def activate_bootstrap(request: Request, body: dict[str, Any]) -> dict:
             detail=f"max_daily_actions cannot exceed {_MAX_BOOTSTRAP_ACTIONS} during bootstrap",
         )
 
-    # Limit bootstrap re-activation: max 3 lifetime activations per org
-    _MAX_ACTIVATIONS = 3
-    all_bootstraps = await db.express.list("BootstrapRecord", {"org_id": org_id}, limit=100)
-    if len(all_bootstraps) >= _MAX_ACTIVATIONS:
-        raise HTTPException(
-            403,
-            detail=f"Bootstrap mode has been activated {len(all_bootstraps)} times for org "
-            f"'{org_id}' (maximum {_MAX_ACTIVATIONS}). Configure proper envelopes instead.",
-        )
+    # Serialize activation count check + record creation to prevent TOCTOU
+    # where two concurrent requests both pass the limit check.
+    async with _activation_lock:
+        # Limit bootstrap re-activation: max 3 lifetime activations per org
+        _MAX_ACTIVATIONS = 3
+        all_bootstraps = await db.express.list("BootstrapRecord", {"org_id": org_id}, limit=100)
+        if len(all_bootstraps) >= _MAX_ACTIVATIONS:
+            raise HTTPException(
+                403,
+                detail=f"Bootstrap mode has been activated {len(all_bootstraps)} times for org "
+                f"'{org_id}' (maximum {_MAX_ACTIVATIONS}). Configure proper envelopes instead.",
+            )
 
-    # Check no active bootstrap already exists for this org
-    existing = await _get_active_bootstrap(org_id)
-    if existing is not None:
-        raise HTTPException(
-            409,
-            detail=(
-                f"Bootstrap mode is already active for org '{org_id}' "
-                f"(expires at {existing.get('expires_at', 'unknown')})"
-            ),
-        )
+        # Check no active bootstrap already exists for this org
+        existing = await _get_active_bootstrap(org_id)
+        if existing is not None:
+            raise HTTPException(
+                409,
+                detail=(
+                    f"Bootstrap mode is already active for org '{org_id}' "
+                    f"(expires at {existing.get('expires_at', 'unknown')})"
+                ),
+            )
 
-    now = datetime.now(UTC)
-    expires_at = now + timedelta(hours=duration_hours)
-    bootstrap_id = f"boot-{uuid4().hex[:12]}"
+        now = datetime.now(UTC)
+        expires_at = now + timedelta(hours=duration_hours)
+        bootstrap_id = f"boot-{uuid4().hex[:12]}"
 
-    # Create bootstrap envelopes via engine if available
-    envelope_ids: list[str] = []
-    if _engine is not None and hasattr(_engine, "list_roles"):
-        try:
-            roles = _engine.list_roles()
-            envelope_config = _build_bootstrap_envelope_config(max_budget, max_daily_actions)
+        # Create bootstrap envelopes via engine if available
+        envelope_ids: list[str] = []
+        if _engine is not None and hasattr(_engine, "list_roles"):
+            try:
+                roles = _engine.list_roles()
+                envelope_config = _build_bootstrap_envelope_config(max_budget, max_daily_actions)
 
-            for role in roles:
-                role_address = (
-                    role if isinstance(role, str) else getattr(role, "address", str(role))
-                )
-                env_id = f"env-bootstrap-{role_address}-{uuid4().hex[:8]}"
-
-                try:
-                    from pact.governance import RoleEnvelope
-                    from pact_platform.build.config.schema import (
-                        CommunicationConstraintConfig,
-                        ConstraintEnvelopeConfig,
-                        DataAccessConstraintConfig,
-                        FinancialConstraintConfig,
-                        OperationalConstraintConfig,
-                        TemporalConstraintConfig,
+                for role in roles:
+                    role_address = (
+                        role if isinstance(role, str) else getattr(role, "address", str(role))
                     )
+                    env_id = f"env-bootstrap-{role_address}-{uuid4().hex[:8]}"
 
-                    env_cfg = ConstraintEnvelopeConfig(
-                        id=env_id,
-                        financial=FinancialConstraintConfig(
-                            **(envelope_config.get("financial") or {})
-                        ),
-                        operational=OperationalConstraintConfig(
-                            **(envelope_config.get("operational") or {})
-                        ),
-                        temporal=TemporalConstraintConfig(
-                            **(envelope_config.get("temporal") or {})
-                        ),
-                        data_access=DataAccessConstraintConfig(
-                            **(envelope_config.get("data_access") or {})
-                        ),
-                        communication=CommunicationConstraintConfig(
-                            **(envelope_config.get("communication") or {})
-                        ),
-                    )
+                    try:
+                        from pact.governance import RoleEnvelope
+                        from pact_platform.build.config.schema import (
+                            CommunicationConstraintConfig,
+                            ConstraintEnvelopeConfig,
+                            DataAccessConstraintConfig,
+                            FinancialConstraintConfig,
+                            OperationalConstraintConfig,
+                            TemporalConstraintConfig,
+                        )
 
-                    role_env = RoleEnvelope(
-                        id=env_id,
-                        defining_role_address="BOD-R1",  # System address (Board of Directors)
-                        target_role_address=role_address,
-                        envelope=env_cfg,
-                    )
-                    _engine.set_role_envelope(role_env)
-                    envelope_ids.append(env_id)
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to create bootstrap envelope for role %s: %s",
-                        role_address,
-                        exc,
-                    )
-        except Exception as exc:
-            logger.warning("Failed to enumerate roles for bootstrap: %s", exc)
+                        env_cfg = ConstraintEnvelopeConfig(
+                            id=env_id,
+                            financial=FinancialConstraintConfig(
+                                **(envelope_config.get("financial") or {})
+                            ),
+                            operational=OperationalConstraintConfig(
+                                **(envelope_config.get("operational") or {})
+                            ),
+                            temporal=TemporalConstraintConfig(
+                                **(envelope_config.get("temporal") or {})
+                            ),
+                            data_access=DataAccessConstraintConfig(
+                                **(envelope_config.get("data_access") or {})
+                            ),
+                            communication=CommunicationConstraintConfig(
+                                **(envelope_config.get("communication") or {})
+                            ),
+                        )
 
-    # Persist the bootstrap record
-    await db.express.create(
-        "BootstrapRecord",
-        {
-            "id": bootstrap_id,
-            "org_id": org_id,
-            "status": "active",
-            "started_at": now.isoformat(),
-            "expires_at": expires_at.isoformat(),
-            "bootstrap_config": {
-                "max_budget": max_budget,
-                "max_daily_actions": max_daily_actions,
-                "duration_hours": duration_hours,
+                        role_env = RoleEnvelope(
+                            id=env_id,
+                            defining_role_address="BOD-R1",  # System address (Board of Directors)
+                            target_role_address=role_address,
+                            envelope=env_cfg,
+                        )
+                        _engine.set_role_envelope(role_env)
+                        envelope_ids.append(env_id)
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to create bootstrap envelope for role %s: %s",
+                            role_address,
+                            exc,
+                        )
+            except Exception as exc:
+                logger.warning("Failed to enumerate roles for bootstrap: %s", exc)
+
+        # Persist the bootstrap record
+        await db.express.create(
+            "BootstrapRecord",
+            {
+                "id": bootstrap_id,
+                "org_id": org_id,
+                "status": "active",
+                "started_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "bootstrap_config": {
+                    "max_budget": max_budget,
+                    "max_daily_actions": max_daily_actions,
+                    "duration_hours": duration_hours,
+                },
+                "envelope_ids": {"ids": envelope_ids},
+                "created_at": now.isoformat(),
             },
-            "envelope_ids": {"ids": envelope_ids},
-            "created_at": now.isoformat(),
-        },
-    )
+        )
 
     logger.info(
         "Bootstrap activated for org %s (id=%s, expires=%s, envelopes=%d)",
@@ -421,6 +427,11 @@ async def end_bootstrap(request: Request, body: dict[str, Any]) -> dict:
         raise HTTPException(400, detail="ended_by is required and must be a non-empty string")
     validate_record_id(org_id)
     validate_string_length(ended_by, "ended_by", MAX_SHORT_STRING)
+
+    # Governance gate — ending bootstrap is a governance-significant action
+    held = await governance_gate(ended_by, "end_bootstrap", {"org_id": org_id})
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
 
     record = await _get_active_bootstrap(org_id)
     if record is None:

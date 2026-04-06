@@ -10,17 +10,19 @@ AC-4: VERIFIED   -- clearance.py accepts compartments on grant; knowledge.py has
 AC-5: VERIFIED   -- explain_access at L1 includes compartment context in denial (step 3)
 
 ## Issue #22: Vetting workflow FSM
-AC-1: PARTIAL    -- L3 FSM includes "suspended" but L1 VettingStatus enum lacks "suspended"
+AC-1: VERIFIED   -- L1 VettingStatus.SUSPENDED present in kailash 2.6.0; L3 FSM uses L1 transition_clearance()
 AC-2: VERIFIED   -- _validate_transition() enforces FSM (vetting.py:124-138)
 AC-3: VERIFIED   -- _APPROVERS_BY_LEVEL: secret=2, top_secret=3 (vetting.py:61-67)
-AC-4: VERIFIED   -- approve, suspend, reinstate, reject endpoints all present
+AC-4: VERIFIED   -- approve, suspend, reinstate, reject, revoke endpoints all present
 AC-5: VERIFIED   -- submit creates ClearanceVetting with current_status="pending" (line 222)
 AC-6: VERIFIED   -- Each transition endpoint logs + updates DB record with actor/reason
+AC-7: VERIFIED   -- suspend calls engine.transition_clearance(SUSPENDED), revoke calls transition_clearance(REVOKED)
+AC-8: VERIFIED   -- reinstate transitions L1 to REVOKED before creating new pending vetting
 
 ## Issue #23: Bootstrap mode
 AC-1: VERIFIED   -- activate creates permissive envelopes via engine (bootstrap.py:224-278)
 AC-2: VERIFIED   -- duration_hours validated <= 72, default 24 (line 188)
-AC-3: PARTIAL    -- ExpiryScheduler registered for BootstrapRecord (server.py:1044-1050) but _expire_bootstrap callback NOT wired as on_expire_callback
+AC-3: VERIFIED   -- ExpiryScheduler registered with _expire_bootstrap as on_expire_callback (server.py:1045+1054)
 AC-4: VERIFIED   -- end endpoint present (bootstrap.py:358-428)
 AC-5: VERIFIED   -- PACT_ALLOW_BOOTSTRAP_MODE env var check (line 44-48, 66-75)
 
@@ -40,9 +42,9 @@ AC-5: VERIFIED   -- decisions.py returns partial_approval status with counts (li
 AC-6: VERIFIED   -- server.py registers AgenticDecision with ExpiryScheduler (line 1058-1063)
 
 ## Summary
-Total ACs: 23
-VERIFIED:  20
-PARTIAL:    2 (Issue #22 AC-1, Issue #23 AC-3)
+Total ACs: 25
+VERIFIED:  25
+PARTIAL:    0
 MISSING:    0
 L1-DEPENDENT: 0
 

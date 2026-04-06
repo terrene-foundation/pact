@@ -401,6 +401,345 @@ class TestClearanceVettingFSM:
         assert resp.status_code == 200
         assert "records" in resp.json()
 
+    @pytest.mark.anyio
+    async def test_approve_vetting_reaches_active(self, client: httpx.AsyncClient) -> None:
+        """Approve a restricted vetting (1 approver quorum) → active."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["quorum_met"] is True
+        assert data["current_status"] == "active"
+
+        # Read back to verify persistence
+        detail = await client.get(f"/api/v1/vetting/{vid}")
+        assert detail.json()["current_status"] == "active"
+
+    @pytest.mark.anyio
+    async def test_suspend_active_vetting(self, client: httpx.AsyncClient) -> None:
+        """Active vetting can be suspended."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        # Approve to reach active
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+
+        # Suspend
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "Security incident"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["data"]["current_status"] == "suspended"
+
+    @pytest.mark.anyio
+    async def test_suspend_non_active_fails(self, client: httpx.AsyncClient) -> None:
+        """Cannot suspend a pending vetting (FSM violation)."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "Invalid"},
+        )
+        assert resp.status_code == 409
+
+    @pytest.mark.anyio
+    async def test_revoke_active_vetting(self, client: httpx.AsyncClient) -> None:
+        """Active vetting can be directly revoked."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "Policy violation"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["data"]["current_status"] == "revoked"
+
+    @pytest.mark.anyio
+    async def test_revoke_suspended_vetting(self, client: httpx.AsyncClient) -> None:
+        """Suspended vetting can be revoked permanently."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "Investigation"},
+        )
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "Investigation confirmed violation"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["data"]["current_status"] == "revoked"
+
+    @pytest.mark.anyio
+    async def test_revoke_pending_fails(self, client: httpx.AsyncClient) -> None:
+        """Cannot revoke a pending vetting (use reject instead)."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "Not allowed"},
+        )
+        assert resp.status_code == 409
+
+    @pytest.mark.anyio
+    async def test_revoke_terminal_fails(self, client: httpx.AsyncClient) -> None:
+        """Cannot revoke an already-revoked vetting (terminal state)."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "First revoke"},
+        )
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "Double revoke"},
+        )
+        assert resp.status_code == 409
+
+    @pytest.mark.anyio
+    async def test_reinstate_creates_new_pending(self, client: httpx.AsyncClient) -> None:
+        """Reinstating a suspended vetting creates a new pending request."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "Pause"},
+        )
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/reinstate",
+            json={"requested_by": "D1-R1-T1-R1"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()["data"]
+        assert data["original_status"] == "revoked"
+        assert data["new_status"] == "pending"
+        assert data["new_vetting_id"] != vid
+
+        # Verify original is now revoked
+        original = await client.get(f"/api/v1/vetting/{vid}")
+        assert original.json()["current_status"] == "revoked"
+
+        # Verify new vetting is pending
+        new_detail = await client.get(f"/api/v1/vetting/{data['new_vetting_id']}")
+        assert new_detail.json()["current_status"] == "pending"
+
+    @pytest.mark.anyio
+    async def test_reinstate_non_suspended_fails(self, client: httpx.AsyncClient) -> None:
+        """Cannot reinstate a non-suspended vetting."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/reinstate",
+            json={"requested_by": "D1-R1-T1-R1"},
+        )
+        assert resp.status_code == 409
+
+    @pytest.mark.anyio
+    async def test_full_lifecycle_submit_approve_suspend_revoke(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        """Full lifecycle: submit → approve → suspend → revoke."""
+        # Submit
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        # Approve
+        approve = await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        assert approve.json()["data"]["current_status"] == "active"
+
+        # Suspend
+        suspend = await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "Under investigation"},
+        )
+        assert suspend.json()["data"]["current_status"] == "suspended"
+
+        # Revoke
+        revoke = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1", "reason": "Investigation confirmed"},
+        )
+        assert revoke.json()["data"]["current_status"] == "revoked"
+
+        # Verify terminal — nothing can follow revoke
+        bad_suspend = await client.post(
+            f"/api/v1/vetting/{vid}/suspend",
+            json={"suspended_by": "D1-R1-T1-R1", "reason": "No"},
+        )
+        assert bad_suspend.status_code == 409
+
+    @pytest.mark.anyio
+    async def test_secret_requires_dual_approval(self, client: httpx.AsyncClient) -> None:
+        """Secret clearance needs 2 approvers; 1 is partial."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "secret", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+
+        # First approval — not enough
+        first = await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+        assert first.json()["data"]["quorum_met"] is False
+        assert first.json()["data"]["current_status"] == "pending"
+
+        # Second approval — quorum met
+        second = await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T2-R1"},
+        )
+        assert second.json()["data"]["quorum_met"] is True
+        assert second.json()["data"]["current_status"] == "active"
+
+    @pytest.mark.anyio
+    async def test_revoke_input_validation(self, client: httpx.AsyncClient) -> None:
+        """Revoke endpoint validates required fields."""
+        submit = await client.post(
+            "/api/v1/vetting/submit",
+            json={"role_address": "D1-R1", "level": "restricted", "requested_by": "admin"},
+        )
+        vid = submit.json()["data"]["vetting_id"]
+        await client.post(
+            f"/api/v1/vetting/{vid}/approve",
+            json={"approver_address": "D1-R1-T1-R1"},
+        )
+
+        # Missing revoked_by
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"reason": "No actor"},
+        )
+        assert resp.status_code == 400
+
+        # Missing reason
+        resp = await client.post(
+            f"/api/v1/vetting/{vid}/revoke",
+            json={"revoked_by": "D1-R1-T1-R1"},
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.anyio
+    async def test_filter_vettings_by_status(self, client: httpx.AsyncClient) -> None:
+        """List endpoint filters by status."""
+        resp = await client.get("/api/v1/vetting?status=pending")
+        assert resp.status_code == 200
+
+        resp = await client.get("/api/v1/vetting?status=invalid_status")
+        assert resp.status_code == 400
+
+
+# ===========================================================================
+# Issue #22: L1 VettingStatus.SUSPENDED Integration
+# ===========================================================================
+
+
+class TestVettingStatusSuspendedL1:
+    """Verify that the L1 VettingStatus enum includes SUSPENDED."""
+
+    def test_suspended_enum_exists(self) -> None:
+        """kailash 2.6.0 provides VettingStatus.SUSPENDED."""
+        from pact.governance import VettingStatus
+
+        assert hasattr(VettingStatus, "SUSPENDED")
+        assert VettingStatus.SUSPENDED.value == "suspended"
+
+    def test_l1_fsm_transition_table(self) -> None:
+        """L1 FSM allows ACTIVE → SUSPENDED → REVOKED."""
+        from kailash.trust.pact.clearance import _VALID_TRANSITIONS, VettingStatus
+
+        # ACTIVE can reach SUSPENDED
+        assert VettingStatus.SUSPENDED in _VALID_TRANSITIONS[VettingStatus.ACTIVE]
+        # SUSPENDED can reach REVOKED
+        assert VettingStatus.REVOKED in _VALID_TRANSITIONS[VettingStatus.SUSPENDED]
+        # REVOKED is terminal
+        assert len(_VALID_TRANSITIONS[VettingStatus.REVOKED]) == 0
+
+    def test_validate_transition_rejects_invalid(self) -> None:
+        """L1 validate_transition() rejects REVOKED → ACTIVE."""
+        from pact.governance import PactError, VettingStatus
+        from kailash.trust.pact.clearance import validate_transition
+
+        with pytest.raises(PactError):
+            validate_transition(VettingStatus.REVOKED, VettingStatus.ACTIVE)
+
+    def test_validate_transition_accepts_valid(self) -> None:
+        """L1 validate_transition() accepts ACTIVE → SUSPENDED."""
+        from kailash.trust.pact.clearance import validate_transition, VettingStatus
+
+        # Should not raise
+        validate_transition(VettingStatus.ACTIVE, VettingStatus.SUSPENDED)
+
 
 # ===========================================================================
 # Issue #24: Task Envelope Lifecycle

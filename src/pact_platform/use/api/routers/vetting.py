@@ -186,8 +186,12 @@ async def submit_vetting(request: Request, body: dict[str, Any]) -> dict | Respo
     compartments = body.get("compartments", [])
     if not isinstance(compartments, list):
         raise HTTPException(400, detail="compartments must be a list of strings")
+    if len(compartments) > 50:
+        raise HTTPException(400, detail="compartments list cannot exceed 50 entries")
     if not all(isinstance(c, str) for c in compartments):
         raise HTTPException(400, detail="All compartment values must be strings")
+    for c in compartments:
+        validate_string_length(c, "compartment", MAX_SHORT_STRING)
     nda_signed = bool(body.get("nda_signed", False))
 
     # Determine required approvals
@@ -281,6 +285,11 @@ async def approve_vetting(
     if reason:
         validate_string_length(reason, "reason", MAX_LONG_STRING)
 
+    # Governance gate — approval is a governance-significant action
+    held = await governance_gate(approver_address, "approve_clearance_vetting")
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
+
     if _approver_service is None:
         raise HTTPException(503, detail="Multi-approver service not configured")
 
@@ -309,7 +318,10 @@ async def approve_vetting(
     except HTTPException:
         raise
     except Exception:
-        logger.debug("ApprovalConfig eligibility check failed for %s — allowing", op_type)
+        logger.warning(
+            "ApprovalConfig eligibility check failed for %s — denying (fail-closed)", op_type
+        )
+        raise HTTPException(503, detail="Eligibility check unavailable — try again later")
 
     # Record the approval (raises ValueError on duplicate)
     try:
@@ -338,11 +350,11 @@ async def approve_vetting(
     quorum_met = current_approvals >= required_approvals
 
     if quorum_met:
-        # Transition to active
+        # Validate the FSM transition is allowed before attempting grant
         _validate_transition(current_status, "active")
-        update_fields["current_status"] = "active"
 
-        # Grant clearance via L1 engine if available
+        # Grant clearance via L1 engine if available — status transition
+        # only happens AFTER successful grant (fail-closed)
         if _engine is not None:
             try:
                 from pact.governance import RoleClearance
@@ -363,7 +375,16 @@ async def approve_vetting(
                     vetting_id,
                 )
             except Exception as exc:
-                logger.warning("Failed to grant L1 clearance for vetting %s: %s", vetting_id, exc)
+                logger.error("Failed to grant L1 clearance for vetting %s: %s", vetting_id, exc)
+                # Persist the approval count update (approval not lost) but do NOT transition status
+                await db.express.update("ClearanceVetting", vetting_id, update_fields)
+                raise HTTPException(
+                    503,
+                    detail="Clearance grant failed at governance engine — approval recorded but clearance not activated",
+                )
+
+        # Grant succeeded (or no engine configured) — now transition to active
+        update_fields["current_status"] = "active"
 
     await db.express.update("ClearanceVetting", vetting_id, update_fields)
 
@@ -401,11 +422,7 @@ async def reject_vetting(
     rejector_address = body.get("rejector_address", "")
     rejection_reason = body.get("reason", "")
 
-    # Governance gate — rejection is a governance-significant action
-    held = await governance_gate(rejector_address or "system", "reject_clearance_vetting")
-    if held is not None:
-        return held
-
+    # Validate inputs BEFORE governance gate (fail-closed: no unvalidated data reaches gate)
     if not rejector_address or not isinstance(rejector_address, str):
         raise HTTPException(
             400, detail="rejector_address is required and must be a non-empty string"
@@ -416,6 +433,11 @@ async def reject_vetting(
     validate_string_length(rejector_address, "rejector_address", MAX_SHORT_STRING)
     validate_string_length(rejection_reason, "reason", MAX_LONG_STRING)
     _validate_dtr_address(rejector_address, "rejector_address")
+
+    # Governance gate — rejection is a governance-significant action
+    held = await governance_gate(rejector_address, "reject_clearance_vetting")
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
 
     await db.express.update(
         "ClearanceVetting",
@@ -462,6 +484,7 @@ async def suspend_vetting(
     suspended_by = body.get("suspended_by", "")
     suspension_reason = body.get("reason", "")
 
+    # Validate inputs BEFORE governance gate
     if not suspended_by or not isinstance(suspended_by, str):
         raise HTTPException(400, detail="suspended_by is required and must be a non-empty string")
     if not suspension_reason or not isinstance(suspension_reason, str):
@@ -474,7 +497,7 @@ async def suspend_vetting(
     # Governance gate — suspension is a governance-significant action
     held = await governance_gate(suspended_by, "suspend_clearance")
     if held is not None:
-        return held
+        return JSONResponse(content=held, status_code=202)
 
     await db.express.update(
         "ClearanceVetting",
@@ -550,7 +573,7 @@ async def reinstate_vetting(
     # Governance gate — reinstatement creates a new vetting
     held = await governance_gate(requested_by, "reinstate_clearance")
     if held is not None:
-        return held
+        return JSONResponse(content=held, status_code=202)
 
     # Transition the suspended vetting to revoked
     _validate_transition(current_status, "revoked")
@@ -563,6 +586,23 @@ async def reinstate_vetting(
             "revoked_reason": "Revoked for reinstatement -- new vetting created",
         },
     )
+
+    # Transition L1 clearance to REVOKED
+    if _engine is not None:
+        role_address_val = record.get("role_address", "")
+        try:
+            from pact.governance import VettingStatus
+
+            _engine.transition_clearance(role_address_val, VettingStatus.REVOKED)
+            logger.info(
+                "L1 clearance transitioned to REVOKED for %s (reinstatement)", role_address_val
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to transition L1 clearance to REVOKED for %s: %s",
+                role_address_val,
+                exc,
+            )
 
     # Create a NEW pending vetting with the same parameters
     role_address = record.get("role_address", "")
@@ -610,6 +650,79 @@ async def reinstate_vetting(
     }
 
 
+@router.post("/{vetting_id}/revoke", response_model=None)
+@limiter.limit(RATE_POST)
+async def revoke_vetting(
+    request: Request, vetting_id: str, body: dict[str, Any]
+) -> dict | Response:
+    """Revoke an active or suspended clearance permanently.
+
+    Body:
+        {
+            "revoked_by": "D1-R1",
+            "reason": "Policy violation"
+        }
+    """
+    record = await _read_vetting(vetting_id)
+
+    current_status = record.get("current_status", "")
+    _validate_transition(current_status, "revoked")
+
+    revoked_by = body.get("revoked_by", "")
+    revoke_reason = body.get("reason", "")
+
+    if not revoked_by or not isinstance(revoked_by, str):
+        raise HTTPException(400, detail="revoked_by is required and must be a non-empty string")
+    if not revoke_reason or not isinstance(revoke_reason, str):
+        raise HTTPException(400, detail="reason is required and must be a non-empty string")
+
+    validate_string_length(revoked_by, "revoked_by", MAX_SHORT_STRING)
+    validate_string_length(revoke_reason, "reason", MAX_LONG_STRING)
+    _validate_dtr_address(revoked_by, "revoked_by")
+
+    # Governance gate — revocation is a governance-significant action
+    held = await governance_gate(revoked_by, "revoke_clearance")
+    if held is not None:
+        return JSONResponse(content=held, status_code=202)
+
+    await db.express.update(
+        "ClearanceVetting",
+        vetting_id,
+        {
+            "current_status": "revoked",
+            "revoked_by": revoked_by,
+            "revoked_reason": revoke_reason,
+        },
+    )
+
+    # Transition L1 clearance to REVOKED
+    if _engine is not None:
+        role_address = record.get("role_address", "")
+        try:
+            from pact.governance import VettingStatus
+
+            _engine.transition_clearance(role_address, VettingStatus.REVOKED)
+            logger.info("L1 clearance transitioned to REVOKED for %s", role_address)
+        except Exception as exc:
+            logger.warning(
+                "Failed to transition L1 clearance to REVOKED for %s: %s",
+                role_address,
+                exc,
+            )
+
+    logger.info("Vetting %s revoked by %s: %s", vetting_id, revoked_by, revoke_reason)
+
+    return {
+        "status": "ok",
+        "data": {
+            "vetting_id": vetting_id,
+            "current_status": "revoked",
+            "revoked_by": revoked_by,
+            "reason": revoke_reason,
+        },
+    }
+
+
 @router.get("")
 @limiter.limit(RATE_GET)
 async def list_vettings(
@@ -626,6 +739,7 @@ async def list_vettings(
             raise HTTPException(400, detail=f"status must be one of: {', '.join(_VALID_STATUSES)}")
         filt["current_status"] = status
     if role_address:
+        validate_string_length(role_address, "role_address", MAX_SHORT_STRING)
         filt["role_address"] = role_address
 
     records = await db.express.list("ClearanceVetting", filt, limit=limit, offset=offset)

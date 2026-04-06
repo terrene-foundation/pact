@@ -23,11 +23,15 @@ logger = logging.getLogger(__name__)
 __all__ = ["MultiApproverService"]
 
 
+_MAX_LOCKS = 10_000
+
+
 class MultiApproverService:
     """Quorum-based approval service backed by the ``ApprovalRecord`` model.
 
     Uses per-decision asyncio locks to prevent TOCTOU race conditions
-    on the duplicate-check + create sequence.
+    on the duplicate-check + create sequence. All approvers for the same
+    decision are serialized through a single lock keyed by decision_id.
 
     Args:
         db: DataFlow instance.
@@ -67,10 +71,17 @@ class MultiApproverService:
             raise ValueError("approver_address must not be empty")
 
         # Per-decision lock prevents TOCTOU on duplicate-check + create.
-        # Without this, two concurrent requests from the same approver could
-        # both pass the duplicate check and both insert, double-counting.
-        lock_key = f"{decision_id}:{approver_address}"
+        # All approvers for the same decision share one lock so that
+        # concurrent approvals are fully serialized (prevents double-count).
+        lock_key = decision_id
         if lock_key not in self._locks:
+            # Evict oldest entries when at capacity (LRU eviction)
+            if len(self._locks) >= _MAX_LOCKS:
+                # Remove the oldest 10% of entries
+                evict_count = max(1, _MAX_LOCKS // 10)
+                keys_to_remove = list(self._locks.keys())[:evict_count]
+                for k in keys_to_remove:
+                    del self._locks[k]
             self._locks[lock_key] = asyncio.Lock()
         async with self._locks[lock_key]:
             # Check for duplicate approval from the same approver
