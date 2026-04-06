@@ -57,7 +57,7 @@ L1-DEPENDENT: 0
 gradient_thresholds_wiring: IMPLEMENTED (schema re-export, API, CLI, example, 24 tests)
 multi_process_bypass: IMPLEMENTED (SqliteRateLimitStore, 16 tests)
 envelope_router_consolidation: IMPLEMENTED (separate /api/v1/governance/envelopes prefix)
-kailash_sdk_upgrade: NOT_UPGRADED (>=2.3.4 minimum pin, low priority -- kailash-pact>=0.6.0 covers governance)
+kailash_sdk_upgrade: UPGRADED — kailash 2.6.0, kailash-pact 0.8.0, kailash-dataflow 1.8.0
 
 ## M0: Emergency Bypass (L3)
 todo_01_tier4_reject_72h: IMPLEMENTED (emergency_bypass.py, 3 tests)
@@ -73,12 +73,12 @@ todo_23_shadow_mode: IMPLEMENTED (EnforcementMode enum, 3-way delegate routing, 
 todo_24_calibrate_cli: IMPLEMENTED (shadow mode calibration + ratio reporting)
 todo_25_toctou_comparison: IMPLEMENTED (audit_toctou_check + CLI pact audit toctou)
 
-## L1 Upstream (blocked -- kailash-py issues)
-todo_05_09_eatp_records: UPSTREAM (kailash-py#199)
-todo_10_13_envelope_gradient: UPSTREAM (kailash-py#200)
-todo_14_17_grammar_bridges: UPSTREAM (kailash-py#201)
-todo_19_20_vacancy_posture: UPSTREAM (kailash-py#202)
-todo_26_bilateral_atomicity: UPSTREAM (blocked by todo_08)
+## L1 Upstream (previously blocked — all resolved as of kailash 2.6.0 / kailash-pact 0.8.0)
+todo_05_09_eatp_records: RESOLVED — kailash-py#199 CLOSED, InMemoryPactEmitter wired via _create_engine()
+todo_10_13_envelope_gradient: RESOLVED — kailash-py#200 CLOSED, check_degenerate_envelope + check_gradient_dereliction available
+todo_14_17_grammar_bridges: RESOLVED — kailash-py#201 CLOSED, approve_bridge/consent_bridge/create_bridge wired in org.py
+todo_19_20_vacancy_posture: RESOLVED — kailash-py#202 CLOSED, _check_vacancy + designate_acting_occupant wired in org.py
+todo_26_bilateral_atomicity: RESOLVED — bilateral consent config via _create_engine(require_bilateral_consent=True)
 
 ## RT30 Security Fixes
 H1_shadow_audit_trail: FIXED (AuditChain.append with correct API, shadow=True metadata)
