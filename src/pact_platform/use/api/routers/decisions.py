@@ -3,6 +3,8 @@
 """Decisions API router -- /api/v1/decisions.
 
 Uses DataFlow Express API for all CRUD operations.
+Supports multi-approver decisions via optional MultiApproverService
+injection (Issue #25).
 """
 
 from __future__ import annotations
@@ -21,10 +23,19 @@ from pact_platform.models import (
     validate_string_length,
 )
 from pact_platform.use.api.rate_limit import RATE_GET, RATE_POST, limiter
+from pact_platform.use.services.multi_approver import MultiApproverService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/decisions", tags=["decisions"])
+
+_approver_service: MultiApproverService | None = None
+
+
+def set_approver_service(service: MultiApproverService) -> None:
+    """Inject the MultiApproverService for multi-approver decisions."""
+    global _approver_service
+    _approver_service = service
 
 
 @router.get("")
@@ -155,7 +166,15 @@ async def _optimistic_lock_update(
 @router.post("/{decision_id}/approve")
 @limiter.limit(RATE_POST)
 async def approve_decision(request: Request, decision_id: str, body: dict[str, Any]) -> dict:
-    """Approve a pending decision with optimistic locking."""
+    """Approve a pending decision.
+
+    For multi-approver decisions (required_approvals > 1) with a
+    configured MultiApproverService, individual approvals are recorded
+    and the decision is only resolved when the threshold is met.
+
+    For single-approver decisions or when no MultiApproverService is
+    configured, falls through to direct optimistic-lock update.
+    """
     decided_by = body.get("decided_by", "")
     reason = body.get("reason", "")
 
@@ -165,6 +184,76 @@ async def approve_decision(request: Request, decision_id: str, body: dict[str, A
     if reason:
         validate_string_length(reason, "reason", MAX_LONG_STRING)
 
+    # Multi-approver path: delegate to service if available and decision
+    # requires more than one approval.
+    if _approver_service is not None:
+        validate_record_id(decision_id)
+        decision = await db.express.read("AgenticDecision", decision_id)
+        if not decision or decision.get("found") is False:
+            raise HTTPException(404, "Decision not found")
+        if decision.get("status") != "pending":
+            raise HTTPException(
+                409,
+                "Decision is not pending. Only pending decisions can be approved or rejected.",
+            )
+
+        required = decision.get("required_approvals", 1)
+        if required > 1:
+            try:
+                result = await _approver_service.record_approval(
+                    decision_id=decision_id,
+                    approver_address=decided_by,
+                    approver_identity=decided_by,
+                    reason=reason,
+                )
+            except ValueError as exc:
+                raise HTTPException(409, detail=str(exc))
+
+            if result.get("current_approvals", 0) >= required:
+                # Quorum met -- update with optimistic lock to prevent
+                # concurrent final-approval race (H8 fix)
+                recheck = await db.express.read("AgenticDecision", decision_id)
+                if (
+                    not recheck
+                    or recheck.get("found") is False
+                    or recheck.get("status") != "pending"
+                ):
+                    raise HTTPException(
+                        409,
+                        "Decision was modified concurrently — please retry",
+                    )
+                current_version = recheck.get("envelope_version", 0)
+                await db.express.update(
+                    "AgenticDecision",
+                    decision_id,
+                    {
+                        "status": "approved",
+                        "decided_by": decided_by,
+                        "decision_reason": reason,
+                        "decided_at": datetime.now(UTC).isoformat(),
+                        "current_approvals": result["current_approvals"],
+                        "envelope_version": current_version + 1,
+                    },
+                )
+                updated = await db.express.read("AgenticDecision", decision_id)
+                if not updated or updated.get("found") is False:
+                    raise HTTPException(500, "Decision update succeeded but read-back failed")
+                return updated
+
+            # Partial approval -- return progress
+            return {
+                "status": "partial_approval",
+                "decision_id": decision_id,
+                "approval_id": result.get("approval_id", ""),
+                "current_approvals": result["current_approvals"],
+                "required_approvals": required,
+                "message": (
+                    f"Approval recorded ({result['current_approvals']}/{required}). "
+                    f"Waiting for more approvals."
+                ),
+            }
+
+    # Single-approver path (or no multi-approver service configured)
     return await _optimistic_lock_update(decision_id, "approved", decided_by, reason)
 
 
@@ -182,3 +271,31 @@ async def reject_decision(request: Request, decision_id: str, body: dict[str, An
         validate_string_length(reason, "reason", MAX_LONG_STRING)
 
     return await _optimistic_lock_update(decision_id, "rejected", decided_by, reason)
+
+
+@router.get("/{decision_id}/approvals")
+@limiter.limit(RATE_GET)
+async def list_decision_approvals(request: Request, decision_id: str) -> dict:
+    """List individual approval records for a decision.
+
+    Returns all ApprovalRecord entries (approved and rejected votes)
+    for the given decision, enabling audit trail inspection for
+    multi-approver workflows.
+    """
+    validate_record_id(decision_id)
+
+    # Verify the decision exists
+    decision = await db.express.read("AgenticDecision", decision_id)
+    if not decision or decision.get("found") is False:
+        raise HTTPException(404, "Decision not found")
+
+    records = await db.express.list("ApprovalRecord", {"decision_id": decision_id}, limit=1000)
+    records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+
+    return {
+        "records": records,
+        "count": len(records),
+        "decision_id": decision_id,
+        "required_approvals": decision.get("required_approvals", 1),
+        "current_approvals": decision.get("current_approvals", 0),
+    }

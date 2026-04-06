@@ -433,9 +433,12 @@ class TestAuditQueryInterface:
         query = AuditQuery(store=store)
         report = AuditReport(query)
 
+        # Data is from 2026-03-01 onward (50 hours of anchors).
+        # Use days=90 to ensure data is always within the window
+        # regardless of when the test runs.
         summary = report.team_summary(
             agent_ids=["agent-alpha", "agent-beta"],
-            days=30,
+            days=90,
         )
 
         assert "agent_counts" in summary

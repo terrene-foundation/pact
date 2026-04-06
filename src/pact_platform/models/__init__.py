@@ -27,6 +27,7 @@ __all__ = [
     "safe_sum_finite",
     "validate_string_length",
     "validate_record_id",
+    "validate_dtr_address",
     "MAX_SHORT_STRING",
     "MAX_LONG_STRING",
     "MAX_POOL_MEMBERS",
@@ -42,6 +43,12 @@ __all__ = [
     "AgenticPoolMembership",
     "Run",
     "ExecutionMetric",
+    "KnowledgeRecord",
+    "ApprovalConfig",
+    "ApprovalRecord",
+    "ClearanceVetting",
+    "BootstrapRecord",
+    "TaskEnvelopeRecord",
 ]
 
 # ---------------------------------------------------------------------------
@@ -217,8 +224,43 @@ def validate_record_id(record_id: str) -> str:
     return record_id
 
 
+def validate_dtr_address(address: str, field_name: str = "address") -> str:
+    """Validate a D/T/R address string at the API boundary.
+
+    Uses the L1 ``Address.parse()`` method when available, falling back
+    to a basic format check.  Error messages are sanitized — no internal
+    exception details are leaked.
+
+    Args:
+        address: The raw address string.
+        field_name: Human-readable field name for error messages.
+
+    Returns:
+        The validated address (unchanged).
+
+    Raises:
+        HTTPException(400): If the address is invalid.
+    """
+    if not address or not isinstance(address, str):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} is required and must be a non-empty string",
+        )
+    validate_string_length(address, field_name, MAX_SHORT_STRING)
+    try:
+        from pact.governance import Address
+
+        Address.parse(address)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid D/T/R address format for {field_name}",
+        )
+    return address
+
+
 # ---------------------------------------------------------------------------
-# Models -- 11 models, 121 auto-generated nodes
+# Models -- 17 models, 187 auto-generated nodes
 # ---------------------------------------------------------------------------
 
 
@@ -323,6 +365,9 @@ class AgenticDecision:
     decision_reason: str = ""
     expires_at: Optional[str] = None
     envelope_version: int = 0  # TOCTOU defense
+    required_approvals: int = 1  # multi-approver: how many approvals needed
+    current_approvals: int = 0  # multi-approver: how many received so far
+    approval_record_ids: dict = {}  # {"ids": ["apr-xxx", ...]}
     created_at: datetime = None
     updated_at: datetime = None
 
@@ -434,5 +479,165 @@ class ExecutionMetric:
     period_start: Optional[str] = None
     period_end: Optional[str] = None
     dimensions: dict = {}
+    created_at: datetime = None
+    updated_at: datetime = None
+
+
+# ---------------------------------------------------------------------------
+# Issue #21: Knowledge Record (persistent classified items with compartments)
+# ---------------------------------------------------------------------------
+
+
+@db.model
+class KnowledgeRecord:
+    """Persistent knowledge item for compartment-based access control.
+
+    Maps to L1's KnowledgeItem for access checks. Persists classification
+    and compartment assignments so access checks can look up items by ID
+    rather than requiring all fields inline.
+    """
+
+    id: str
+    item_id: str  # unique external ID for the knowledge item
+    classification: str = "public"  # public, restricted, confidential, secret, top_secret
+    owning_unit_address: str = ""  # D/T/R address of the owning unit
+    compartments: dict = {}  # {"values": ["alpha", "beta"]}
+    title: str = ""
+    description: str = ""
+    created_by: str = ""
+    status: str = "active"  # active, archived, deleted
+    created_at: datetime = None
+    updated_at: datetime = None
+
+
+# ---------------------------------------------------------------------------
+# Issue #25: Multi-approver infrastructure
+# ---------------------------------------------------------------------------
+
+
+@db.model
+class ApprovalConfig:
+    """Per-operation-type approval requirements.
+
+    Maps action names to required approver counts, timeouts, and
+    eligible role patterns. Used by governance_gate to set
+    required_approvals on AgenticDecision records.
+    """
+
+    id: str
+    operation_type: str  # e.g. "grant_clearance_secret", "emergency_bypass_tier2"
+    required_approvals: int = 1
+    timeout_hours: int = 72  # auto-reject after this many hours
+    eligible_roles: dict = {}  # {"patterns": ["D1-R1-*"]}
+    org_id: str = ""
+    description: str = ""
+    created_at: datetime = None
+    updated_at: datetime = None
+
+
+@db.model
+class ApprovalRecord:
+    """Individual approver's vote on a decision.
+
+    Each approval or rejection by a distinct approver is stored as
+    a separate record, enabling audit trail and duplicate prevention.
+    """
+
+    id: str
+    decision_id: str  # FK to AgenticDecision.id
+    approver_address: str  # D/T/R address of the approver
+    approver_identity: str = ""  # human-readable identity
+    verdict: str = "approved"  # approved, rejected
+    reason: str = ""
+    created_at: datetime = None
+
+
+# ---------------------------------------------------------------------------
+# Issue #22: Clearance Vetting FSM
+# ---------------------------------------------------------------------------
+
+
+@db.model
+class ClearanceVetting:
+    """Tracks clearance vetting requests through the FSM lifecycle.
+
+    A clearance grant creates a PENDING vetting record. Approvers
+    approve/reject it. Active clearances can be suspended or revoked.
+    Each transition is audited.
+    """
+
+    id: str
+    role_address: str  # D/T/R address of the role being vetted
+    requested_level: str = ""  # public, restricted, confidential, secret, top_secret
+    requested_compartments: dict = {}  # {"values": ["alpha"]}
+    current_status: str = "pending"  # pending, active, suspended, revoked, rejected, expired
+    requested_by: str = ""  # who requested the clearance grant
+    nda_signed: bool = False
+    required_approvals: int = 1  # 1 for C1-C2, 2 for C3, 3 for C4
+    current_approvals: int = 0
+    approval_record_ids: dict = {}  # {"ids": ["apr-xxx"]}
+    reason: str = ""
+    rejected_by: str = ""
+    rejected_reason: str = ""
+    suspended_reason: str = ""
+    suspended_by: str = ""
+    revoked_reason: str = ""
+    revoked_by: str = ""
+    created_at: datetime = None
+    updated_at: datetime = None
+
+
+# ---------------------------------------------------------------------------
+# Issue #23: Bootstrap Mode
+# ---------------------------------------------------------------------------
+
+
+@db.model
+class BootstrapRecord:
+    """Tracks bootstrap mode activation per org.
+
+    Bootstrap mode provides time-limited permissive envelopes for new
+    orgs during initial configuration. Auto-expires after deadline.
+    L3-only concern -- L1 fail-closed behavior is not modified.
+    """
+
+    id: str
+    org_id: str
+    status: str = "active"  # active, expired, ended_early
+    started_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    bootstrap_config: dict = {}  # {"max_budget": 1000, "max_daily_actions": 500, ...}
+    envelope_ids: dict = {}  # {"ids": ["env-bootstrap-D1-R1", ...]}
+    ended_by: str = ""
+    ended_at: Optional[str] = None
+    created_at: datetime = None
+    updated_at: datetime = None
+
+
+# ---------------------------------------------------------------------------
+# Issue #24: Task Envelope Lifecycle
+# ---------------------------------------------------------------------------
+
+
+@db.model
+class TaskEnvelopeRecord:
+    """Persistent task envelope for lifecycle management.
+
+    Tracks L1 TaskEnvelopes at L3 for persistence across restarts,
+    auto-expiry scheduling, and agent acknowledgment.
+    L1 EnvelopeStore is source of truth for runtime; this is the
+    persistence and lifecycle layer.
+    """
+
+    id: str
+    task_id: str
+    role_address: str  # D/T/R address the envelope applies to
+    parent_envelope_id: str = ""
+    envelope_config: dict = {}  # serialized ConstraintEnvelopeConfig
+    status: str = "active"  # active, expired, acknowledged, rejected
+    expires_at: Optional[str] = None  # ISO 8601 -- required by API
+    acknowledged_at: Optional[str] = None
+    acknowledged_by: str = ""
+    rejection_reason: str = ""
     created_at: datetime = None
     updated_at: datetime = None

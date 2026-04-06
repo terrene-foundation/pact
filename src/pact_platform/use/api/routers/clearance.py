@@ -73,6 +73,18 @@ async def grant_clearance(request: Request, body: dict[str, Any]) -> dict:
     if _engine is None:
         raise HTTPException(503, detail="No governance engine configured")
 
+    # SECRET and TOP_SECRET clearances MUST go through the vetting workflow
+    # (POST /api/v1/vetting/submit) which enforces multi-approver quorum.
+    # This prevents FSM bypass via the direct grant endpoint.
+    if level in ("secret", "top_secret"):
+        raise HTTPException(
+            400,
+            detail=(
+                f"Clearance level '{level}' requires the vetting workflow. "
+                f"Use POST /api/v1/vetting/submit instead."
+            ),
+        )
+
     # Governance gate — mutation requires approval
     held = await governance_gate(role_address, "grant_clearance", {"level": level})
     if held is not None:
